@@ -1,0 +1,61 @@
+{
+  "expo": {
+    "name": "Kuwait Now",
+    "slug": "kuwait-now",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./src/assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./src/assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#C8102E"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "app.kuwaitnow",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Kuwait Now needs camera access to take photos for posts.",
+        "NSPhotoLibraryUsageDescription": "Kuwait Now needs photo library access to share images in posts.",
+        "NSMicrophoneUsageDescription": "Kuwait Now needs microphone access for voice notes."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./src/assets/adaptive-icon.png",
+        "backgroundColor": "#C8102E"
+      },
+      "package": "app.kuwaitnow",
+      "versionCode": 1,
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "RECORD_AUDIO",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+      ]
+    },
+    "web": {
+      "favicon": "./src/assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./src/assets/notification-icon.png",
+          "color": "#C8102E",
+          "sounds": []
+        }
+      ]
+    ],
+    "extra": {
+      "API_URL": "http://localhost:5000/api",
+      "SOCKET_URL": "http://localhost:5000",
+      "eas": {
+        "projectId": "your-eas-project-id"
+      }
+    }
+  }
+}
