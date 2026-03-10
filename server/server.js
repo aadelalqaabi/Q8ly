@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
+const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
@@ -19,6 +20,10 @@ const spaceRoutes = require('./routes/spaces');
 const notificationRoutes = require('./routes/notifications');
 const eventRoutes = require('./routes/events');
 const uploadRoutes = require('./routes/upload');
+const hachiRoutes = require('./routes/hachi');
+const adminRoutes = require('./routes/admin');
+const suggestionRoutes = require('./routes/suggestions');
+const adRoutes = require('./routes/ads');
 
 const app = express();
 const server = http.createServer(app);
@@ -32,16 +37,30 @@ const io = initSocket(server);
 // Make io accessible to routes
 app.set('io', io);
 
+// Admin panel — serve static files with relaxed CSP (before helmet)
+app.use('/admin', (req, res, next) => {
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self' https: data: 'unsafe-inline' 'unsafe-eval'"
+  );
+  next();
+}, express.static(path.join(__dirname, 'public/admin')));
+
 // Security middleware
 app.use(helmet());
+const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? [process.env.CLIENT_URL, process.env.FRONTEND_URL].filter(Boolean)
+  : [process.env.CLIENT_URL, process.env.FRONTEND_URL, 'http://localhost:19000', 'http://localhost:3000', /^exp:\/\//];
+
 app.use(cors({
-  origin: [
-    process.env.CLIENT_URL,
-    process.env.FRONTEND_URL,
-    'http://localhost:19000',
-    'http://localhost:3000',
-    /^exp:\/\//,
-  ],
+  origin: (origin, cb) => {
+    // Allow requests with no origin (mobile apps, curl)
+    if (!origin) return cb(null, true);
+    const allowed = allowedOrigins.some((o) =>
+      o instanceof RegExp ? o.test(origin) : o === origin
+    );
+    cb(allowed ? null : new Error('Not allowed by CORS'), allowed);
+  },
   credentials: true,
 }));
 
@@ -74,7 +93,7 @@ if (process.env.NODE_ENV === 'development') {
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), env: process.env.NODE_ENV });
+  res.json({ status: 'ok' });
 });
 
 // API Routes
@@ -86,6 +105,10 @@ app.use('/api/spaces', spaceRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/hachi', hachiRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/suggestions', suggestionRoutes);
+app.use('/api/ads', adRoutes);
 
 // 404
 app.use((req, res) => {
@@ -97,7 +120,7 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
-  console.log(`Kuwait Now server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
+  console.log(`Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
 });
 
 // Graceful shutdown

@@ -2,7 +2,7 @@
  * Seed script – creates default topics and spaces for Kuwait Now.
  * Run once: node utils/seedData.js
  */
-require('dotenv').config({ path: '../.env' });
+require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 const mongoose = require('mongoose');
 const Topic = require('../models/Topic');
 const Space = require('../models/Space');

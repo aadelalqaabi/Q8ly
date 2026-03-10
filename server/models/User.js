@@ -14,26 +14,29 @@ const userSchema = new mongoose.Schema(
     },
     email: {
       type: String,
-      required: [true, 'Email is required'],
-      unique: true,
       trim: true,
       lowercase: true,
       match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email'],
+      // No default — omitting the field entirely lets the partial index ignore it
     },
     phone: {
       type: String,
       trim: true,
       default: null,
     },
+    phoneVerified: {
+      type: Boolean,
+      default: false,
+    },
     password: {
       type: String,
-      required: [true, 'Password is required'],
       minlength: [6, 'Password must be at least 6 characters'],
       select: false,
+      default: null,
     },
     name: {
       type: String,
-      required: [true, 'Name is required'],
+      default: '',
       trim: true,
       maxlength: [50, 'Name cannot exceed 50 characters'],
     },
@@ -100,9 +103,15 @@ const userSchema = new mongoose.Schema(
     mutedTopics: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Topic' }],
     // Blocked users
     blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    // Users whose new posts trigger a push notification for this user
+    postNotifications: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     // Stats
     postsCount: { type: Number, default: 0 },
     likesReceived: { type: Number, default: 0 },
+    // Hachi loyalty points (unlocks Hachi creation at 50)
+    hachiPoints: { type: Number, default: 0 },
+    // Admin role
+    role: { type: String, enum: ['user', 'admin'], default: 'user' },
     // Account status
     isActive: { type: Boolean, default: true },
     isBanned: { type: Boolean, default: false },
@@ -138,13 +147,17 @@ userSchema.virtual('isNewAccount').get(function () {
   return daysSinceCreation < 7;
 });
 
-// Pre-save: hash password
+// Pre-save: hash password (only if set)
 userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
+  if (!this.isModified('password') || !this.password) return next();
   const salt = await bcrypt.genSalt(12);
   this.password = await bcrypt.hash(this.password, salt);
   next();
 });
+
+// Sparse unique indexes — only enforced when the field is present (not null/missing)
+userSchema.index({ email: 1 }, { unique: true, sparse: true });
+userSchema.index({ phone: 1 }, { unique: true, sparse: true });
 
 // Method: compare password
 userSchema.methods.comparePassword = async function (candidatePassword) {
@@ -167,6 +180,7 @@ userSchema.methods.toPublicProfile = function () {
     followingCount: this.followingCount,
     postsCount: this.postsCount,
     likesReceived: this.likesReceived,
+    hachiPoints: this.hachiPoints || 0,
     createdAt: this.createdAt,
   };
 };

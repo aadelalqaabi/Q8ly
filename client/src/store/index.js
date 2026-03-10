@@ -5,6 +5,7 @@ import topicsReducer from './slices/topicsSlice';
 import spacesReducer from './slices/spacesSlice';
 import notificationsReducer from './slices/notificationsSlice';
 import uiReducer from './slices/uiSlice';
+import hachiReducer from './slices/hachiSlice';
 
 export const store = configureStore({
   reducer: {
@@ -14,6 +15,7 @@ export const store = configureStore({
     spaces: spacesReducer,
     notifications: notificationsReducer,
     ui: uiReducer,
+    hachi: hachiReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

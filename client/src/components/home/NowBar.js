@@ -16,13 +16,16 @@ export default function NowBar({ items, navigation }) {
 
   return (
     <View style={styles.container}>
+      {/* Header row */}
       <View style={styles.header}>
-        <View style={styles.liveIndicator}>
+        <View style={styles.livePill}>
           <View style={styles.liveDot} />
-          <Text style={styles.liveText}>NOW</Text>
+          <Text style={styles.liveText}>LIVE</Text>
         </View>
-        <Text style={styles.headerTitle}>Kuwait Now</Text>
+        <Text style={styles.headerTitle}>Breaking</Text>
       </View>
+
+      {/* Horizontally scrolling cards */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -33,11 +36,12 @@ export default function NowBar({ items, navigation }) {
           return (
             <TouchableOpacity
               key={i}
-              style={styles.card}
+              style={[styles.card, i === items.length - 1 && styles.cardLast]}
               onPress={() => item.topicSlug && navigation.navigate('TopicDetail', { slug: item.topicSlug })}
+              activeOpacity={0.7}
             >
-              <View style={[styles.cardIcon, { backgroundColor: iconConfig.color + '20' }]}>
-                <Ionicons name={iconConfig.icon} size={16} color={iconConfig.color} />
+              <View style={[styles.cardIcon, { backgroundColor: iconConfig.color }]}>
+                <Ionicons name={iconConfig.icon} size={16} color={COLORS.white} />
               </View>
               <Text style={styles.cardText} numberOfLines={2}>{item.text}</Text>
             </TouchableOpacity>
@@ -49,14 +53,54 @@ export default function NowBar({ items, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { backgroundColor: COLORS.white, marginBottom: 8, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 6, gap: 8 },
-  liveIndicator: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.primary, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3, gap: 4 },
-  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' },
-  liveText: { fontSize: 11, fontWeight: '800', color: '#fff', letterSpacing: 1 },
-  headerTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text },
-  scroll: { paddingHorizontal: 12, paddingBottom: 12, gap: 10 },
-  card: { width: 180, backgroundColor: '#FAFAFA', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: COLORS.border, flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
-  cardIcon: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
-  cardText: { flex: 1, fontSize: 13, color: COLORS.text, lineHeight: 17 },
+  container: {
+    backgroundColor: COLORS.white,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.separator,
+    paddingVertical: 14,
+  },
+
+  // Header
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    marginBottom: 10,
+  },
+  livePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: COLORS.accent,
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.white },
+  liveText: { fontSize: 11, fontWeight: '700', color: COLORS.white },
+  headerTitle: { fontSize: 13, fontWeight: '600', color: COLORS.text, marginLeft: 8 },
+
+  // Scroll cards
+  scroll: { paddingLeft: 14 },
+  card: {
+    width: 160,
+    marginLeft: 0,
+    marginRight: 14,
+  },
+  cardLast: {
+    marginRight: 14,
+  },
+
+  // Card icon
+  cardIcon: {
+    width: 32, height: 32, borderRadius: 16,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  cardText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: COLORS.text,
+    lineHeight: 18,
+    marginTop: 8,
+  },
 });

@@ -5,13 +5,14 @@ const { protect, optionalAuth } = require('../middleware/auth');
 const validate = require('../middleware/validate');
 const {
   getFeed, getTrending, getPost, createPost,
-  toggleLike, repost, deletePost, reportPost, votePoll,
+  toggleLike, repost, deletePost, reportPost, votePoll, searchPosts,
 } = require('../controllers/postController');
 const { getComments, addComment, likeComment, deleteComment } = require('../controllers/commentController');
 
 // Feed and discovery
 router.get('/feed', protect, getFeed);
 router.get('/trending', optionalAuth, getTrending);
+router.get('/search', optionalAuth, searchPosts);
 
 // Single post
 router.get('/:id', optionalAuth, getPost);

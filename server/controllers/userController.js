@@ -2,6 +2,7 @@ const User = require('../models/User');
 const Post = require('../models/Post');
 const Notification = require('../models/Notification');
 const Report = require('../models/Report');
+const { sendToUser } = require('../services/pushService');
 
 // @desc    Get user profile by username
 // @route   GET /api/users/:username
@@ -22,6 +23,9 @@ const getProfile = async (req, res, next) => {
     if (req.user) {
       profile.isFollowing = req.user.following.includes(user._id);
       profile.isBlocked = req.user.blockedUsers.includes(user._id);
+      profile.isNotifyEnabled = (req.user.postNotifications || []).some(
+        (id) => id.toString() === user._id.toString()
+      );
     }
 
     res.json({ success: true, user: profile });
@@ -97,6 +101,7 @@ const toggleFollow = async (req, res, next) => {
       currentUser.followingCount += 1;
       targetUser.followers.push(currentUser._id);
       targetUser.followersCount += 1;
+      targetUser.hachiPoints = (targetUser.hachiPoints || 0) + 3;
 
       // Notify target user
       const notification = await Notification.create({
@@ -107,6 +112,14 @@ const toggleFollow = async (req, res, next) => {
 
       const io = req.app.get('io');
       if (io) io.to(`user:${targetUser._id}`).emit('notification', notification);
+
+      // Push notification
+      sendToUser(
+        targetUser, 'follows',
+        'New follower',
+        `@${currentUser.username} started following you`,
+        { type: 'follow', userId: currentUser._id.toString() }
+      );
     }
 
     await currentUser.save({ validateBeforeSave: false });
@@ -276,6 +289,42 @@ const getSuggestions = async (req, res, next) => {
   }
 };
 
+// @desc    Toggle post notifications for a user
+// @route   POST /api/users/:id/notify-posts
+// @access  Private
+const togglePostNotifications = async (req, res, next) => {
+  try {
+    const targetId = req.params.id;
+    const currentUser = await User.findById(req.user._id);
+    const isEnabled = (currentUser.postNotifications || []).some(
+      (id) => id.toString() === targetId
+    );
+    if (isEnabled) {
+      currentUser.postNotifications.pull(targetId);
+    } else {
+      currentUser.postNotifications.push(targetId);
+    }
+    await currentUser.save({ validateBeforeSave: false });
+    res.json({ success: true, enabled: !isEnabled });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Save Expo push token
+// @route   POST /api/users/push-token
+// @access  Private
+const savePushToken = async (req, res, next) => {
+  try {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ success: false, message: 'Token required' });
+    await User.findByIdAndUpdate(req.user._id, { expoPushToken: token });
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getProfile,
   getUserPosts,
@@ -286,4 +335,6 @@ module.exports = {
   getFollowers,
   reportUser,
   getSuggestions,
+  savePushToken,
+  togglePostNotifications,
 };

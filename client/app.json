@@ -1,30 +1,31 @@
 {
   "expo": {
-    "name": "Kuwait Now",
+    "name": "Kuwaa",
     "slug": "kuwait-now",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./src/assets/icon.png",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./src/assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#C8102E"
+      "image": "./src/assets/Splash.png",
+      "resizeMode": "fit",
+      "backgroundColor": "#0033A0"
     },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "app.kuwaitnow",
       "buildNumber": "1",
       "infoPlist": {
-        "NSCameraUsageDescription": "Kuwait Now needs camera access to take photos for posts.",
-        "NSPhotoLibraryUsageDescription": "Kuwait Now needs photo library access to share images in posts.",
-        "NSMicrophoneUsageDescription": "Kuwait Now needs microphone access for voice notes."
+        "NSCameraUsageDescription": "Kuwaa needs camera access to take photos for posts.",
+        "NSPhotoLibraryUsageDescription": "Kuwaa needs photo library access to share photos and videos in posts.",
+        "NSPhotoLibraryAddUsageDescription": "Kuwaa needs access to save photos and videos.",
+        "NSMicrophoneUsageDescription": "Kuwaa needs microphone access for video recording."
       }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./src/assets/adaptive-icon.png",
-        "backgroundColor": "#C8102E"
+        "backgroundColor": "#0033A0"
       },
       "package": "app.kuwaitnow",
       "versionCode": 1,
@@ -34,28 +35,51 @@
         "WRITE_EXTERNAL_STORAGE",
         "RECORD_AUDIO",
         "RECEIVE_BOOT_COMPLETED",
-        "VIBRATE"
+        "VIBRATE",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.ACCESS_MEDIA_LOCATION"
       ]
     },
     "web": {
       "favicon": "./src/assets/favicon.png"
     },
+    "updates": {
+      "url": "https://u.expo.dev/75fe5b25-a004-4cec-a932-f72d6d68379c",
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "plugins": [
+      "expo-updates",
       [
         "expo-notifications",
         {
           "icon": "./src/assets/notification-icon.png",
-          "color": "#C8102E",
+          "color": "#0033A0",
           "sounds": []
         }
-      ]
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow Kuwaa to access your photos and videos.",
+          "savePhotosPermission": "Allow Kuwaa to save photos.",
+          "isAccessMediaLocationEnabled": true
+        }
+      ],
+      "expo-font"
     ],
     "extra": {
-      "API_URL": "http://localhost:5000/api",
-      "SOCKET_URL": "http://localhost:5000",
+      "API_URL": "http://192.168.0.247:5001/api",
+      "SOCKET_URL": "http://192.168.0.247:5001",
       "eas": {
-        "projectId": "your-eas-project-id"
+        "projectId": "75fe5b25-a004-4cec-a932-f72d6d68379c"
       }
-    }
+    },
+    "owner": "qadha"
   }
 }

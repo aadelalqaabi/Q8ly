@@ -66,4 +66,45 @@ export const sendTyping = (postId, isTyping) => {
   if (socket) socket.emit('typing', { postId, isTyping });
 };
 
-export default { initSocket, getSocket, disconnectSocket, joinSpaceRoom, leaveSpaceRoom, joinPostRoom, leavePostRoom, sendTyping };
+// ── Helper: Hachi chat rooms ──────────────────────────────────────────────────
+export const joinHachiRoom = (roomId) => {
+  if (socket) socket.emit('joinHachi', roomId);
+};
+
+export const leaveHachiRoom = (roomId) => {
+  if (socket) socket.emit('leaveHachi', roomId);
+};
+
+export const sendHachiMessage = (roomId, text) => {
+  if (socket) socket.emit('hachiSend', { roomId, text });
+};
+
+export const sendHachiReaction = (roomId, type) => {
+  if (socket) socket.emit('hachiReact', { roomId, type });
+};
+
+export const sendHachiVoice = (roomId, voiceUrl, voiceDuration) => {
+  if (socket) socket.emit('hachiSendVoice', { roomId, voiceUrl, voiceDuration });
+};
+
+export const sendHachiMessageReaction = (roomId, messageId, emoji) => {
+  if (socket) socket.emit('hachiMessageReact', { roomId, messageId, emoji });
+};
+
+export const sendHachiKick = (roomId, userId, deleteMessages = false) => {
+  if (socket) socket.emit('hachiKickMember', { roomId, userId, deleteMessages });
+};
+
+export const sendHachiPin = (roomId, messageId) => {
+  if (socket) socket.emit('hachiPinMessage', { roomId, messageId });
+};
+
+export const approveHachiJoin = (roomId, userId) => {
+  if (socket) socket.emit('hachiApproveJoin', { roomId, userId });
+};
+
+export const rejectHachiJoin = (roomId, userId) => {
+  if (socket) socket.emit('hachiRejectJoin', { roomId, userId });
+};
+
+export default { initSocket, getSocket, disconnectSocket, joinSpaceRoom, leaveSpaceRoom, joinPostRoom, leavePostRoom, sendTyping, joinHachiRoom, leaveHachiRoom, sendHachiMessage, sendHachiVoice, sendHachiReaction, sendHachiMessageReaction, sendHachiKick, sendHachiPin, approveHachiJoin, rejectHachiJoin };

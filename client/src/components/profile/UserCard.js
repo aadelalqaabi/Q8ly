@@ -1,71 +1,91 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { usersAPI } from '../../services/api';
-import { COLORS, VERIFIED_BADGE_LABELS } from '../../constants';
+import { useTheme } from '../../context/ThemeContext';
+
+const PALETTE = ['#0033A0', '#007A3D', '#FF6B35', '#2196F3', '#9C27B0', '#00BCD4', '#FF9800'];
+function avatarBg(name) {
+  if (!name) return PALETTE[0];
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+  return PALETTE[Math.abs(h) % PALETTE.length];
+}
 
 export default function UserCard({ user, navigation, onFollowChange }) {
+  const { t } = useTranslation();
+  const { colors: COLORS } = useTheme();
+  const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
   const [isFollowing, setIsFollowing] = useState(user.isFollowing || false);
-  const [followersCount, setFollowersCount] = useState(user.followersCount);
-
-  const badge = user.verifiedBadge && VERIFIED_BADGE_LABELS[user.verifiedBadge];
 
   const handleFollow = async () => {
     try {
       const res = await usersAPI.toggleFollow(user._id);
       setIsFollowing(res.following);
-      setFollowersCount(res.followersCount);
       if (onFollowChange) onFollowChange(user._id, res.following);
-    } catch (e) { /* silent */ }
+    } catch { /* silent */ }
   };
 
   return (
     <TouchableOpacity
       style={styles.container}
       onPress={() => navigation.navigate('ProfileDetail', { username: user.username })}
+      activeOpacity={0.7}
     >
-      {user.profilePic
-        ? <Image source={{ uri: user.profilePic }} style={styles.avatar} />
-        : <View style={[styles.avatar, styles.avatarPlaceholder]}>
-            <Text style={styles.avatarInitial}>{user.name?.[0] || '?'}</Text>
-          </View>
-      }
+      {user.profilePic ? (
+        <Image source={{ uri: user.profilePic }} style={styles.avatar} />
+      ) : (
+        <View style={[styles.avatar, { backgroundColor: avatarBg(user.name) }]}>
+          <Text style={styles.avatarInitial}>{user.name?.[0]?.toUpperCase() || '?'}</Text>
+        </View>
+      )}
 
       <View style={styles.info}>
-        <View style={styles.nameRow}>
-          <Text style={styles.name}>{user.name}</Text>
-          {badge && <Text style={[styles.badge, { color: badge.color }]}>{badge.icon}</Text>}
-        </View>
-        <Text style={styles.username}>@{user.username}</Text>
-        {user.bio ? <Text style={styles.bio} numberOfLines={1}>{user.bio}</Text> : null}
-        <Text style={styles.followers}>{followersCount?.toLocaleString()} followers</Text>
+        <Text style={styles.name} numberOfLines={1}>{user.name}</Text>
       </View>
 
       <TouchableOpacity
-        style={[styles.followBtn, isFollowing && styles.followingBtn]}
+        style={[styles.btn, isFollowing && styles.btnFollowing]}
         onPress={handleFollow}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
-        <Text style={[styles.followBtnText, isFollowing && styles.followingBtnText]}>
-          {isFollowing ? 'Following' : 'Follow'}
+        <Text style={[styles.btnText, isFollowing && styles.btnTextFollowing]}>
+          {isFollowing ? t('profile.following') : t('profile.follow')}
         </Text>
       </TouchableOpacity>
     </TouchableOpacity>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flexDirection: 'row', alignItems: 'center', padding: 14, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  avatar: { width: 48, height: 48, borderRadius: 24, marginRight: 12 },
-  avatarPlaceholder: { backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' },
-  avatarInitial: { fontSize: 20, fontWeight: '700', color: '#fff' },
-  info: { flex: 1, marginRight: 10 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  name: { fontSize: 15, fontWeight: '700', color: COLORS.text },
-  badge: { fontSize: 13 },
-  username: { fontSize: 13, color: COLORS.textMuted, marginTop: 1 },
-  bio: { fontSize: 13, color: COLORS.textLight, marginTop: 3 },
-  followers: { fontSize: 12, color: COLORS.textMuted, marginTop: 3 },
-  followBtn: { borderWidth: 1.5, borderColor: COLORS.primary, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 6 },
-  followingBtn: { backgroundColor: COLORS.primary },
-  followBtnText: { fontSize: 13, fontWeight: '700', color: COLORS.primary },
-  followingBtnText: { color: '#fff' },
+const makeStyles = (C) => StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: C.white,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: C.separator,
+    gap: 12,
+  },
+  avatar: {
+    width: 44, height: 44, borderRadius: 22,
+    justifyContent: 'center', alignItems: 'center', flexShrink: 0,
+  },
+  avatarInitial: { fontSize: 17, fontWeight: '700', color: '#fff' },
+  info: { flex: 1 },
+  name: { fontSize: 15, fontWeight: '600', color: C.text },
+  username: { fontSize: 13, color: C.textMuted, marginTop: 1 },
+  btn: {
+    backgroundColor: C.accent,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  btnFollowing: { backgroundColor: C.fill },
+  btnText: { fontSize: 13, fontWeight: '600', color: '#fff' },
+  btnTextFollowing: { color: C.textMuted },
 });

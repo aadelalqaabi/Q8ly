@@ -78,7 +78,6 @@ const topicSchema = new mongoose.Schema(
   }
 );
 
-topicSchema.index({ slug: 1 });
 topicSchema.index({ trendingScore: -1 });
 topicSchema.index({ category: 1 });
 

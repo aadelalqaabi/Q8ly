@@ -1,27 +1,32 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
   KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
 } from 'react-native';
 import { useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { postsAPI } from '../../services/api';
 import PostCard from '../../components/post/PostCard';
 import CommentItem from '../../components/post/CommentItem';
-import { COLORS } from '../../constants';
+import { useTheme } from '../../context/ThemeContext';
 import { joinPostRoom, leavePostRoom, getSocket } from '../../services/socket';
 
 export default function PostDetailScreen({ navigation, route }) {
   const { postId } = route.params;
   const { user } = useSelector((s) => s.auth);
+  const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
+  const { colors: COLORS } = useTheme();
+  const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
 
   const [post, setPost] = useState(null);
   const [comments, setComments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [commentText, setCommentText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [sortMode, setSortMode] = useState('top');
-  const [replyTo, setReplyTo] = useState(null); // { id, username }
+  const [replyTo, setReplyTo] = useState(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -30,25 +35,20 @@ export default function PostDetailScreen({ navigation, route }) {
     try {
       const res = await postsAPI.getPost(postId);
       setPost(res.post);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e) { console.error(e); }
   }, [postId]);
 
   const loadComments = useCallback(async (p = 1) => {
     if (p > 1) setLoadingMore(true);
     try {
-      const res = await postsAPI.getComments(postId, { page: p, sort: sortMode, limit: 20 });
+      const res = await postsAPI.getComments(postId, { page: p, sort: 'latest', limit: 20 });
       if (p === 1) setComments(res.comments);
       else setComments((prev) => [...prev, ...res.comments]);
       setHasMore(p < Math.ceil(res.pagination.total / 20));
       setPage(p);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingMore(false);
-    }
-  }, [postId, sortMode]);
+    } catch (e) { console.error(e); }
+    finally { setLoadingMore(false); }
+  }, [postId]);
 
   useEffect(() => {
     const init = async () => {
@@ -57,7 +57,6 @@ export default function PostDetailScreen({ navigation, route }) {
       setIsLoading(false);
     };
     init();
-
     joinPostRoom(postId);
     const socket = getSocket();
     if (socket) {
@@ -68,16 +67,11 @@ export default function PostDetailScreen({ navigation, route }) {
         }
       });
     }
-
     return () => {
       leavePostRoom(postId);
       if (socket) socket.off('newComment');
     };
   }, [postId]);
-
-  useEffect(() => {
-    if (post) loadComments(1);
-  }, [sortMode]);
 
   const handleSubmitComment = async () => {
     if (!commentText.trim() || isSubmitting) return;
@@ -92,7 +86,7 @@ export default function PostDetailScreen({ navigation, route }) {
       setComments((prev) => [res.comment, ...prev]);
       setPost((p) => p ? { ...p, commentsCount: p.commentsCount + 1 } : p);
     } catch (e) {
-      Alert.alert('Error', e.message);
+      Alert.alert(t('common.error'), e.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -107,30 +101,26 @@ export default function PostDetailScreen({ navigation, route }) {
           : c
         )
       );
-    } catch (e) { /* silent */ }
+    } catch { /* silent */ }
   };
 
   const renderHeader = () => (
     <View>
       {post && <PostCard post={post} navigation={navigation} isDetailView />}
-      {/* Sort bar */}
-      <View style={styles.sortBar}>
-        <Text style={styles.commentsCount}>{post?.commentsCount || 0} Replies</Text>
-        <View style={styles.sortBtns}>
-          {['top', 'latest'].map((s) => (
-            <TouchableOpacity
-              key={s}
-              style={[styles.sortBtn, sortMode === s && styles.activeSortBtn]}
-              onPress={() => setSortMode(s)}
-            >
-              <Text style={[styles.sortBtnText, sortMode === s && styles.activeSortBtnText]}>
-                {s === 'top' ? 'Top' : 'Latest'}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+      <View style={styles.repliesHeader}>
+        <Text style={styles.repliesLabel}>
+          {t('post.replies', { count: post?.commentsCount || 0 })}
+        </Text>
       </View>
     </View>
+  );
+
+  const renderEmpty = () => (
+    !isLoading && !loadingMore ? (
+      <View style={styles.empty}>
+        <Text style={styles.emptyText}>{t('post.beFirstToComment')}</Text>
+      </View>
+    ) : null
   );
 
   return (
@@ -140,7 +130,7 @@ export default function PostDetailScreen({ navigation, route }) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       {isLoading ? (
-        <ActivityIndicator size="large" color={COLORS.primary} style={styles.loader} />
+        <ActivityIndicator size="large" color={COLORS.accent} style={styles.loader} />
       ) : (
         <FlatList
           data={comments}
@@ -149,19 +139,17 @@ export default function PostDetailScreen({ navigation, route }) {
             <CommentItem
               comment={item}
               onLike={handleLikeComment}
-              onReply={(c) => setReplyTo({ id: c._id, username: c.userId?.username })}
+              onReply={(c) => setReplyTo({ id: c._id, name: c.userId?.name })}
               navigation={navigation}
             />
           )}
           ListHeaderComponent={renderHeader}
-          ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color={COLORS.primary} style={{ padding: 16 }} /> : null}
-          ListEmptyComponent={
-            !loadingMore && (
-              <View style={styles.noComments}>
-                <Text style={styles.noCommentsText}>No replies yet. Be first! 💬</Text>
-              </View>
-            )
+          ListFooterComponent={
+            loadingMore
+              ? <ActivityIndicator size="small" color={COLORS.accent} style={{ padding: 20 }} />
+              : <View style={{ height: 20 }} />
           }
+          ListEmptyComponent={renderEmpty}
           onEndReached={() => { if (!loadingMore && hasMore) loadComments(page + 1); }}
           onEndReachedThreshold={0.3}
           showsVerticalScrollIndicator={false}
@@ -169,32 +157,38 @@ export default function PostDetailScreen({ navigation, route }) {
       )}
 
       {/* Comment input */}
-      <View style={styles.inputContainer}>
+      <View style={[styles.inputBar, { paddingBottom: insets.bottom + 10 }]}>
         {replyTo && (
-          <View style={styles.replyIndicator}>
-            <Text style={styles.replyText}>Replying to @{replyTo.username}</Text>
-            <TouchableOpacity onPress={() => setReplyTo(null)}>
-              <Ionicons name="close" size={16} color={COLORS.textMuted} />
+          <View style={styles.replyRow}>
+            <Text style={styles.replyText} numberOfLines={1}>
+              {t('post.replyingTo', { username: replyTo.name })}
+            </Text>
+            <TouchableOpacity
+              onPress={() => setReplyTo(null)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="close" size={15} color={COLORS.textMuted} />
             </TouchableOpacity>
           </View>
         )}
         <View style={styles.inputRow}>
           <TextInput
-            style={styles.commentInput}
+            style={styles.input}
             value={commentText}
             onChangeText={setCommentText}
-            placeholder={replyTo ? `Reply to @${replyTo.username}...` : 'Add a reply...'}
+            placeholder={t('post.commentPlaceholder')}
+            placeholderTextColor={COLORS.textPlaceholder}
             multiline
             maxLength={300}
           />
           <TouchableOpacity
-            style={[styles.sendBtn, (!commentText.trim() || isSubmitting) && styles.sendBtnDisabled]}
+            style={[styles.sendBtn, (!commentText.trim() || isSubmitting) && styles.sendBtnOff]}
             onPress={handleSubmitComment}
             disabled={!commentText.trim() || isSubmitting}
           >
             {isSubmitting
               ? <ActivityIndicator size="small" color="#fff" />
-              : <Ionicons name="send" size={18} color="#fff" />
+              : <Ionicons name="arrow-up" size={18} color="#fff" />
             }
           </TouchableOpacity>
         </View>
@@ -203,23 +197,79 @@ export default function PostDetailScreen({ navigation, route }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  loader: { flex: 1, justifyContent: 'center' },
-  sortBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: COLORS.white, paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  commentsCount: { fontSize: 14, fontWeight: '600', color: COLORS.text },
-  sortBtns: { flexDirection: 'row', gap: 8 },
-  sortBtn: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border },
-  activeSortBtn: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  sortBtnText: { fontSize: 13, color: COLORS.textLight, fontWeight: '500' },
-  activeSortBtnText: { color: '#fff' },
-  noComments: { padding: 40, alignItems: 'center' },
-  noCommentsText: { fontSize: 15, color: COLORS.textMuted },
-  inputContainer: { backgroundColor: COLORS.white, borderTopWidth: 1, borderTopColor: COLORS.border },
-  replyIndicator: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 },
-  replyText: { fontSize: 12, color: COLORS.primary, fontWeight: '600' },
-  inputRow: { flexDirection: 'row', alignItems: 'flex-end', padding: 12, gap: 10 },
-  commentInput: { flex: 1, maxHeight: 100, backgroundColor: '#FAFAFA', borderWidth: 1, borderColor: COLORS.border, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 15, color: COLORS.text },
-  sendBtn: { backgroundColor: COLORS.primary, borderRadius: 22, width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  sendBtnDisabled: { opacity: 0.5 },
+const makeStyles = (C) => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: C.white,
+  },
+  loader: {
+    flex: 1,
+    marginTop: 80,
+  },
+
+  repliesHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: C.separator,
+  },
+  repliesLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: C.text,
+  },
+
+  empty: {
+    paddingTop: 48,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 15,
+    color: C.textMuted,
+  },
+
+  inputBar: {
+    backgroundColor: C.white,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: C.separator,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+  },
+  replyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingBottom: 8,
+    gap: 6,
+  },
+  replyText: {
+    flex: 1,
+    fontSize: 13,
+    color: C.textMuted,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 10,
+  },
+  input: {
+    flex: 1,
+    backgroundColor: C.fill,
+    borderRadius: 22,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: C.text,
+    maxHeight: 100,
+  },
+  sendBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: C.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sendBtnOff: {
+    opacity: 0.35,
+  },
 });

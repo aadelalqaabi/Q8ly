@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kuwaa — Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    body { background: #F2F2F7; }
+    .sidebar { width: 220px; min-height: 100vh; background: #fff; border-right: 1px solid #E5E5EA; flex-shrink: 0; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 10px; cursor: pointer; color: #6C6C70; font-size: 14px; font-weight: 500; transition: all .15s; }
+    .nav-item:hover { background: #F2F2F7; color: #000; }
+    .nav-item.active { background: #FFF0F0; color: #C8102E; font-weight: 600; }
+    .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .card { background: #fff; border-radius: 14px; padding: 20px; }
+    .stat-card { background: #fff; border-radius: 14px; padding: 18px; }
+    .badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .badge-pending { background: #FFF3CD; color: #856404; }
+    .badge-reviewed { background: #D1ECF1; color: #0C5460; }
+    .badge-planned { background: #CCE5FF; color: #004085; }
+    .badge-done { background: #D4EDDA; color: #155724; }
+    .badge-rejected { background: #F8D7DA; color: #721C24; }
+    .badge-banned { background: #F8D7DA; color: #721C24; }
+    .badge-active { background: #D4EDDA; color: #155724; }
+    .badge-removed { background: #F8D7DA; color: #721C24; }
+    .badge-government { background: #DBEAFE; color: #1E40AF; }
+    .badge-media      { background: #FEF3C7; color: #92400E; }
+    .badge-business   { background: #D1FAE5; color: #065F46; }
+    .badge-influencer { background: #EDE9FE; color: #5B21B6; }
+    .badge-none       { background: #F2F2F7; color: #6C6C70; }
+    .btn { padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity .15s; border: none; }
+    .btn:hover { opacity: 0.8; }
+    .btn-red { background: #C8102E; color: #fff; }
+    .btn-gray { background: #F2F2F7; color: #3C3C43; }
+    .btn-green { background: #34C759; color: #fff; }
+    .btn-outline { background: transparent; border: 1.5px solid #E5E5EA; color: #3C3C43; }
+    input, select, textarea { outline: none; font-family: inherit; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: 12px; font-weight: 600; color: #6C6C70; padding: 8px 12px; border-bottom: 1px solid #E5E5EA; text-transform: uppercase; letter-spacing: .4px; }
+    td { padding: 10px 12px; font-size: 14px; color: #1C1C1E; border-bottom: 1px solid #F2F2F7; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    .avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; background: #F2F2F7; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color: #C8102E; flex-shrink: 0; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+    .modal-box { background: #fff; border-radius: 18px; padding: 24px; width: 440px; max-width: 95vw; }
+    .page { display: none; }
+    .page.active { display: block; }
+    #toast { position: fixed; bottom: 24px; right: 24px; z-index: 9999; padding: 12px 20px; background: #1C1C1E; color: #fff; border-radius: 10px; font-size: 14px; font-weight: 500; opacity: 0; transition: opacity .3s; pointer-events: none; }
+    #toast.show { opacity: 1; }
+    .search-input { background: #F2F2F7; border: none; border-radius: 10px; padding: 8px 14px; font-size: 14px; width: 260px; }
+    .search-input:focus { box-shadow: 0 0 0 2px #C8102E40; }
+    .loading { display: flex; align-items: center; justify-content: center; padding: 60px; color: #6C6C70; gap: 10px; }
+    .empty { text-align: center; padding: 60px; color: #6C6C70; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #D1D1D6; border-radius: 3px; }
+  </style>
+</head>
+<body class="min-h-screen">
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Login Screen -->
+<div id="login-screen" class="min-h-screen flex items-center justify-center">
+  <div class="card" style="width:360px">
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="width:54px;height:54px;background:#C8102E;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px">
+        <svg fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24" width="28" height="28"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+      </div>
+      <h1 style="font-size:22px;font-weight:700;color:#000;margin-bottom:4px">Kuwaa Admin</h1>
+      <p style="font-size:14px;color:#6C6C70">Sign in to the admin dashboard</p>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <input id="login-username" type="text" placeholder="Username" style="background:#F2F2F7;border:none;border-radius:10px;padding:12px 14px;font-size:15px;width:100%;box-sizing:border-box" />
+      <input id="login-password" type="password" placeholder="Password" style="background:#F2F2F7;border:none;border-radius:10px;padding:12px 14px;font-size:15px;width:100%;box-sizing:border-box" onkeydown="if(event.key==='Enter') doLogin()" />
+      <div id="login-error" style="color:#C8102E;font-size:13px;display:none"></div>
+      <button onclick="doLogin()" class="btn btn-red" style="padding:12px;font-size:15px;border-radius:10px;width:100%">Sign In</button>
+    </div>
+  </div>
+</div>
+
+<!-- Admin App -->
+<div id="app" style="display:none;display:flex">
+  <!-- Sidebar -->
+  <aside class="sidebar" style="position:sticky;top:0;height:100vh;overflow-y:auto;padding:20px 12px;box-sizing:border-box;display:flex;flex-direction:column">
+    <div style="padding:4px 8px;margin-bottom:24px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:34px;height:34px;background:#C8102E;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg fill="none" stroke="#fff" stroke-width="2.5" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+        </div>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:#000">Kuwaa</div>
+          <div style="font-size:11px;color:#6C6C70">Admin Panel</div>
+        </div>
+      </div>
+    </div>
+
+    <nav style="display:flex;flex-direction:column;gap:4px;flex:1">
+      <div class="nav-item active" onclick="showPage('dashboard')">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Dashboard
+      </div>
+      <div class="nav-item" onclick="showPage('users')">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        Users
+      </div>
+      <div class="nav-item" onclick="showPage('posts')">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10l6 6v10a2 2 0 01-2 2z"/><path stroke-linecap="round" stroke-linejoin="round" d="M17 1v6h6M9 15h6M9 11h3"/></svg>
+        Posts
+      </div>
+      <div class="nav-item" onclick="showPage('reports')">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        Reports
+        <span id="nav-badge-reports" style="margin-left:auto;background:#C8102E;color:#fff;border-radius:10px;font-size:11px;font-weight:700;padding:1px 7px;display:none"></span>
+      </div>
+      <div class="nav-item" onclick="showPage('suggestions')">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+        Suggestions
+        <span id="nav-badge-suggestions" style="margin-left:auto;background:#C8102E;color:#fff;border-radius:10px;font-size:11px;font-weight:700;padding:1px 7px;display:none"></span>
+      </div>
+      <div class="nav-item" onclick="showPage('ads')">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+        Ads
+      </div>
+      <div class="nav-item" onclick="showPage('push')">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+        Push
+      </div>
+    </nav>
+
+    <div style="margin-top:auto;padding-top:16px;border-top:1px solid #E5E5EA">
+      <div id="admin-name" style="font-size:13px;color:#6C6C70;padding:8px;margin-bottom:4px"></div>
+      <div class="nav-item" onclick="doLogout()" style="color:#C8102E">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+        Logout
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main style="flex:1;padding:28px;overflow-y:auto;min-height:100vh;max-width:calc(100vw - 220px)">
+
+    <!-- Dashboard -->
+    <div id="page-dashboard" class="page active">
+      <h2 style="font-size:22px;font-weight:700;margin-bottom:20px">Dashboard</h2>
+
+      <!-- KPI Grid -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:24px" id="kpi-grid">
+        <div class="stat-card"><div style="font-size:12px;color:#6C6C70;font-weight:600;margin-bottom:6px">TOTAL USERS</div><div id="kpi-total-users" style="font-size:28px;font-weight:700">—</div></div>
+        <div class="stat-card"><div style="font-size:12px;color:#6C6C70;font-weight:600;margin-bottom:6px">NEW TODAY</div><div id="kpi-new-today" style="font-size:28px;font-weight:700;color:#34C759">—</div></div>
+        <div class="stat-card"><div style="font-size:12px;color:#6C6C70;font-weight:600;margin-bottom:6px">ACTIVE (7D)</div><div id="kpi-active" style="font-size:28px;font-weight:700;color:#007AFF">—</div></div>
+        <div class="stat-card"><div style="font-size:12px;color:#6C6C70;font-weight:600;margin-bottom:6px">BANNED</div><div id="kpi-banned" style="font-size:28px;font-weight:700;color:#C8102E">—</div></div>
+        <div class="stat-card"><div style="font-size:12px;color:#6C6C70;font-weight:600;margin-bottom:6px">TOTAL POSTS</div><div id="kpi-total-posts" style="font-size:28px;font-weight:700">—</div></div>
+        <div class="stat-card"><div style="font-size:12px;color:#6C6C70;font-weight:600;margin-bottom:6px">POSTS TODAY</div><div id="kpi-posts-today" style="font-size:28px;font-weight:700;color:#34C759">—</div></div>
+        <div class="stat-card"><div style="font-size:12px;color:#6C6C70;font-weight:600;margin-bottom:6px">ACTIVE CIRCLES</div><div id="kpi-circles" style="font-size:28px;font-weight:700;color:#FF9500">—</div></div>
+        <div class="stat-card"><div style="font-size:12px;color:#6C6C70;font-weight:600;margin-bottom:6px">SUGGESTIONS</div><div id="kpi-suggestions" style="font-size:28px;font-weight:700;color:#AF52DE">—</div></div>
+      </div>
+
+      <!-- Charts -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+        <div class="card">
+          <div style="font-size:15px;font-weight:600;margin-bottom:16px">User Growth (14 days)</div>
+          <canvas id="chart-users" height="180"></canvas>
+        </div>
+        <div class="card">
+          <div style="font-size:15px;font-weight:600;margin-bottom:16px">Post Activity (14 days)</div>
+          <canvas id="chart-posts" height="180"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Users -->
+    <div id="page-users" class="page">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+        <h2 style="font-size:22px;font-weight:700;flex:1">Users</h2>
+        <input class="search-input" placeholder="Search username, name, phone…" oninput="debounce(() => loadUsers(1), 300)()" id="user-search" />
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div id="users-table-wrap"></div>
+        <div id="users-pagination" style="padding:12px 16px;display:flex;gap:8px;justify-content:flex-end;border-top:1px solid #F2F2F7"></div>
+      </div>
+    </div>
+
+    <!-- Posts -->
+    <div id="page-posts" class="page">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+        <h2 style="font-size:22px;font-weight:700;flex:1">Posts</h2>
+        <input class="search-input" placeholder="Search post content…" oninput="debounce(() => loadPosts(1), 300)()" id="post-search" />
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div id="posts-table-wrap"></div>
+        <div id="posts-pagination" style="padding:12px 16px;display:flex;gap:8px;justify-content:flex-end;border-top:1px solid #F2F2F7"></div>
+      </div>
+    </div>
+
+    <!-- Reports -->
+    <div id="page-reports" class="page">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+        <h2 style="font-size:22px;font-weight:700;flex:1">Reported Posts</h2>
+        <span style="font-size:13px;color:#6C6C70">Posts flagged by users or auto-moderation</span>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div id="reports-table-wrap"></div>
+        <div id="reports-pagination" style="padding:12px 16px;display:flex;gap:8px;justify-content:flex-end;border-top:1px solid #F2F2F7"></div>
+      </div>
+    </div>
+
+    <!-- Suggestions -->
+    <div id="page-suggestions" class="page">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+        <h2 style="font-size:22px;font-weight:700;flex:1">Suggestions</h2>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline" onclick="filterSuggestions('all')" id="sfilt-all">All</button>
+          <button class="btn btn-outline" onclick="filterSuggestions('pending')" id="sfilt-pending">Pending</button>
+          <button class="btn btn-outline" onclick="filterSuggestions('reviewed')" id="sfilt-reviewed">Reviewed</button>
+          <button class="btn btn-outline" onclick="filterSuggestions('planned')" id="sfilt-planned">Planned</button>
+          <button class="btn btn-outline" onclick="filterSuggestions('done')" id="sfilt-done">Done</button>
+          <button class="btn btn-outline" onclick="filterSuggestions('rejected')" id="sfilt-rejected">Rejected</button>
+        </div>
+      </div>
+      <div id="suggestions-list"></div>
+      <div id="suggestions-pagination" style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"></div>
+    </div>
+
+    <!-- Ads -->
+    <div id="page-ads" class="page">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+        <h2 style="font-size:22px;font-weight:700;flex:1">Ads</h2>
+        <button class="btn btn-red" onclick="promptCreateAd()">+ New Ad</button>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div id="ads-table-wrap"><div class="loading">Loading…</div></div>
+      </div>
+    </div>
+
+    <!-- Push Notifications -->
+    <div id="page-push" class="page">
+      <h2 style="font-size:22px;font-weight:700;margin-bottom:20px">Push Notifications</h2>
+      <div class="card" style="max-width:540px">
+        <p style="font-size:14px;color:#6C6C70;margin-bottom:20px">Send a push notification to all users or a specific user by username.</p>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div>
+            <label style="font-size:12px;font-weight:600;color:#6C6C70;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Title</label>
+            <input id="push-title" type="text" placeholder="Notification title" style="background:#F2F2F7;border:none;border-radius:10px;padding:10px 14px;font-size:14px;width:100%;box-sizing:border-box" />
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:#6C6C70;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Message</label>
+            <textarea id="push-body" rows="3" placeholder="Notification message…" style="background:#F2F2F7;border:none;border-radius:10px;padding:10px 14px;font-size:14px;width:100%;box-sizing:border-box;resize:vertical"></textarea>
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:#6C6C70;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Target (optional)</label>
+            <input id="push-username" type="text" placeholder="@username — leave blank to send to everyone" style="background:#F2F2F7;border:none;border-radius:10px;padding:10px 14px;font-size:14px;width:100%;box-sizing:border-box" />
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding-top:4px">
+            <button class="btn btn-red" onclick="doSendPush()" id="push-btn" style="padding:10px 20px">Send Notification</button>
+            <span id="push-result" style="font-size:13px;color:#6C6C70"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Modals -->
+<div id="modal-overlay" class="modal-overlay" style="display:none" onclick="if(event.target===this) closeModal()">
+  <div class="modal-box">
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<script>
+// ─── Config ──────────────────────────────────────────────────────────────────
+const API = window.location.origin + '/api';
+let token = localStorage.getItem('kn_admin_token');
+
+const BADGE_LABELS = {
+  none:        'None',
+  government:  'Official',
+  media:       'Media',
+  business:    'Business',
+  influencer:  'Public Figure',
+};
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  errEl.style.display = 'none';
+  if (!username || !password) { errEl.textContent = 'Enter username and password'; errEl.style.display = 'block'; return; }
+  try {
+    const res = await apiFetch('/admin/login', { method: 'POST', body: { username, password } }, true);
+    token = res.token;
+    localStorage.setItem('kn_admin_token', token);
+    document.getElementById('admin-name').textContent = res.admin?.name || username;
+    showApp();
+  } catch (e) {
+    errEl.textContent = e.message || 'Login failed';
+    errEl.style.display = 'block';
+  }
+}
+
+function doLogout() {
+  token = null;
+  localStorage.removeItem('kn_admin_token');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  loadDashboard();
+}
+
+// ─── API Helper ──────────────────────────────────────────────────────────────
+async function apiFetch(path, opts = {}, noAuth = false) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (!noAuth && token) headers['Authorization'] = 'Bearer ' + token;
+  const res = await fetch(API + path, {
+    method: opts.method || 'GET',
+    headers,
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.message || 'Error');
+  return data;
+}
+
+// ─── Toast ───────────────────────────────────────────────────────────────────
+function toast(msg, duration = 2500) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), duration);
+}
+
+// ─── Debounce ────────────────────────────────────────────────────────────────
+const _debounceTimers = {};
+function debounce(fn, ms) {
+  return () => {
+    const key = fn.toString().slice(0, 30);
+    clearTimeout(_debounceTimers[key]);
+    _debounceTimers[key] = setTimeout(fn, ms);
+  };
+}
+
+// ─── Navigation ──────────────────────────────────────────────────────────────
+let currentPage = 'dashboard';
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  event.currentTarget.classList.add('active');
+  currentPage = page;
+  if (page === 'dashboard') loadDashboard();
+  else if (page === 'users') loadUsers(1);
+  else if (page === 'posts') loadPosts(1);
+  else if (page === 'reports') loadReports(1);
+  else if (page === 'suggestions') loadSuggestions('all', 1);
+  else if (page === 'ads') loadAds();
+  else if (page === 'push') { /* form, nothing to load */ }
+}
+
+// ─── Modal ───────────────────────────────────────────────────────────────────
+function openModal(html) {
+  document.getElementById('modal-content').innerHTML = html;
+  document.getElementById('modal-overlay').style.display = 'flex';
+}
+function closeModal() {
+  document.getElementById('modal-overlay').style.display = 'none';
+}
+
+// ─── Format helpers ──────────────────────────────────────────────────────────
+function fmtDate(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+}
+function fmtTime(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString('en-GB', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+}
+function avatarEl(u) {
+  if (u?.profilePic) return `<img src="${u.profilePic}" class="avatar" style="width:34px;height:34px;border-radius:50%;object-fit:cover" />`;
+  const init = (u?.name || u?.username || '?')[0].toUpperCase();
+  return `<div class="avatar">${init}</div>`;
+}
+function truncate(s, n = 80) {
+  if (!s) return '—';
+  return s.length > n ? s.slice(0, n) + '…' : s;
+}
+
+// ─── Pagination ──────────────────────────────────────────────────────────────
+function paginationHTML(page, pages, onClick) {
+  if (pages <= 1) return '';
+  let html = '';
+  for (let i = 1; i <= pages; i++) {
+    const active = i === page ? 'btn-red' : 'btn-outline';
+    html += `<button class="btn ${active}" onclick="${onClick}(${i})">${i}</button>`;
+  }
+  return html;
+}
+
+// ─── Dashboard ───────────────────────────────────────────────────────────────
+let userChart, postChart;
+async function loadDashboard() {
+  try {
+    const res = await apiFetch('/admin/stats');
+    const s = res.stats;
+    document.getElementById('kpi-total-users').textContent = s.totalUsers.toLocaleString();
+    document.getElementById('kpi-new-today').textContent = s.newUsersToday.toLocaleString();
+    document.getElementById('kpi-active').textContent = s.activeUsers.toLocaleString();
+    document.getElementById('kpi-banned').textContent = s.bannedUsers.toLocaleString();
+    document.getElementById('kpi-total-posts').textContent = s.totalPosts.toLocaleString();
+    document.getElementById('kpi-posts-today').textContent = s.postsToday.toLocaleString();
+    document.getElementById('kpi-circles').textContent = s.activeRooms.toLocaleString();
+    document.getElementById('kpi-suggestions').textContent = s.totalSuggestions.toLocaleString();
+
+    if (s.pendingSuggestions > 0) {
+      const badge = document.getElementById('nav-badge-suggestions');
+      badge.textContent = s.pendingSuggestions;
+      badge.style.display = 'inline';
+    }
+    // Load reported posts count for badge
+    apiFetch('/admin/reports?page=1&limit=1').then(r => {
+      const badge = document.getElementById('nav-badge-reports');
+      if (r.total > 0) { badge.textContent = r.total; badge.style.display = 'inline'; }
+    }).catch(() => {});
+
+    const chartOpts = (label, color) => ({
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+        y: { grid: { color: '#F2F2F7' }, ticks: { font: { size: 11 }, stepSize: 1 } },
+      },
+      elements: { line: { tension: 0.4 }, point: { radius: 3 } },
+    });
+
+    const fillDates = (data) => {
+      const map = {};
+      data.forEach(d => { map[d._id] = d.count; });
+      const out = { labels: [], counts: [] };
+      for (let i = 13; i >= 0; i--) {
+        const d = new Date(); d.setDate(d.getDate() - i);
+        const key = d.toISOString().slice(0, 10);
+        out.labels.push(d.toLocaleDateString('en-GB', { day:'2-digit', month:'short' }));
+        out.counts.push(map[key] || 0);
+      }
+      return out;
+    };
+
+    const ug = fillDates(res.charts.userGrowth);
+    const pg = fillDates(res.charts.postActivity);
+
+    if (userChart) userChart.destroy();
+    userChart = new Chart(document.getElementById('chart-users'), {
+      type: 'line',
+      data: { labels: ug.labels, datasets: [{ data: ug.counts, borderColor: '#C8102E', backgroundColor: '#C8102E18', fill: true }] },
+      options: chartOpts(),
+    });
+
+    if (postChart) postChart.destroy();
+    postChart = new Chart(document.getElementById('chart-posts'), {
+      type: 'bar',
+      data: { labels: pg.labels, datasets: [{ data: pg.counts, backgroundColor: '#007AFF', borderRadius: 4 }] },
+      options: chartOpts(),
+    });
+  } catch (e) {
+    toast('Failed to load stats: ' + e.message);
+  }
+}
+
+// ─── Users ───────────────────────────────────────────────────────────────────
+let usersPage = 1;
+async function loadUsers(page = 1) {
+  usersPage = page;
+  const search = document.getElementById('user-search')?.value || '';
+  const wrap = document.getElementById('users-table-wrap');
+  wrap.innerHTML = '<div class="loading"><svg class="animate-spin" width="20" height="20" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="#E5E5EA" stroke-width="3"/><path stroke="#C8102E" stroke-width="3" stroke-linecap="round" d="M12 2a10 10 0 0110 10"/></svg> Loading…</div>';
+  try {
+    const res = await apiFetch(`/admin/users?page=${page}&limit=20&search=${encodeURIComponent(search)}`);
+    if (!res.users.length) { wrap.innerHTML = '<div class="empty">No users found.</div>'; return; }
+    wrap.innerHTML = `
+      <table>
+        <thead><tr>
+          <th>User</th><th>Phone</th><th>Posts</th><th>Followers</th>
+          <th>Hachi Pts</th><th>Badge</th><th>Status</th><th>Joined</th><th>Actions</th>
+        </tr></thead>
+        <tbody>
+          ${res.users.map(u => `
+            <tr>
+              <td><div style="display:flex;align-items:center;gap:10px">${avatarEl(u)}<div><div style="font-weight:600">${u.name||'—'}</div><div style="font-size:12px;color:#6C6C70">@${u.username}</div></div></div></td>
+              <td style="color:#6C6C70;font-size:13px">${u.phone||'—'}</td>
+              <td>${u.postsCount||0}</td>
+              <td>${u.followersCount||0}</td>
+              <td>${u.hachiPoints||0}</td>
+              <td>${u.verifiedBadge && u.verifiedBadge !== 'none' ? `<span class="badge badge-${u.verifiedBadge}">${BADGE_LABELS[u.verifiedBadge]||u.verifiedBadge} ✓</span>` : '<span style="color:#AEAEB2;font-size:13px">—</span>'}</td>
+              <td><span class="badge ${u.isBanned?'badge-banned':'badge-active'}">${u.isBanned?'Banned':'Active'}</span></td>
+              <td style="font-size:13px;color:#6C6C70">${fmtDate(u.createdAt)}</td>
+              <td>
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                  <button class="btn btn-gray" onclick="promptVerify('${u._id}','${u.username}','${u.verifiedBadge||'none'}')">Verify</button>
+                  <button class="btn ${u.isBanned?'btn-green':'btn-gray'}" onclick="promptBan('${u._id}','${u.username}',${u.isBanned})">${u.isBanned?'Unban':'Ban'}</button>
+                  <button class="btn btn-red" onclick="promptDeleteUser('${u._id}','${u.username}')">Delete</button>
+                </div>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+    document.getElementById('users-pagination').innerHTML =
+      `<span style="font-size:13px;color:#6C6C70;margin-right:auto">${res.total} users</span>` +
+      paginationHTML(page, res.pages, 'loadUsers');
+  } catch (e) {
+    wrap.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+  }
+}
+
+function promptVerify(id, username, currentBadge) {
+  const opts = Object.entries(BADGE_LABELS).map(([val, label]) => `
+    <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;border:1.5px solid ${currentBadge===val?'#0033A0':'#E5E5EA'};margin-bottom:6px;background:${currentBadge===val?'#EEF2FA':'#fff'}">
+      <input type="radio" name="badge" value="${val}" ${currentBadge===val?'checked':''} style="accent-color:#0033A0" />
+      <span style="font-size:14px;font-weight:${currentBadge===val?'700':'500'}">${label}</span>
+      ${val!=='none'?`<span class="badge badge-${val}" style="margin-left:auto">${label} ✓</span>`:''}
+    </label>`).join('');
+  openModal(`
+    <h3 style="font-size:17px;font-weight:700;margin-bottom:4px">Verification Badge</h3>
+    <p style="font-size:13px;color:#6C6C70;margin-bottom:16px">@${username}</p>
+    <div style="max-height:360px;overflow-y:auto">${opts}</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-red" onclick="doVerify('${id}')">Save</button>
+    </div>`);
+}
+
+async function doVerify(id) {
+  const selected = document.querySelector('input[name="badge"]:checked');
+  if (!selected) return;
+  try {
+    await apiFetch(`/admin/users/${id}/verify`, { method: 'PATCH', body: { verifiedBadge: selected.value } });
+    closeModal();
+    toast(selected.value === 'none' ? 'Badge removed.' : `Badge set to ${BADGE_LABELS[selected.value]}.`);
+    loadUsers(usersPage);
+  } catch (e) { toast('Error: ' + e.message); }
+}
+
+function promptBan(id, username, isBanned) {
+  if (isBanned) {
+    openModal(`
+      <h3 style="font-size:17px;font-weight:700;margin-bottom:8px">Unban @${username}?</h3>
+      <p style="font-size:14px;color:#6C6C70;margin-bottom:20px">This will restore their access immediately.</p>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-green" onclick="doBan('${id}',true)">Unban</button>
+      </div>`);
+  } else {
+    openModal(`
+      <h3 style="font-size:17px;font-weight:700;margin-bottom:8px">Ban @${username}?</h3>
+      <input id="ban-reason" placeholder="Reason (optional)" style="background:#F2F2F7;border:none;border-radius:10px;padding:10px 14px;font-size:14px;width:100%;box-sizing:border-box;margin-bottom:12px" />
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:20px">
+        <input type="checkbox" id="ban-perm" /> Permanent ban (default: 30 days)
+      </label>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-red" onclick="doBan('${id}',false)">Ban</button>
+      </div>`);
+  }
+}
+
+async function doBan(id, isBanned) {
+  try {
+    const reason = document.getElementById('ban-reason')?.value;
+    const permanent = document.getElementById('ban-perm')?.checked;
+    await apiFetch(`/admin/users/${id}/ban`, { method: 'PATCH', body: { banReason: reason, permanent } });
+    closeModal();
+    toast(isBanned ? 'User unbanned.' : 'User banned.');
+    loadUsers(usersPage);
+  } catch (e) { toast('Error: ' + e.message); }
+}
+
+function promptDeleteUser(id, username) {
+  openModal(`
+    <h3 style="font-size:17px;font-weight:700;margin-bottom:8px;color:#C8102E">Delete @${username}?</h3>
+    <p style="font-size:14px;color:#6C6C70;margin-bottom:20px">This permanently deletes the user and all their posts. This cannot be undone.</p>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-red" onclick="doDeleteUser('${id}')">Delete Permanently</button>
+    </div>`);
+}
+
+async function doDeleteUser(id) {
+  try {
+    await apiFetch(`/admin/users/${id}`, { method: 'DELETE' });
+    closeModal();
+    toast('User deleted.');
+    loadUsers(usersPage);
+  } catch (e) { toast('Error: ' + e.message); }
+}
+
+// ─── Posts ────────────────────────────────────────────────────────────────────
+let postsPage = 1;
+async function loadPosts(page = 1) {
+  postsPage = page;
+  const search = document.getElementById('post-search')?.value || '';
+  const wrap = document.getElementById('posts-table-wrap');
+  wrap.innerHTML = '<div class="loading">Loading…</div>';
+  try {
+    const res = await apiFetch(`/admin/posts?page=${page}&limit=20&search=${encodeURIComponent(search)}`);
+    if (!res.posts.length) { wrap.innerHTML = '<div class="empty">No posts found.</div>'; return; }
+    wrap.innerHTML = `
+      <table>
+        <thead><tr><th>Author</th><th>Content</th><th>Type</th><th>Likes</th><th>Comments</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+        <tbody>
+          ${res.posts.map(p => `
+            <tr>
+              <td><div style="display:flex;align-items:center;gap:8px">${avatarEl(p.userId)}<span style="font-size:13px;font-weight:600">@${p.userId?.username||'?'}</span></div></td>
+              <td style="max-width:260px"><div style="font-size:13px;color:#3C3C43;line-height:1.4">${truncate(p.content,100)||'<em style="color:#AEAEB2">[media only]</em>'}</div>${p.images?.length?`<span style="font-size:11px;color:#6C6C70">📷 ${p.images.length} image(s)</span>`:''} ${p.video?`<span style="font-size:11px;color:#6C6C70">🎬 video</span>`:''}</td>
+              <td><span style="font-size:12px;background:#F2F2F7;border-radius:6px;padding:2px 8px">${p.type||'text'}</span></td>
+              <td>${p.likesCount||0}</td>
+              <td>${p.commentsCount||0}</td>
+              <td><span class="badge ${p.isRemoved?'badge-removed':'badge-active'}">${p.isRemoved?'Removed':'Live'}</span></td>
+              <td style="font-size:13px;color:#6C6C70">${fmtTime(p.createdAt)}</td>
+              <td>
+                <button class="btn ${p.isRemoved?'btn-green':'btn-red'}" onclick="toggleRemovePost('${p._id}',${p.isRemoved})">${p.isRemoved?'Restore':'Remove'}</button>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+    document.getElementById('posts-pagination').innerHTML =
+      `<span style="font-size:13px;color:#6C6C70;margin-right:auto">${res.total} posts</span>` +
+      paginationHTML(page, res.pages, 'loadPosts');
+  } catch (e) {
+    wrap.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+  }
+}
+
+function promptRemovePost(id) {
+  openModal(`
+    <h3 style="font-size:17px;font-weight:700;margin-bottom:8px">Remove this post?</h3>
+    <input id="remove-reason" placeholder="Reason (optional)" style="background:#F2F2F7;border:none;border-radius:10px;padding:10px 14px;font-size:14px;width:100%;box-sizing:border-box;margin-bottom:20px" />
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-red" onclick="doRemovePost('${id}')">Remove</button>
+    </div>`);
+}
+
+async function toggleRemovePost(id, isRemoved) {
+  if (!isRemoved) { promptRemovePost(id); return; }
+  try {
+    await apiFetch(`/admin/posts/${id}/remove`, { method: 'PATCH', body: {} });
+    toast('Post restored.');
+    loadPosts(postsPage);
+  } catch (e) { toast('Error: ' + e.message); }
+}
+
+async function doRemovePost(id) {
+  try {
+    const reason = document.getElementById('remove-reason')?.value;
+    await apiFetch(`/admin/posts/${id}/remove`, { method: 'PATCH', body: { reason } });
+    closeModal();
+    toast('Post removed.');
+    loadPosts(postsPage);
+  } catch (e) { toast('Error: ' + e.message); }
+}
+
+// ─── Reports ──────────────────────────────────────────────────────────────────
+let reportsPage = 1;
+async function loadReports(page = 1) {
+  reportsPage = page;
+  const wrap = document.getElementById('reports-table-wrap');
+  wrap.innerHTML = '<div class="loading">Loading…</div>';
+  try {
+    const res = await apiFetch(`/admin/reports?page=${page}&limit=20`);
+    if (!res.posts.length) { wrap.innerHTML = '<div class="empty">No reported posts. 🎉</div>'; document.getElementById('reports-pagination').innerHTML = ''; return; }
+    wrap.innerHTML = `
+      <table>
+        <thead><tr><th>Author</th><th>Content</th><th>Reports</th><th>Likes</th><th>Date</th><th>Actions</th></tr></thead>
+        <tbody>
+          ${res.posts.map(p => `
+            <tr style="${p.reportsCount >= 5 ? 'background:#FFF5F5' : ''}">
+              <td><div style="display:flex;align-items:center;gap:8px">${avatarEl(p.userId)}<div><div style="font-weight:600;font-size:13px">${p.userId?.name||'—'}</div><div style="font-size:12px;color:#6C6C70">@${p.userId?.username||'?'}</div></div></div></td>
+              <td style="max-width:280px">
+                <div style="font-size:13px;color:#3C3C43;line-height:1.4">${truncate(p.content,120)||'<em style="color:#AEAEB2">[media only]</em>'}</div>
+                ${p.images?.length ? `<span style="font-size:11px;color:#6C6C70">📷 ${p.images.length} image(s)</span>` : ''}
+              </td>
+              <td><span style="font-weight:700;color:${p.reportsCount>=5?'#C8102E':'#FF9500'};font-size:15px">${p.reportsCount||1}</span></td>
+              <td>${p.likesCount||0}</td>
+              <td style="font-size:13px;color:#6C6C70">${fmtTime(p.createdAt)}</td>
+              <td>
+                <div style="display:flex;gap:6px">
+                  <button class="btn btn-red" onclick="doRemoveReportedPost('${p._id}')">Remove</button>
+                  <button class="btn btn-gray" onclick="dismissReport('${p._id}')">Dismiss</button>
+                </div>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+    document.getElementById('reports-pagination').innerHTML =
+      `<span style="font-size:13px;color:#6C6C70;margin-right:auto">${res.total} reported post(s)</span>` +
+      paginationHTML(page, res.pages, 'loadReports');
+    // Update nav badge
+    const badge = document.getElementById('nav-badge-reports');
+    if (res.total > 0) { badge.textContent = res.total; badge.style.display = 'inline'; }
+    else { badge.style.display = 'none'; }
+  } catch (e) {
+    wrap.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+  }
+}
+
+async function doRemoveReportedPost(id) {
+  try {
+    await apiFetch(`/admin/posts/${id}/remove`, { method: 'PATCH', body: { reason: 'Removed after report review' } });
+    toast('Post removed.');
+    loadReports(reportsPage);
+  } catch (e) { toast('Error: ' + e.message); }
+}
+
+async function dismissReport(id) {
+  // Clears isReported flag so post no longer shows in the queue
+  try {
+    await apiFetch(`/admin/posts/${id}/dismiss-report`, { method: 'PATCH', body: {} });
+    toast('Report dismissed.');
+    loadReports(reportsPage);
+  } catch (e) { toast('Error: ' + e.message); }
+}
+
+// ─── Suggestions ─────────────────────────────────────────────────────────────
+let suggestFilter = 'all';
+let suggestPage = 1;
+
+function filterSuggestions(status) {
+  suggestFilter = status;
+  document.querySelectorAll('[id^="sfilt-"]').forEach(b => {
+    b.className = b.id === 'sfilt-' + status ? 'btn btn-red' : 'btn btn-outline';
+  });
+  loadSuggestions(status, 1);
+}
+
+async function loadSuggestions(status = 'all', page = 1) {
+  suggestFilter = status;
+  suggestPage = page;
+  const list = document.getElementById('suggestions-list');
+  list.innerHTML = '<div class="loading">Loading…</div>';
+  try {
+    const res = await apiFetch(`/admin/suggestions?status=${status}&page=${page}&limit=15`);
+    if (!res.suggestions.length) { list.innerHTML = '<div class="empty">No suggestions here.</div>'; return; }
+
+    list.innerHTML = res.suggestions.map(s => `
+      <div class="card" style="margin-bottom:12px">
+        <div style="display:flex;align-items:flex-start;gap:14px">
+          ${avatarEl(s.userId)}
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+              <span style="font-weight:600;font-size:14px">${s.userId?.name||'Unknown'}</span>
+              <span style="font-size:12px;color:#6C6C70">@${s.userId?.username||'?'}</span>
+              <span style="font-size:12px;background:#F2F2F7;border-radius:6px;padding:2px 8px;margin-left:4px">${s.category||'feature'}</span>
+              <span class="badge badge-${s.status}" style="margin-left:4px">${s.status}</span>
+              <span style="font-size:12px;color:#AEAEB2;margin-left:auto">${fmtTime(s.createdAt)}</span>
+            </div>
+            <p style="font-size:14px;color:#1C1C1E;line-height:1.5;margin-bottom:10px">${s.text}</p>
+            ${s.adminNote ? `<div style="background:#F2F2F7;border-radius:8px;padding:8px 12px;font-size:13px;color:#6C6C70;margin-bottom:10px"><strong>Admin note:</strong> ${s.adminNote}</div>` : ''}
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              ${['pending','reviewed','planned','done','rejected'].map(st =>
+                `<button class="btn ${s.status===st?'btn-red':'btn-outline'}" onclick="updateSuggestion('${s._id}','${st}')">${st.charAt(0).toUpperCase()+st.slice(1)}</button>`
+              ).join('')}
+              <button class="btn btn-gray" onclick="promptSuggestNote('${s._id}','${(s.adminNote||'').replace(/'/g,"\\'")}')">Note</button>
+            </div>
+          </div>
+        </div>
+      </div>`).join('');
+
+    document.getElementById('suggestions-pagination').innerHTML =
+      `<span style="font-size:13px;color:#6C6C70;margin-right:auto">${res.total} suggestions</span>` +
+      paginationHTML(page, res.pages, `(p) => loadSuggestions('${status}', p)`);
+  } catch (e) {
+    list.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+  }
+}
+
+async function updateSuggestion(id, status) {
+  try {
+    await apiFetch(`/admin/suggestions/${id}`, { method: 'PATCH', body: { status } });
+    toast(`Marked as ${status}.`);
+    loadSuggestions(suggestFilter, suggestPage);
+  } catch (e) { toast('Error: ' + e.message); }
+}
+
+function promptSuggestNote(id, currentNote) {
+  openModal(`
+    <h3 style="font-size:17px;font-weight:700;margin-bottom:12px">Add Admin Note</h3>
+    <textarea id="note-input" rows="4" placeholder="Write a note…" style="background:#F2F2F7;border:none;border-radius:10px;padding:12px 14px;font-size:14px;width:100%;box-sizing:border-box;resize:vertical">${currentNote}</textarea>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-red" onclick="doSuggestNote('${id}')">Save</button>
+    </div>`);
+}
+
+async function doSuggestNote(id) {
+  try {
+    const adminNote = document.getElementById('note-input').value;
+    await apiFetch(`/admin/suggestions/${id}`, { method: 'PATCH', body: { adminNote } });
+    closeModal();
+    toast('Note saved.');
+    loadSuggestions(suggestFilter, suggestPage);
+  } catch (e) { toast('Error: ' + e.message); }
+}
+
+// ─── Ads ──────────────────────────────────────────────────────────────────────
+const PLACEMENT_LABELS = { feed: 'Feed', hachi: 'Circles', discover: 'Discover' };
+
+async function loadAds() {
+  const wrap = document.getElementById('ads-table-wrap');
+  wrap.innerHTML = '<div class="loading">Loading…</div>';
+  try {
+    const res = await apiFetch('/admin/ads');
+    const ads = res.ads || [];
+    if (!ads.length) {
+      wrap.innerHTML = '<div class="empty">No ads yet. Create your first one.</div>';
+      return;
+    }
+    wrap.innerHTML = `
+      <table>
+        <thead><tr>
+          <th>Sponsor</th><th>Title</th><th>Placement</th>
+          <th>Start</th><th>End</th><th>Impressions</th><th>Clicks</th>
+          <th>Status</th><th>Actions</th>
+        </tr></thead>
+        <tbody>
+          ${ads.map(a => `
+            <tr>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px">
+                  ${a.sponsorLogo ? `<img src="${a.sponsorLogo}" style="width:28px;height:28px;border-radius:6px;object-fit:cover" />` : `<div style="width:28px;height:28px;border-radius:6px;background:#F2F2F7;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#6C6C70">${(a.sponsor||'?')[0].toUpperCase()}</div>`}
+                  <span style="font-weight:600;font-size:13px">${a.sponsor||'—'}</span>
+                </div>
+              </td>
+              <td style="max-width:200px"><div style="font-size:13px">${truncate(a.title,60)}</div><div style="font-size:11px;color:#6C6C70">${truncate(a.body,50)}</div></td>
+              <td><span style="font-size:12px;background:#F2F2F7;border-radius:6px;padding:2px 8px">${PLACEMENT_LABELS[a.placement]||a.placement}</span></td>
+              <td style="font-size:13px;color:#6C6C70">${fmtDate(a.startDate)}</td>
+              <td style="font-size:13px;color:#6C6C70">${fmtDate(a.endDate)}</td>
+              <td style="font-size:13px">${(a.impressions||0).toLocaleString()}</td>
+              <td style="font-size:13px">${(a.clicks||0).toLocaleString()}${a.impressions ? ` <span style="font-size:11px;color:#6C6C70">(${((a.clicks/a.impressions)*100).toFixed(1)}%)</span>` : ''}</td>
+              <td><span class="badge ${a.isActive?'badge-active':'badge-removed'}">${a.isActive?'Active':'Paused'}</span></td>
+              <td>
+                <div style="display:flex;gap:6px">
+                  <button class="btn btn-gray" onclick="promptEditAd('${a._id}')">Edit</button>
+                  <button class="btn ${a.isActive?'btn-gray':'btn-green'}" onclick="toggleAd('${a._id}',${a.isActive})">${a.isActive?'Pause':'Resume'}</button>
+                  <button class="btn btn-red" onclick="promptDeleteAd('${a._id}','${(a.title||'').replace(/'/g,"\\'")}')">Delete</button>
+                </div>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } catch (e) {
+    wrap.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+  }
+}
+
+function adFormHTML(ad = {}) {
+  const today = new Date().toISOString().slice(0,10);
+  const nextMonth = new Date(Date.now()+30*864e5).toISOString().slice(0,10);
+  const inp = (id, label, val='', type='text', extra='') =>
+    `<div style="margin-bottom:12px">
+      <label style="display:block;font-size:12px;font-weight:600;color:#6C6C70;margin-bottom:4px">${label}</label>
+      <input id="${id}" type="${type}" value="${val}" ${extra} style="background:#F2F2F7;border:none;border-radius:10px;padding:10px 14px;font-size:14px;width:100%;box-sizing:border-box" />
+    </div>`;
+  const placementSel = `
+    <div style="margin-bottom:12px">
+      <label style="display:block;font-size:12px;font-weight:600;color:#6C6C70;margin-bottom:4px">Placement</label>
+      <select id="ad-placement" style="background:#F2F2F7;border:none;border-radius:10px;padding:10px 14px;font-size:14px;width:100%;box-sizing:border-box">
+        ${['feed','hachi','discover'].map(p=>`<option value="${p}" ${(ad.placement||'feed')===p?'selected':''}>${PLACEMENT_LABELS[p]}</option>`).join('')}
+      </select>
+    </div>`;
+  const bodyInp = `
+    <div style="margin-bottom:12px">
+      <label style="display:block;font-size:12px;font-weight:600;color:#6C6C70;margin-bottom:4px">Body text (optional)</label>
+      <textarea id="ad-body" rows="2" style="background:#F2F2F7;border:none;border-radius:10px;padding:10px 14px;font-size:14px;width:100%;box-sizing:border-box;resize:vertical">${ad.body||''}</textarea>
+    </div>`;
+  return `
+    ${inp('ad-sponsor','Sponsor name *', ad.sponsor||'')}
+    ${inp('ad-sponsor-logo','Sponsor logo URL (optional)', ad.sponsorLogo||'')}
+    ${inp('ad-title','Headline *', ad.title||'')}
+    ${bodyInp}
+    ${inp('ad-image','Creative image URL (optional)', ad.imageUrl||'')}
+    ${inp('ad-cta-text','CTA button label', ad.ctaText||'اعرف أكثر')}
+    ${inp('ad-cta-url','CTA URL *', ad.ctaUrl||'')}
+    ${placementSel}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:#6C6C70;margin-bottom:4px">Start date</label>
+        <input id="ad-start" type="date" value="${ad.startDate?ad.startDate.slice(0,10):today}" style="background:#F2F2F7;border:none;border-radius:10px;padding:10px 14px;font-size:14px;width:100%;box-sizing:border-box" />
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:#6C6C70;margin-bottom:4px">End date</label>
+        <input id="ad-end" type="date" value="${ad.endDate?ad.endDate.slice(0,10):nextMonth}" style="background:#F2F2F7;border:none;border-radius:10px;padding:10px 14px;font-size:14px;width:100%;box-sizing:border-box" />
+      </div>
+    </div>`;
+}
+
+function adFormValues() {
+  const v = id => document.getElementById(id)?.value?.trim();
+  return {
+    sponsor:     v('ad-sponsor'),
+    sponsorLogo: v('ad-sponsor-logo'),
+    title:       v('ad-title'),
+    body:        v('ad-body'),
+    imageUrl:    v('ad-image'),
+    ctaText:     v('ad-cta-text'),
+    ctaUrl:      v('ad-cta-url'),
+    placement:   document.getElementById('ad-placement')?.value,
+    startDate:   v('ad-start'),
+    endDate:     v('ad-end'),
+  };
+}
+
+function promptCreateAd() {
+  openModal(`
+    <h3 style="font-size:17px;font-weight:700;margin-bottom:16px">New Ad</h3>
+    <div style="max-height:60vh;overflow-y:auto;padding-right:4px">
+      ${adFormHTML()}
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-red" onclick="doCreateAd()">Create</button>
+    </div>`);
+}
+
+async function doCreateAd() {
+  const body = adFormValues();
+  if (!body.sponsor || !body.title || !body.ctaUrl) { toast('Fill in sponsor, headline, and CTA URL.'); return; }
+  try {
+    await apiFetch('/admin/ads', { method: 'POST', body });
+    closeModal();
+    toast('Ad created.');
+    loadAds();
+  } catch (e) { toast('Error: ' + e.message); }
+}
+
+async function promptEditAd(id) {
+  try {
+    const res = await apiFetch('/admin/ads');
+    const ad = (res.ads||[]).find(a => a._id === id);
+    if (!ad) { toast('Ad not found'); return; }
+    openModal(`
+      <h3 style="font-size:17px;font-weight:700;margin-bottom:16px">Edit Ad</h3>
+      <div style="max-height:60vh;overflow-y:auto;padding-right:4px">
+        ${adFormHTML(ad)}
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+        <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-red" onclick="doEditAd('${id}')">Save</button>
+      </div>`);
+  } catch (e) { toast('Error: ' + e.message); }
+}
+
+async function doEditAd(id) {
+  const body = adFormValues();
+  if (!body.sponsor || !body.title || !body.ctaUrl) { toast('Fill in sponsor, headline, and CTA URL.'); return; }
+  try {
+    await apiFetch(`/admin/ads/${id}`, { method: 'PATCH', body });
+    closeModal();
+    toast('Ad updated.');
+    loadAds();
+  } catch (e) { toast('Error: ' + e.message); }
+}
+
+async function toggleAd(id, isActive) {
+  try {
+    await apiFetch(`/admin/ads/${id}`, { method: 'PATCH', body: { isActive: !isActive } });
+    toast(isActive ? 'Ad paused.' : 'Ad resumed.');
+    loadAds();
+  } catch (e) { toast('Error: ' + e.message); }
+}
+
+function promptDeleteAd(id, title) {
+  openModal(`
+    <h3 style="font-size:17px;font-weight:700;margin-bottom:8px;color:#C8102E">Delete ad?</h3>
+    <p style="font-size:14px;color:#6C6C70;margin-bottom:20px">"${title}" will be permanently deleted.</p>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-red" onclick="doDeleteAd('${id}')">Delete</button>
+    </div>`);
+}
+
+async function doDeleteAd(id) {
+  try {
+    await apiFetch(`/admin/ads/${id}`, { method: 'DELETE' });
+    closeModal();
+    toast('Ad deleted.');
+    loadAds();
+  } catch (e) { toast('Error: ' + e.message); }
+}
+
+// ─── Push Notifications ───────────────────────────────────────────────────────
+async function doSendPush() {
+  const title = document.getElementById('push-title').value.trim();
+  const body  = document.getElementById('push-body').value.trim();
+  const username = document.getElementById('push-username').value.trim().replace(/^@/, '');
+  if (!title || !body) { toast('Title and message are required.'); return; }
+  const btn = document.getElementById('push-btn');
+  const result = document.getElementById('push-result');
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  result.textContent = '';
+  try {
+    const payload = { title, body };
+    if (username) payload.targetUsername = username;
+    const data = await apiFetch('/admin/push', { method: 'POST', body: payload });
+    toast(`Sent to ${data.sent} device${data.sent !== 1 ? 's' : ''}.`);
+    result.textContent = `✓ Delivered to ${data.sent} device${data.sent !== 1 ? 's' : ''}`;
+    document.getElementById('push-title').value = '';
+    document.getElementById('push-body').value = '';
+    document.getElementById('push-username').value = '';
+  } catch (e) {
+    toast('Error: ' + e.message);
+    result.textContent = '✗ ' + e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Send Notification';
+  }
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+window.onload = () => {
+  if (token) {
+    // Verify token still valid
+    apiFetch('/admin/stats').then(() => {
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'flex';
+      const stored = JSON.parse(atob(token.split('.')[1] || 'e30=') || '{}');
+      loadDashboard();
+    }).catch(() => {
+      token = null;
+      localStorage.removeItem('kn_admin_token');
+    });
+  }
+};
+</script>
+</body>
+</html>

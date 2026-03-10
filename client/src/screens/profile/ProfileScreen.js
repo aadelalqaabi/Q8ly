@@ -1,38 +1,100 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   Image, ActivityIndicator, Alert,
 } from 'react-native';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { usersAPI } from '../../services/api';
-import { logout } from '../../store/slices/authSlice';
 import PostCard from '../../components/post/PostCard';
-import { COLORS, VERIFIED_BADGE_LABELS } from '../../constants';
+import { useTheme } from '../../context/ThemeContext';
+
+const BADGE_COLORS = {
+  government: '#0033A0',
+  media:      '#D97706',
+  business:   '#16A34A',
+  influencer: '#7C3AED',
+};
+const BADGE_KEYS = {
+  government: 'badge.official',
+  media:      'badge.media',
+  business:   'badge.business',
+  influencer: 'badge.influencer',
+};
+
+function VerifiedBadge({ badge }) {
+  const { t } = useTranslation();
+  if (!badge || badge === 'none') return null;
+  const color = BADGE_COLORS[badge];
+  const key = BADGE_KEYS[badge];
+  if (!color || !key) return null;
+  return (
+    <View style={{
+      alignSelf: 'center',
+      marginTop: 6,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: color + '12',
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 5,
+      borderWidth: 1,
+      borderColor: color + '45',
+    }}>
+      <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: color }} />
+      <Text style={{ color, fontSize: 12, fontWeight: '700', letterSpacing: 0.7 }}>
+        {t(key).toUpperCase()}
+      </Text>
+    </View>
+  );
+}
+
+const PALETTE = ['#0033A0', '#007A3D', '#FF6B35', '#2196F3', '#9C27B0', '#00BCD4', '#FF9800'];
+function avatarBg(name) {
+  if (!name) return PALETTE[0];
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+  return PALETTE[Math.abs(h) % PALETTE.length];
+}
+
+function fmt(n) {
+  if (!n) return '0';
+  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+  return String(n);
+}
 
 export default function ProfileScreen({ navigation, route }) {
-  const dispatch = useDispatch();
+  const insets = useSafeAreaInsets();
   const { user: currentUser } = useSelector((s) => s.auth);
+  const unreadCount = useSelector((s) => s.notifications?.unreadCount || 0);
+  const { t } = useTranslation();
+  const { colors: COLORS } = useTheme();
+  const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
 
   const username = route.params?.username || currentUser?.username;
   const isOwnProfile = username === currentUser?.username;
+  const isPushed = !!route.params?.username;
 
-  const [profile, setProfile] = useState(null);
+  // Pre-populate with currentUser for own profile so the screen appears instantly
+  const [profile, setProfile] = useState(isOwnProfile ? currentUser : null);
   const [posts, setPosts] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!isOwnProfile);
   const [postsLoading, setPostsLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [isNotifyEnabled, setIsNotifyEnabled] = useState(false);
 
   const loadProfile = useCallback(async () => {
     try {
       const res = await usersAPI.getProfile(username);
       setProfile(res.user);
       setIsFollowing(res.user.isFollowing || false);
-    } catch (e) {
-      console.error(e);
-    }
+      setIsNotifyEnabled(res.user.isNotifyEnabled || false);
+    } catch (e) { console.error(e); }
   }, [username]);
 
   const loadPosts = useCallback(async (p = 1) => {
@@ -43,145 +105,223 @@ export default function ProfileScreen({ navigation, route }) {
       else setPosts((prev) => [...prev, ...res.posts]);
       setHasMore(p < res.pagination.pages);
       setPage(p);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setPostsLoading(false);
-    }
+    } catch (e) { console.error(e); }
+    finally { setPostsLoading(false); }
   }, [username]);
 
   useEffect(() => {
     const init = async () => {
-      setIsLoading(true);
-      await loadProfile();
-      await loadPosts(1);
+      if (!isOwnProfile) setIsLoading(true);
+      await Promise.all([loadProfile(), loadPosts(1)]);
       setIsLoading(false);
     };
     init();
-    navigation.setOptions({ title: `@${username}` });
+    navigation.setOptions({ headerShown: false });
   }, [username]);
 
-  const handleFollow = async () => {
+  const [followLoading, setFollowLoading] = useState(false);
+
+  const doFollow = async () => {
+    if (followLoading) return;
+    setFollowLoading(true);
+    const wasFollowing = isFollowing;
+    setIsFollowing(!wasFollowing);
+    setProfile((p) => ({
+      ...p,
+      followersCount: (p.followersCount || 0) + (wasFollowing ? -1 : 1),
+    }));
     try {
       const res = await usersAPI.toggleFollow(profile._id);
       setIsFollowing(res.following);
       setProfile((p) => ({ ...p, followersCount: res.followersCount }));
     } catch (e) {
-      Alert.alert('Error', e.message);
+      setIsFollowing(wasFollowing);
+      setProfile((p) => ({
+        ...p,
+        followersCount: (p.followersCount || 0) + (wasFollowing ? 1 : -1),
+      }));
+    } finally {
+      setFollowLoading(false);
     }
   };
 
-  const handleLogout = () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: () => dispatch(logout()) },
-    ]);
+  const handleToggleNotify = async () => {
+    setIsNotifyEnabled((prev) => !prev);
+    try {
+      const res = await usersAPI.toggleNotifyPosts(profile._id);
+      setIsNotifyEnabled(res.enabled);
+    } catch {
+      setIsNotifyEnabled((prev) => !prev); // revert on error
+    }
   };
 
-  const badge = profile && VERIFIED_BADGE_LABELS[profile.verifiedBadge];
+  const handleFollow = () => {
+    if (followLoading) return;
+    if (isFollowing) {
+      Alert.alert(
+        `Unfollow @${profile?.username}?`,
+        undefined,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Unfollow', style: 'destructive', onPress: doFollow },
+        ],
+        { cancelable: true }
+      );
+    } else {
+      doFollow();
+    }
+  };
 
   const renderHeader = () => (
     <View>
-      {/* Cover Photo */}
-      <View style={[styles.cover, { backgroundColor: COLORS.primary }]}>
-        {profile?.coverPhoto && (
-          <Image source={{ uri: profile.coverPhoto }} style={styles.coverImage} />
+      {/* ── Floating nav row ─────────────────────────────── */}
+      <View style={[styles.navRow, { paddingTop: insets.top + 6 }]}>
+        {isPushed ? (
+          <TouchableOpacity
+            style={styles.navBtn}
+            onPress={() => navigation.goBack()}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="chevron-back" size={22} color={COLORS.text} />
+          </TouchableOpacity>
+        ) : isOwnProfile ? (
+          <TouchableOpacity
+            style={styles.navBtn}
+            onPress={() => navigation.navigate('Notifications')}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <View style={{ position: 'relative' }}>
+              <Ionicons name="notifications-outline" size={22} color={COLORS.text} />
+              {unreadCount > 0 && (
+                <View style={styles.notifBadge}>
+                  <Text style={styles.notifBadgeText}>
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.navBtn} />
         )}
+
         {isOwnProfile && (
           <TouchableOpacity
-            style={styles.settingsBtn}
-            onPress={() => navigation.navigate('EditProfile')}
+            style={styles.navBtn}
+            onPress={() => navigation.navigate('Settings')}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="settings-outline" size={22} color="#fff" />
-          </TouchableOpacity>
-        )}
-        {isOwnProfile && (
-          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={22} color="#fff" />
+            <Ionicons name="settings-outline" size={20} color={COLORS.textMuted} />
           </TouchableOpacity>
         )}
       </View>
 
-      {/* Avatar + actions */}
-      <View style={styles.avatarRow}>
-        <View style={styles.avatarWrapper}>
-          {profile?.profilePic
-            ? <Image source={{ uri: profile.profilePic }} style={styles.avatar} />
-            : <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                <Text style={styles.avatarInitial}>{profile?.name?.[0] || '?'}</Text>
-              </View>
-          }
-        </View>
-        <View style={styles.actionBtns}>
-          {!isOwnProfile ? (
-            <>
-              <TouchableOpacity
-                style={[styles.followBtn, isFollowing && styles.followingBtn]}
-                onPress={handleFollow}
-              >
-                <Text style={[styles.followBtnText, isFollowing && styles.followingBtnText]}>
-                  {isFollowing ? 'Following' : 'Follow'}
-                </Text>
-              </TouchableOpacity>
-            </>
+      {/* ── Avatar ───────────────────────────────────────── */}
+      <View style={styles.avatarSection}>
+        <View style={styles.avatarRing}>
+          {profile?.profilePic ? (
+            <Image source={{ uri: profile.profilePic }} style={styles.avatar} />
           ) : (
-            <TouchableOpacity
-              style={styles.editBtn}
-              onPress={() => navigation.navigate('EditProfile')}
-            >
-              <Text style={styles.editBtnText}>Edit Profile</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
-      {/* Profile info */}
-      <View style={styles.profileInfo}>
-        <View style={styles.nameRow}>
-          <Text style={styles.name}>{profile?.name}</Text>
-          {badge && (
-            <View style={[styles.badge, { backgroundColor: badge.color + '20' }]}>
-              <Text style={[styles.badgeText, { color: badge.color }]}>{badge.icon} {badge.label}</Text>
+            <View style={[styles.avatar, { backgroundColor: avatarBg(profile?.name) }]}>
+              <Text style={styles.avatarInitial}>{profile?.name?.[0]?.toUpperCase() || '?'}</Text>
             </View>
           )}
         </View>
-        <Text style={styles.username}>@{profile?.username}</Text>
-        {profile?.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
-        {profile?.district ? (
-          <View style={styles.locationRow}>
-            <Ionicons name="location-outline" size={13} color={COLORS.textMuted} />
-            <Text style={styles.location}>{profile.district}</Text>
-          </View>
-        ) : null}
+      </View>
 
-        {/* Stats */}
-        <View style={styles.statsRow}>
-          <TouchableOpacity style={styles.stat} onPress={() => navigation.navigate('Followers', { username, type: 'following' })}>
-            <Text style={styles.statNum}>{profile?.followingCount?.toLocaleString()}</Text>
-            <Text style={styles.statLabel}>Following</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.stat} onPress={() => navigation.navigate('Followers', { username, type: 'followers' })}>
-            <Text style={styles.statNum}>{profile?.followersCount?.toLocaleString()}</Text>
-            <Text style={styles.statLabel}>Followers</Text>
-          </TouchableOpacity>
-          <View style={styles.stat}>
-            <Text style={styles.statNum}>{profile?.postsCount?.toLocaleString()}</Text>
-            <Text style={styles.statLabel}>Posts</Text>
+      {/* ── Identity ─────────────────────────────────────── */}
+      <View style={styles.identity}>
+        <Text style={styles.name}>{profile?.name}</Text>
+        <VerifiedBadge badge={profile?.verifiedBadge} />
+        {!!profile?.bio && <Text style={styles.bio}>{profile.bio}</Text>}
+        {!!profile?.district && (
+          <View style={styles.location}>
+            <Ionicons name="location-outline" size={12} color={COLORS.textMuted} />
+            <Text style={styles.locationText}>{profile.district}</Text>
           </View>
+        )}
+      </View>
+
+      {/* ── Stats row ────────────────────────────────────── */}
+      <View style={styles.statsRow}>
+        <View style={styles.stat}>
+          <Text style={styles.statNum}>{fmt(profile?.postsCount)}</Text>
+          <Text style={styles.statLabel}>{t('profile.posts')}</Text>
+        </View>
+        <View style={styles.statDot} />
+        <View style={styles.stat}>
+          <Text style={styles.statNum}>{fmt(profile?.followersCount)}</Text>
+          <Text style={styles.statLabel}>{t('profile.followers')}</Text>
+        </View>
+        <View style={styles.statDot} />
+        <View style={styles.stat}>
+          <Text style={styles.statNum}>{fmt(profile?.followingCount)}</Text>
+          <Text style={styles.statLabel}>{t('profile.followingPl')}</Text>
         </View>
       </View>
 
-      {/* Posts header */}
+      {/* ── Action ───────────────────────────────────────── */}
+      <View style={styles.actionRow}>
+        {isOwnProfile ? (
+          <TouchableOpacity
+            style={styles.editChip}
+            onPress={() => navigation.navigate('EditProfile')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="create-outline" size={14} color={COLORS.textMuted} />
+            <Text style={styles.editChipText}>{t('profile.editProfile')}</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.followRow}>
+            {isFollowing ? (
+              <TouchableOpacity
+                style={[styles.followingChip, followLoading && { opacity: 0.5 }]}
+                onPress={handleFollow}
+                activeOpacity={0.7}
+                disabled={followLoading}
+              >
+                <Ionicons name="checkmark" size={14} color={COLORS.textMuted} />
+                <Text style={styles.followingChipText}>{t('profile.following')}</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.followChip, followLoading && { opacity: 0.5 }]}
+                onPress={handleFollow}
+                activeOpacity={0.85}
+                disabled={followLoading}
+              >
+                <Text style={styles.followChipText}>{t('profile.follow')}</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={styles.notifyBtn}
+              onPress={handleToggleNotify}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={isNotifyEnabled ? 'notifications' : 'notifications-outline'}
+                size={20}
+                color={isNotifyEnabled ? COLORS.accent : COLORS.textMuted}
+              />
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+
+      {/* ── Posts header ─────────────────────────────────── */}
       <View style={styles.postsHeader}>
-        <Text style={styles.postsHeaderTitle}>Posts</Text>
+        <View style={styles.postsHeaderLine} />
+        <Text style={styles.postsHeaderText}>{t('profile.posts')}</Text>
+        <View style={styles.postsHeaderLine} />
       </View>
     </View>
   );
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+      <View style={[styles.loader, { paddingTop: insets.top }]}>
+        <ActivityIndicator size="large" color={COLORS.accent} />
       </View>
     );
   }
@@ -193,58 +333,183 @@ export default function ProfileScreen({ navigation, route }) {
         keyExtractor={(item) => item._id}
         renderItem={({ item }) => <PostCard post={item} navigation={navigation} />}
         ListHeaderComponent={renderHeader}
-        ListFooterComponent={postsLoading ? <ActivityIndicator size="small" color={COLORS.primary} style={{ padding: 16 }} /> : null}
+        ListFooterComponent={
+          postsLoading
+            ? <ActivityIndicator size="small" color={COLORS.accent} style={{ padding: 20 }} />
+            : <View style={{ height: insets.bottom + 24 }} />
+        }
         ListEmptyComponent={
-          !postsLoading && (
-            <View style={styles.emptyPosts}>
-              <Text style={styles.emptyPostsText}>No posts yet</Text>
+          !postsLoading ? (
+            <View style={styles.empty}>
+              <Text style={styles.emptyText}>{t('profile.noPostsYet')}</Text>
             </View>
-          )
+          ) : null
         }
         onEndReached={() => { if (!postsLoading && hasMore) loadPosts(page + 1); }}
-        onEndReachedThreshold={0.3}
-        refreshing={isLoading}
-        onRefresh={() => { loadProfile(); loadPosts(1); }}
+        onEndReachedThreshold={0.4}
         showsVerticalScrollIndicator={false}
+        refreshing={false}
+        onRefresh={() => { loadProfile(); loadPosts(1); }}
       />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  cover: { height: 140, position: 'relative' },
-  coverImage: { ...StyleSheet.absoluteFillObject },
-  settingsBtn: { position: 'absolute', top: 12, right: 48, backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 20, padding: 6 },
-  logoutBtn: { position: 'absolute', top: 12, right: 12, backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 20, padding: 6 },
-  avatarRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', paddingHorizontal: 16, marginTop: -40 },
-  avatarWrapper: { borderWidth: 3, borderColor: COLORS.white, borderRadius: 46 },
-  avatar: { width: 80, height: 80, borderRadius: 40 },
-  avatarPlaceholder: { backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' },
-  avatarInitial: { fontSize: 32, fontWeight: '700', color: '#fff' },
-  actionBtns: { flexDirection: 'row', gap: 8 },
-  followBtn: { borderWidth: 1.5, borderColor: COLORS.primary, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 8 },
-  followingBtn: { backgroundColor: COLORS.primary },
-  followBtnText: { fontSize: 14, fontWeight: '700', color: COLORS.primary },
-  followingBtnText: { color: '#fff' },
-  editBtn: { borderWidth: 1.5, borderColor: COLORS.border, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 8 },
-  editBtnText: { fontSize: 14, fontWeight: '600', color: COLORS.text },
-  profileInfo: { backgroundColor: COLORS.white, padding: 16 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  name: { fontSize: 20, fontWeight: '800', color: COLORS.text },
-  badge: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
-  badgeText: { fontSize: 11, fontWeight: '600' },
-  username: { fontSize: 14, color: COLORS.textLight, marginTop: 2 },
-  bio: { fontSize: 14, color: COLORS.text, marginTop: 8, lineHeight: 20 },
-  locationRow: { flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 4 },
-  location: { fontSize: 13, color: COLORS.textMuted },
-  statsRow: { flexDirection: 'row', marginTop: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: COLORS.border },
-  stat: { flex: 1, alignItems: 'center' },
-  statNum: { fontSize: 18, fontWeight: '800', color: COLORS.text },
-  statLabel: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
-  postsHeader: { backgroundColor: COLORS.white, padding: 14, borderTopWidth: 1, borderTopColor: COLORS.border, marginTop: 8 },
-  postsHeaderTitle: { fontSize: 15, fontWeight: '700', color: COLORS.text },
-  emptyPosts: { padding: 40, alignItems: 'center' },
-  emptyPostsText: { fontSize: 16, color: COLORS.textMuted },
+const makeStyles = (C) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: C.white },
+  loader: { flex: 1, backgroundColor: C.white, justifyContent: 'center', alignItems: 'center' },
+
+  // ── Nav
+  navRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingBottom: 4,
+  },
+  navBtn: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  notifBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -6,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#FF3B30',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 3,
+  },
+  notifBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+    lineHeight: 12,
+  },
+
+  // ── Avatar
+  avatarSection: {
+    alignItems: 'center',
+    paddingTop: 8,
+    paddingBottom: 16,
+  },
+  avatarRing: {
+    borderRadius: 52,
+  },
+  avatar: {
+    width: 104,
+    height: 104,
+    borderRadius: 52,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarInitial: { fontSize: 38, fontWeight: '700', color: '#fff' },
+
+  // ── Identity
+  identity: {
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    paddingBottom: 20,
+    gap: 4,
+  },
+  name: { fontSize: 22, fontWeight: '800', color: C.text, textAlign: 'center', letterSpacing: -0.3 },
+  bio: { fontSize: 14, color: C.text, lineHeight: 20, textAlign: 'center', marginTop: 6 },
+  location: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 4 },
+  locationText: { fontSize: 12, color: C.textMuted },
+
+  // ── Stats
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingBottom: 20,
+    gap: 16,
+  },
+  stat: { alignItems: 'center', gap: 2, minWidth: 60 },
+  statNum: { fontSize: 17, fontWeight: '700', color: C.text, textAlign: 'center' },
+  statLabel: { fontSize: 11, color: C.textMuted, fontWeight: '400', textAlign: 'center' },
+  statDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: C.separator,
+    marginBottom: 10,
+  },
+
+  // ── Action chip
+  actionRow: {
+    alignItems: 'center',
+    paddingBottom: 24,
+  },
+  editChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: C.separator,
+    backgroundColor: C.fill,
+  },
+  editChipText: { fontSize: 13, fontWeight: '500', color: C.textMuted },
+  followRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  notifyBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'transparent',
+  },
+  followChip: {
+    paddingHorizontal: 36,
+    paddingVertical: 10,
+    borderRadius: 22,
+    backgroundColor: C.accent,
+  },
+  followChipText: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  followingChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: C.separator,
+    backgroundColor: C.fill,
+  },
+  followingChipText: { fontSize: 13, fontWeight: '500', color: C.textMuted },
+
+  // ── Posts divider header
+  postsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 2,
+    gap: 12,
+  },
+  postsHeaderLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: C.separator },
+  postsHeaderText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: C.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+
+  // ── Empty
+  empty: { paddingTop: 48, alignItems: 'center' },
+  emptyText: { fontSize: 15, color: C.textMuted },
 });

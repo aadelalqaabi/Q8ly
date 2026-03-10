@@ -56,6 +56,7 @@ const postsSlice = createSlice({
     forYouPosts: [],
     followingPosts: [],
     trendingPosts: [],
+    hotPosts: [],
     isLoading: false,
     isLoadingMore: false,
     error: null,
@@ -102,7 +103,7 @@ const postsSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchFeed.fulfilled, (state, action) => {
-        const { posts, pagination, tab, page } = action.payload;
+        const { posts, hotPosts, pagination, tab, page } = action.payload;
         state.isLoading = false;
         state.isLoadingMore = false;
 
@@ -112,11 +113,12 @@ const postsSlice = createSlice({
 
         if (page === 1) {
           state[key] = posts;
+          if (hotPosts?.length) state.hotPosts = hotPosts;
         } else {
           state[key] = [...state[key], ...posts];
         }
         state[pageKey] = page;
-        state[hasMoreKey] = page < pagination.pages;
+        state[hasMoreKey] = pagination.hasMore ?? (page < (pagination.pages || 1));
       })
       .addCase(fetchFeed.rejected, (state, action) => {
         state.isLoading = false;

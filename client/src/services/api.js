@@ -27,14 +27,17 @@ api.interceptors.response.use(
   (response) => response.data,
   async (error) => {
     const message = error.response?.data?.message || error.message || 'Something went wrong';
+    const status = error.response?.status;
 
-    if (error.response?.status === 401) {
-      // Token expired or invalid – clear storage
+    if (status === 401) {
+      // Token expired or invalid – clear storage and trigger Redux logout
       await AsyncStorage.multiRemove(['token', 'user']);
-      // The auth slice will handle redirect via state change
+      const { store } = await import('../store');
+      const { logout } = await import('../store/slices/authSlice');
+      store.dispatch(logout());
     }
 
-    return Promise.reject({ message, status: error.response?.status });
+    return Promise.reject({ message, status });
   }
 );
 
@@ -45,12 +48,16 @@ export const authAPI = {
   getMe: () => api.get('/auth/me'),
   updatePassword: (data) => api.put('/auth/password', data),
   updatePushToken: (token) => api.put('/auth/push-token', { expoPushToken: token }),
+  // Phone OTP
+  sendOtp: (phone) => api.post('/auth/send-otp', { phone }),
+  verifyOtp: (phone, code, name) => api.post('/auth/verify-otp', { phone, code, name }),
 };
 
 // ── Posts ─────────────────────────────────────────────────────────────────────
 export const postsAPI = {
   getFeed: (params) => api.get('/posts/feed', { params }),
   getTrending: (params) => api.get('/posts/trending', { params }),
+  search: (q, params) => api.get('/posts/search', { params: { q, ...params } }),
   getPost: (id) => api.get(`/posts/${id}`),
   createPost: (data) => api.post('/posts', data),
   deletePost: (id) => api.delete(`/posts/${id}`),
@@ -76,6 +83,8 @@ export const usersAPI = {
   searchUsers: (q, params) => api.get('/users/search', { params: { q, ...params } }),
   getSuggestions: () => api.get('/users/suggestions'),
   reportUser: (id, data) => api.post(`/users/${id}/report`, data),
+  savePushToken: (token) => api.post('/users/push-token', { token }),
+  toggleNotifyPosts: (id) => api.post(`/users/${id}/notify-posts`),
 };
 
 // ── Topics ────────────────────────────────────────────────────────────────────
@@ -115,9 +124,27 @@ export const eventsAPI = {
   toggleRsvp: (id) => api.post(`/events/${id}/rsvp`),
 };
 
+// ── Hachi ─────────────────────────────────────────────────────────────────────
+export const hachiAPI = {
+  search: (q) => api.get('/hachi/search', { params: { q } }),
+  getRooms: (category) => api.get('/hachi', {
+    params: { ...(category && category !== 'all' ? { category } : {}) },
+  }),
+  getArchivedRooms: (category) => api.get('/hachi/archived', {
+    params: { ...(category && category !== 'all' ? { category } : {}) },
+  }),
+  createRoom: (title, category, isPublic = true) => api.post('/hachi', { title, category, isPublic }),
+  getRoom: (id) => api.get(`/hachi/${id}`),
+  react: (id, type) => api.post(`/hachi/${id}/react`, { type }),
+  closeRoom: (id) => api.delete(`/hachi/${id}`),
+};
+
 // ── Upload ────────────────────────────────────────────────────────────────────
 export const uploadAPI = {
   images: (formData) => api.post('/upload/images', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  video: (formData) => api.post('/upload/video', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
   profilePic: (formData) => api.post('/upload/profile-pic', formData, {
@@ -126,6 +153,20 @@ export const uploadAPI = {
   coverPhoto: (formData) => api.post('/upload/cover-photo', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
+  audio: (formData) => api.post('/upload/audio', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+};
+
+export const suggestionsAPI = {
+  submit: (text, category) => api.post('/suggestions', { text, category }),
+  mine: () => api.get('/suggestions/mine'),
+};
+
+export const adsAPI = {
+  getFeedAds: () => api.get('/ads?placement=feed'),
+  impression: (id) => api.post(`/ads/${id}/impression`),
+  click: (id) => api.post(`/ads/${id}/click`),
 };
 
 export default api;

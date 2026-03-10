@@ -1,6 +1,7 @@
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { checkContent } = require('../utils/contentFilter');
 
 const initSocket = (server) => {
   const io = new Server(server, {
@@ -25,7 +26,6 @@ const initSocket = (server) => {
       const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.split(' ')[1];
 
       if (!token) {
-        // Allow unauthenticated connections for public rooms
         socket.user = null;
         return next();
       }
@@ -41,7 +41,6 @@ const initSocket = (server) => {
       socket.user = user;
       next();
     } catch (error) {
-      // Token error – allow as unauthenticated
       socket.user = null;
       next();
     }
@@ -51,7 +50,6 @@ const initSocket = (server) => {
     const userId = socket.user?._id;
 
     if (userId) {
-      // Join personal room for directed notifications
       socket.join(`user:${userId}`);
       console.log(`User ${socket.user.username} connected (socket: ${socket.id})`);
     }
@@ -84,9 +82,333 @@ const initSocket = (server) => {
       });
     });
 
+    // ── Hachi rooms ───────────────────────────────────────────────
+    socket.on('joinHachi', async (roomId) => {
+      try {
+        const Hachi = require('../models/Hachi');
+        const room = await Hachi.findById(roomId).select('isPublic creator members blockedMembers joinRequests');
+
+        if (room && socket.user) {
+          const uid = socket.user._id.toString();
+
+          // Blocked users cannot join
+          if (room.blockedMembers.some((b) => b.toString() === uid)) {
+            socket.emit('hachiError', { message: 'لقد تم إزالتك من هذا النقاش.' });
+            return;
+          }
+
+          const isCreator = room.creator.toString() === uid;
+          const isMember = room.members.some((m) => m.toString() === uid);
+
+          // Private room: only creator and approved members can join
+          if (!room.isPublic && !isCreator && !isMember) {
+            const alreadyRequested = room.joinRequests.some((r) => r.user.toString() === uid);
+            if (!alreadyRequested) {
+              room.joinRequests.push({
+                user: socket.user._id,
+                name: socket.user.name,
+                username: socket.user.username,
+                requestedAt: new Date(),
+              });
+              await room.save();
+            }
+            // Notify creator
+            io.to(`user:${room.creator.toString()}`).emit('hachiJoinRequest', {
+              roomId,
+              user: { _id: socket.user._id, name: socket.user.name, username: socket.user.username },
+            });
+            socket.emit('hachiWaitingApproval', { roomId });
+            return;
+          }
+        }
+
+        socket.join(`hachi:${roomId}`);
+        const count = io.sockets.adapter.rooms.get(`hachi:${roomId}`)?.size || 0;
+        io.to(`hachi:${roomId}`).emit('hachiMemberCount', { roomId, count });
+      } catch (err) {
+        console.error('joinHachi error:', err.message);
+        socket.join(`hachi:${roomId}`);
+      }
+    });
+
+    socket.on('leaveHachi', (roomId) => {
+      socket.leave(`hachi:${roomId}`);
+      const count = io.sockets.adapter.rooms.get(`hachi:${roomId}`)?.size || 0;
+      io.to(`hachi:${roomId}`).emit('hachiMemberCount', { roomId, count });
+    });
+
+    socket.on('hachiSend', async ({ roomId, text }) => {
+      if (!socket.user || !text?.trim()) return;
+      try {
+        const { isBlocked } = checkContent(text.trim());
+        if (isBlocked) {
+          socket.emit('hachiError', { message: 'رسالتك تحتوي على محتوى مسيء ولم يتم إرسالها.' });
+          return;
+        }
+
+        const Hachi = require('../models/Hachi');
+        const room = await Hachi.findById(roomId);
+        if (!room || !room.isActive) return;
+
+        // Prevent blocked members from sending
+        const uid = socket.user._id.toString();
+        if (room.blockedMembers.some((b) => b.toString() === uid)) return;
+
+        const msg = { user: socket.user._id, text: text.trim(), createdAt: new Date() };
+        room.messages.push(msg);
+
+        const alreadyMember = room.members.some((m) => m.toString() === uid);
+        if (!alreadyMember) {
+          room.members.push(socket.user._id);
+          room.memberCount = room.members.length;
+        }
+        await room.save();
+
+        const saved = room.messages[room.messages.length - 1];
+        const populated = {
+          _id: saved._id,
+          text: saved.text,
+          reactions: [],
+          createdAt: saved.createdAt,
+          user: {
+            _id: socket.user._id,
+            name: socket.user.name,
+            username: socket.user.username,
+            profilePic: socket.user.profilePic,
+          },
+        };
+        io.to(`hachi:${roomId}`).emit('hachiMessage', { roomId, message: populated });
+      } catch (err) {
+        console.error('hachiSend error:', err.message);
+      }
+    });
+
+    socket.on('hachiSendVoice', async ({ roomId, voiceUrl, voiceDuration }) => {
+      if (!socket.user || !voiceUrl) return;
+      try {
+        const Hachi = require('../models/Hachi');
+        const room = await Hachi.findById(roomId);
+        if (!room || !room.isActive) return;
+
+        const msg = { user: socket.user._id, voiceUrl, voiceDuration: voiceDuration || 0, createdAt: new Date() };
+        room.messages.push(msg);
+
+        const uid = socket.user._id.toString();
+        const alreadyMember = room.members.some((m) => m.toString() === uid);
+        if (!alreadyMember) {
+          room.members.push(socket.user._id);
+          room.memberCount = room.members.length;
+        }
+        await room.save();
+
+        const saved = room.messages[room.messages.length - 1];
+        const populated = {
+          _id: saved._id,
+          voiceUrl: saved.voiceUrl,
+          voiceDuration: saved.voiceDuration,
+          reactions: [],
+          createdAt: saved.createdAt,
+          user: {
+            _id: socket.user._id,
+            name: socket.user.name,
+            username: socket.user.username,
+            profilePic: socket.user.profilePic,
+          },
+        };
+        io.to(`hachi:${roomId}`).emit('hachiMessage', { roomId, message: populated });
+      } catch (err) {
+        console.error('hachiSendVoice error:', err.message);
+      }
+    });
+
+    // ── Per-message emoji reactions ───────────────────────────────
+    socket.on('hachiMessageReact', async ({ roomId, messageId, emoji }) => {
+      if (!socket.user || !emoji) return;
+      try {
+        const Hachi = require('../models/Hachi');
+        const room = await Hachi.findById(roomId);
+        if (!room || !room.isActive) return;
+
+        const msg = room.messages.id(messageId);
+        if (!msg) return;
+
+        const uid = socket.user._id.toString();
+        const existing = msg.reactions.find((r) => r.emoji === emoji);
+
+        if (existing) {
+          const idx = existing.users.findIndex((u) => u.toString() === uid);
+          if (idx >= 0) {
+            existing.users.splice(idx, 1);
+            if (existing.users.length === 0) {
+              msg.reactions = msg.reactions.filter((r) => r.emoji !== emoji);
+            }
+          } else {
+            existing.users.push(socket.user._id);
+          }
+        } else {
+          msg.reactions.push({ emoji, users: [socket.user._id] });
+        }
+
+        await room.save();
+
+        // Broadcast updated reactions (include user IDs so clients can derive isReacted)
+        const reactionsOut = msg.reactions.map((r) => ({
+          emoji: r.emoji,
+          count: r.users.length,
+          users: r.users.map((u) => u.toString()),
+        }));
+        io.to(`hachi:${roomId}`).emit('hachiMessageReaction', { roomId, messageId, reactions: reactionsOut });
+      } catch (err) {
+        console.error('hachiMessageReact error:', err.message);
+      }
+    });
+
+    // ── Moderator: kick a member ──────────────────────────────────
+    socket.on('hachiKickMember', async ({ roomId, userId, deleteMessages }) => {
+      if (!socket.user) return;
+      try {
+        const Hachi = require('../models/Hachi');
+        const room = await Hachi.findById(roomId);
+        if (!room || !room.isActive) return;
+
+        // Only creator can kick
+        if (room.creator.toString() !== socket.user._id.toString()) return;
+        if (userId === socket.user._id.toString()) return;
+
+        room.members = room.members.filter((m) => m.toString() !== userId);
+        room.memberCount = room.members.length;
+        if (!room.blockedMembers.some((b) => b.toString() === userId)) {
+          room.blockedMembers.push(userId);
+        }
+
+        // Optionally delete the user's messages
+        if (deleteMessages) {
+          const removedIds = room.messages
+            .filter((m) => m.user.toString() === userId)
+            .map((m) => m._id.toString());
+          room.messages = room.messages.filter((m) => m.user.toString() !== userId);
+          // Remove any pinned messages that belonged to this user
+          room.pinnedMessages = (room.pinnedMessages || []).filter(
+            (pid) => !removedIds.includes(pid.toString())
+          );
+        }
+
+        await room.save();
+
+        // Force-leave the kicked user's socket from the room
+        const userSockets = await io.in(`user:${userId}`).fetchSockets();
+        userSockets.forEach((s) => s.leave(`hachi:${roomId}`));
+
+        io.to(`user:${userId}`).emit('hachiKicked', { roomId });
+        io.to(`hachi:${roomId}`).emit('hachiMemberCount', { roomId, count: room.memberCount });
+        io.to(`hachi:${roomId}`).emit('hachiMemberKicked', { roomId, userId });
+        if (deleteMessages) {
+          io.to(`hachi:${roomId}`).emit('hachiMessagesRemoved', { roomId, userId, pinnedMessages: room.pinnedMessages });
+        }
+      } catch (err) {
+        console.error('hachiKickMember error:', err.message);
+      }
+    });
+
+    // ── Moderator: pin / unpin a message (max 3) ──────────────────
+    socket.on('hachiPinMessage', async ({ roomId, messageId }) => {
+      if (!socket.user) return;
+      try {
+        const Hachi = require('../models/Hachi');
+        const room = await Hachi.findById(roomId);
+        if (!room || !room.isActive) return;
+        if (room.creator.toString() !== socket.user._id.toString()) return;
+
+        const msg = room.messages.id(messageId);
+        if (!msg) return;
+
+        const pinnedStrs = (room.pinnedMessages || []).map((p) => p.toString());
+        const alreadyPinned = pinnedStrs.includes(messageId.toString());
+
+        if (alreadyPinned) {
+          room.pinnedMessages = room.pinnedMessages.filter(
+            (p) => p.toString() !== messageId.toString()
+          );
+        } else {
+          if (pinnedStrs.length >= 3) {
+            socket.emit('hachiError', { message: 'لا يمكن تثبيت أكثر من 3 رسائل.' });
+            return;
+          }
+          room.pinnedMessages.push(messageId);
+        }
+
+        await room.save();
+        io.to(`hachi:${roomId}`).emit('hachiPinUpdate', {
+          roomId,
+          pinnedMessages: room.pinnedMessages.map((p) => p.toString()),
+        });
+      } catch (err) {
+        console.error('hachiPinMessage error:', err.message);
+      }
+    });
+
+    // ── Private room: approve / reject join request ───────────────
+    socket.on('hachiApproveJoin', async ({ roomId, userId }) => {
+      if (!socket.user) return;
+      try {
+        const Hachi = require('../models/Hachi');
+        const room = await Hachi.findById(roomId);
+        if (!room || room.creator.toString() !== socket.user._id.toString()) return;
+
+        room.joinRequests = room.joinRequests.filter((r) => r.user.toString() !== userId);
+        if (!room.members.some((m) => m.toString() === userId)) {
+          room.members.push(userId);
+          room.memberCount = room.members.length;
+        }
+        await room.save();
+
+        // Let the approved user's sockets join the room channel
+        const userSockets = await io.in(`user:${userId}`).fetchSockets();
+        userSockets.forEach((s) => s.join(`hachi:${roomId}`));
+
+        io.to(`user:${userId}`).emit('hachiJoinApproved', { roomId });
+        const count = io.sockets.adapter.rooms.get(`hachi:${roomId}`)?.size || 0;
+        io.to(`hachi:${roomId}`).emit('hachiMemberCount', { roomId, count });
+      } catch (err) {
+        console.error('hachiApproveJoin error:', err.message);
+      }
+    });
+
+    socket.on('hachiRejectJoin', async ({ roomId, userId }) => {
+      if (!socket.user) return;
+      try {
+        const Hachi = require('../models/Hachi');
+        const room = await Hachi.findById(roomId);
+        if (!room || room.creator.toString() !== socket.user._id.toString()) return;
+
+        room.joinRequests = room.joinRequests.filter((r) => r.user.toString() !== userId);
+        await room.save();
+
+        io.to(`user:${userId}`).emit('hachiJoinRejected', { roomId });
+      } catch (err) {
+        console.error('hachiRejectJoin error:', err.message);
+      }
+    });
+
+    // ── Hachi pulse reactions (room-level — kept for backwards compat) ─
+    socket.on('hachiReact', async ({ roomId, type }) => {
+      if (!socket.user || !['fire', 'eyes', 'skull'].includes(type)) return;
+      try {
+        const Hachi = require('../models/Hachi');
+        const room = await Hachi.findByIdAndUpdate(
+          roomId,
+          { $inc: { [`reactions.${type}`]: 1 } },
+          { new: true }
+        ).select('reactions');
+        if (!room) return;
+        io.to(`hachi:${roomId}`).emit('hachiReactionUpdate', { roomId, reactions: room.reactions });
+      } catch (err) {
+        console.error('hachiReact error:', err.message);
+      }
+    });
+
     // ── Now Bar: live situation updates (admin broadcast) ─────────
     socket.on('broadcastNowBar', (data) => {
-      // In production: verify this socket is from an admin user
       io.emit('nowBarUpdate', data);
     });
 
@@ -97,7 +419,6 @@ const initSocket = (server) => {
       }
     });
 
-    // ── Error handling ────────────────────────────────────────────
     socket.on('error', (err) => {
       console.error(`Socket error for ${socket.id}:`, err.message);
     });

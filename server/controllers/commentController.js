@@ -1,6 +1,8 @@
 const Comment = require('../models/Comment');
 const Post = require('../models/Post');
 const Notification = require('../models/Notification');
+const User = require('../models/User');
+const { sendToUser } = require('../services/pushService');
 
 // @desc    Get comments for a post
 // @route   GET /api/posts/:id/comments
@@ -75,8 +77,9 @@ const addComment = async (req, res, next) => {
       depth,
     });
 
-    // Update counts
+    // Update counts + award hachiPoints to commenter
     await Post.findByIdAndUpdate(req.params.id, { $inc: { commentsCount: 1 } });
+    await User.findByIdAndUpdate(req.user._id, { $inc: { hachiPoints: 1 } });
     if (parentId) {
       await Comment.findByIdAndUpdate(parentId, { $inc: { repliesCount: 1 } });
     }
@@ -103,6 +106,15 @@ const addComment = async (req, res, next) => {
           postId: post._id,
         });
       }
+
+      // Push notification
+      const postAuthor = await User.findById(post.userId).select('expoPushToken notificationSettings');
+      sendToUser(
+        postAuthor, 'comments',
+        parentId ? 'New reply' : 'New comment',
+        `@${req.user.username} ${parentId ? 'replied to your comment' : 'commented on your post'}`,
+        { type: parentId ? 'reply' : 'comment', postId: post._id.toString() }
+      );
     }
 
     // If it's a reply, notify parent comment author

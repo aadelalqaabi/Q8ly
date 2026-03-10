@@ -1,49 +1,54 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useDispatch, useSelector } from 'react-redux';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { restoreSession } from '../store/slices/authSlice';
 import { addNotificationRealtime } from '../store/slices/notificationsSlice';
-import { addNowBarItem } from '../store/slices/uiSlice';
 import { getSocket } from '../services/socket';
-import { COLORS } from '../constants';
+import { useTheme } from '../context/ThemeContext';
+import { registerForPushNotifications } from '../services/notificationService';
+import * as Notifications from 'expo-notifications';
 
-// Screens
-import LoginScreen from '../screens/auth/LoginScreen';
-import RegisterScreen from '../screens/auth/RegisterScreen';
+import PhoneScreen from '../screens/auth/PhoneScreen';
+import OtpScreen from '../screens/auth/OtpScreen';
+import NameScreen from '../screens/auth/NameScreen';
 import HomeScreen from '../screens/home/HomeScreen';
-import TopicsScreen from '../screens/topics/TopicsScreen';
-import TopicDetailScreen from '../screens/topics/TopicDetailScreen';
-import SpacesScreen from '../screens/spaces/SpacesScreen';
-import SpaceDetailScreen from '../screens/spaces/SpaceDetailScreen';
 import DiscoverScreen from '../screens/discover/DiscoverScreen';
+import NotificationsScreen from '../screens/notifications/NotificationsScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import EditProfileScreen from '../screens/profile/EditProfileScreen';
 import PostDetailScreen from '../screens/post/PostDetailScreen';
 import CreatePostScreen from '../screens/post/CreatePostScreen';
-import NotificationsScreen from '../screens/notifications/NotificationsScreen';
-import SearchScreen from '../screens/discover/SearchScreen';
-import EventDetailScreen from '../screens/discover/EventDetailScreen';
+import HachiScreen from '../screens/hachi/HachiScreen';
+import HachiRoomScreen from '../screens/hachi/HachiRoomScreen';
+import SettingsScreen from '../screens/settings/SettingsScreen';
+import MediaViewerScreen from '../screens/media/MediaViewerScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 function MainTabs() {
-  const { unreadCount } = useSelector((s) => s.notifications);
-
+  const insets = useSafeAreaInsets();
+  const { colors: COLORS } = useTheme();
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: COLORS.primary,
+        tabBarActiveTintColor: COLORS.accent,
         tabBarInactiveTintColor: COLORS.textMuted,
+        tabBarShowLabel: false,
         tabBarStyle: {
-          borderTopColor: COLORS.border,
           backgroundColor: COLORS.white,
+          borderTopColor: COLORS.separator,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          height: 49 + insets.bottom,
+          paddingTop: 8,
+          paddingBottom: insets.bottom,
         },
       }}
     >
@@ -51,40 +56,27 @@ function MainTabs() {
         name="Home"
         component={HomeScreen}
         options={{
-          tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} />,
-          tabBarLabel: 'Home',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'flame' : 'flame-outline'} size={26} color={color} />
+          ),
         }}
       />
       <Tab.Screen
-        name="Topics"
-        component={TopicsScreen}
+        name="Hachi"
+        component={HachiScreen}
         options={{
-          tabBarIcon: ({ color, size }) => <Ionicons name="flame" size={size} color={color} />,
-          tabBarLabel: 'Topics',
-        }}
-      />
-      <Tab.Screen
-        name="Spaces"
-        component={SpacesScreen}
-        options={{
-          tabBarIcon: ({ color, size }) => <Ionicons name="people" size={size} color={color} />,
-          tabBarLabel: 'Spaces',
-        }}
-      />
-      <Tab.Screen
-        name="Discover"
-        component={DiscoverScreen}
-        options={{
-          tabBarIcon: ({ color, size }) => <Ionicons name="compass" size={size} color={color} />,
-          tabBarLabel: 'Discover',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'chatbubbles' : 'chatbubbles-outline'} size={26} color={color} />
+          ),
         }}
       />
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
         options={{
-          tabBarIcon: ({ color, size }) => <Ionicons name="person" size={size} color={color} />,
-          tabBarLabel: 'Profile',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'person-circle' : 'person-circle-outline'} size={28} color={color} />
+          ),
         }}
       />
     </Tab.Navigator>
@@ -94,84 +86,97 @@ function MainTabs() {
 function AuthStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="Register" component={RegisterScreen} />
+      <Stack.Screen name="Phone" component={PhoneScreen} />
+      <Stack.Screen name="OtpVerify" component={OtpScreen} />
     </Stack.Navigator>
   );
 }
 
 function AppStack() {
+  const { colors: COLORS } = useTheme();
   return (
     <Stack.Navigator
       screenOptions={{
         headerStyle: { backgroundColor: COLORS.white },
-        headerTintColor: COLORS.primary,
-        headerTitleStyle: { fontWeight: '700' },
+        headerTintColor: COLORS.accent,
+        headerTitleStyle: { fontWeight: '600', fontSize: 17, color: COLORS.text },
+        headerShadowVisible: false,
+        headerBackTitleVisible: false,
+        contentStyle: { backgroundColor: COLORS.white },
       }}
     >
       <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
-      <Stack.Screen name="PostDetail" component={PostDetailScreen} options={{ title: 'Post' }} />
-      <Stack.Screen name="CreatePost" component={CreatePostScreen} options={{ title: 'New Post', presentation: 'modal' }} />
-      <Stack.Screen name="TopicDetail" component={TopicDetailScreen} />
-      <Stack.Screen name="SpaceDetail" component={SpaceDetailScreen} />
-      <Stack.Screen name="ProfileDetail" component={ProfileScreen} />
-      <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ title: 'Edit Profile' }} />
-      <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Notifications' }} />
-      <Stack.Screen name="Search" component={SearchScreen} options={{ title: 'Search' }} />
-      <Stack.Screen name="EventDetail" component={EventDetailScreen} options={{ title: 'Event' }} />
+      <Stack.Screen name="PostDetail" component={PostDetailScreen} options={{ title: '' }} />
+      <Stack.Screen name="CreatePost" component={CreatePostScreen} options={{ headerShown: false, presentation: 'modal' }} />
+      <Stack.Screen name="ProfileDetail" component={ProfileScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="HachiRoom" component={HachiRoomScreen} options={{ title: '', headerShadowVisible: false }} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="Discover" component={DiscoverScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false }} />
+      <Stack.Screen
+        name="MediaViewer"
+        component={MediaViewerScreen}
+        options={{ headerShown: false, presentation: 'transparentModal', animation: 'fade', contentStyle: { backgroundColor: 'transparent' } }}
+      />
     </Stack.Navigator>
   );
 }
 
 export default function AppNavigator() {
   const dispatch = useDispatch();
-  const { isAuthenticated, isSessionRestored, isLoading } = useSelector((s) => s.auth);
+  const { isAuthenticated, isSessionRestored, needsName } = useSelector((s) => s.auth);
+  const { colors: COLORS } = useTheme();
+  const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
 
-  useEffect(() => {
-    dispatch(restoreSession());
-  }, []);
+  useEffect(() => { dispatch(restoreSession()); }, []);
 
-  // Socket event listeners
   useEffect(() => {
     if (!isAuthenticated) return;
-
     const socket = getSocket();
     if (!socket) return;
-
-    socket.on('notification', (notification) => {
-      dispatch(addNotificationRealtime(notification));
-    });
-
-    socket.on('nowBarUpdate', (item) => {
-      dispatch(addNowBarItem(item));
-    });
-
-    return () => {
-      socket.off('notification');
-      socket.off('nowBarUpdate');
-    };
+    socket.on('notification', (n) => dispatch(addNotificationRealtime(n)));
+    return () => { socket.off('notification'); };
   }, [isAuthenticated]);
 
-  if (!isSessionRestored || isLoading) {
+  // Register for Expo push notifications once authenticated
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    registerForPushNotifications();
+  }, [isAuthenticated]);
+
+  // Handle tapping a push notification while app is background/killed
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener(() => {
+      // Navigation to Notifications screen could be added here if needed
+    });
+    return () => sub.remove();
+  }, []);
+
+  if (!isSessionRestored) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={COLORS.accent} />
       </View>
     );
   }
 
+  let content;
+  if (!isAuthenticated) content = <AuthStack />;
+  else if (needsName) content = (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="NameSetup" component={NameScreen} />
+    </Stack.Navigator>
+  );
+  else content = <AppStack />;
+
   return (
     <NavigationContainer>
-      {isAuthenticated ? <AppStack /> : <AuthStack />}
+      {content}
     </NavigationContainer>
   );
 }
 
-const styles = StyleSheet.create({
-  loading: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: COLORS.white,
-  },
+const makeStyles = (C) => StyleSheet.create({
+  loading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: C.white },
 });

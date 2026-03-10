@@ -12,11 +12,16 @@ cloudinary.config({
 const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
-  const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/quicktime'];
+  const allowed = [
+    'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+    'video/mp4', 'video/quicktime',
+    'audio/m4a', 'audio/mp4', 'audio/mpeg', 'audio/aac',
+    'audio/wav', 'audio/x-m4a', 'audio/x-wav',
+  ];
   if (allowed.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('File type not supported. Allowed: JPEG, PNG, GIF, WebP, MP4, MOV'), false);
+    cb(new Error('File type not supported. Allowed: JPEG, PNG, GIF, WebP, MP4, MOV, M4A, MP3, AAC, WAV'), false);
   }
 };
 
@@ -111,4 +116,49 @@ const uploadCoverPhoto = async (req, res, next) => {
   }
 };
 
-module.exports = { upload, uploadImages, uploadProfilePic, uploadCoverPhoto };
+// @desc    Upload a video
+// @route   POST /api/upload/video
+// @access  Private
+const uploadVideo = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+
+    const result = await uploadToCloudinary(req.file.buffer, {
+      folder: 'kuwait-now/videos',
+      resource_type: 'video',
+      transformation: [{ quality: 'auto' }],
+    });
+
+    // Cloudinary generates a poster thumbnail by swapping the extension to .jpg
+    const thumbnail = result.secure_url.replace(/\.[^/.]+$/, '.jpg');
+
+    res.json({ success: true, url: result.secure_url, thumbnail });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Upload a voice note (audio)
+// @route   POST /api/upload/audio
+// @access  Private
+const uploadAudio = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+
+    const result = await uploadToCloudinary(req.file.buffer, {
+      folder: 'kuwait-now/audio',
+      resource_type: 'video', // Cloudinary uses 'video' resource_type for audio
+      transformation: [{ quality: 'auto' }],
+    });
+
+    res.json({ success: true, url: result.secure_url, duration: result.duration || 0 });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { upload, uploadImages, uploadProfilePic, uploadCoverPhoto, uploadVideo, uploadAudio };

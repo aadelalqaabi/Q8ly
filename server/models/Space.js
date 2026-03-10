@@ -85,7 +85,6 @@ const spaceSchema = new mongoose.Schema(
   }
 );
 
-spaceSchema.index({ slug: 1 });
 spaceSchema.index({ type: 1 });
 spaceSchema.index({ district: 1 });
 spaceSchema.index({ trendingScore: -1 });
