@@ -74,8 +74,8 @@
       "expo-font"
     ],
     "extra": {
-      "API_URL": "http://192.168.0.247:5001/api",
-      "SOCKET_URL": "http://192.168.0.247:5001",
+      "API_URL": "https://kuwaa-production.up.railway.app/api",
+      "SOCKET_URL": "https://kuwaa-production.up.railway.app",
       "eas": {
         "projectId": "75fe5b25-a004-4cec-a932-f72d6d68379c"
       }
