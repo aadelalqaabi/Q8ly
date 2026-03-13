@@ -425,13 +425,17 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
   const handleBookmark = async () => {
     const next = !bookmarked;
     setBookmarked(next);
+    dispatch(updateBookmark({ postId: post._id, bookmarked: next }));
     try {
-      const res = await postsAPI.toggleBookmark(post._id);
+      const res = await postsAPI.toggleBookmark(post._id, next);
       const confirmed = res?.bookmarked ?? next;
-      setBookmarked(confirmed);
-      dispatch(updateBookmark({ postId: post._id, bookmarked: confirmed }));
+      if (confirmed !== next) {
+        setBookmarked(confirmed);
+        dispatch(updateBookmark({ postId: post._id, bookmarked: confirmed }));
+      }
     } catch {
       setBookmarked(!next);
+      dispatch(updateBookmark({ postId: post._id, bookmarked: !next }));
     }
   };
 

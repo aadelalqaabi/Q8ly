@@ -534,10 +534,14 @@ const toggleBookmark = async (req, res, next) => {
     const user = await User.findById(req.user._id);
     const isBookmarked = user.bookmarks.some((id) => id.toString() === req.params.id);
 
-    if (isBookmarked) {
-      user.bookmarks.pull(req.params.id);
-    } else {
+    // Use explicit client intent when provided; fall back to toggle
+    const intent = req.body?.bookmarked;
+    const targetState = intent !== undefined ? Boolean(intent) : !isBookmarked;
+
+    if (targetState && !isBookmarked) {
       user.bookmarks.push(req.params.id);
+    } else if (!targetState && isBookmarked) {
+      user.bookmarks.pull(req.params.id);
     }
     await user.save({ validateBeforeSave: false });
 
@@ -545,7 +549,7 @@ const toggleBookmark = async (req, res, next) => {
     const { invalidateUserCache } = require('../middleware/auth');
     invalidateUserCache(req.user._id);
 
-    res.json({ success: true, bookmarked: !isBookmarked });
+    res.json({ success: true, bookmarked: targetState });
   } catch (error) {
     next(error);
   }
