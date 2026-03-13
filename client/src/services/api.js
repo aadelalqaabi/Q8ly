@@ -149,6 +149,8 @@ export const hachiAPI = {
   getRoom: (id) => api.get(`/hachi/${id}`),
   react: (id, type) => api.post(`/hachi/${id}/react`, { type }),
   closeRoom: (id) => api.delete(`/hachi/${id}`),
+  getMyCircles: () => api.get('/hachi/my'),
+  deleteRoom: (id) => api.delete(`/hachi/${id}/delete`),
 };
 
 // ── Upload ────────────────────────────────────────────────────────────────────

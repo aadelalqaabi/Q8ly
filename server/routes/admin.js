@@ -5,6 +5,7 @@ const {
   login, getStats, getUsers, banUser, deleteUser, verifyUser,
   getPosts, removePost, getReportedPosts, dismissReport, getSuggestions, updateSuggestion,
   sendPushNotification, getVerificationRequests, handleVerificationRequest,
+  getCircles, forceCloseCircle,
 } = require('../controllers/adminController');
 const { getAllAds, createAd, updateAd, deleteAd } = require('../controllers/adController');
 
@@ -35,6 +36,10 @@ router.patch('/verify-requests/:id', handleVerificationRequest);
 
 // Push notifications
 router.post('/push', sendPushNotification);
+
+// Circles management
+router.get('/circles', getCircles);
+router.delete('/circles/:id', forceCloseCircle);
 
 // Ads management
 router.get('/ads', getAllAds);

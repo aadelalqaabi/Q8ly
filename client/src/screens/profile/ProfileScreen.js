@@ -7,7 +7,7 @@ import { useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { usersAPI } from '../../services/api';
+import { usersAPI, hachiAPI } from '../../services/api';
 import PostCard from '../../components/post/PostCard';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -67,7 +67,12 @@ function fmt(n) {
 }
 
 
-const TABS = ['posts', 'bookmarks'];
+const TABS = ['posts', 'bookmarks', 'circles'];
+const TAB_ICONS = {
+  posts: 'grid-outline',
+  bookmarks: 'bookmark-outline',
+  circles: 'chatbubbles-outline',
+};
 
 export default function ProfileScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
@@ -84,6 +89,7 @@ export default function ProfileScreen({ navigation, route }) {
   const [profile, setProfile] = useState(isOwnProfile ? currentUser : null);
   const [posts, setPosts] = useState([]);
   const [bookmarks, setBookmarks] = useState([]);
+  const [circles, setCircles] = useState([]);
   const [activeTab, setActiveTab] = useState('posts');
   const [isLoading, setIsLoading] = useState(!isOwnProfile);
   const [postsLoading, setPostsLoading] = useState(false);
@@ -125,6 +131,16 @@ export default function ProfileScreen({ navigation, route }) {
     finally { setPostsLoading(false); }
   }, [isOwnProfile]);
 
+  const loadCircles = useCallback(async () => {
+    if (!profile?._id) return;
+    setPostsLoading(true);
+    try {
+      const res = await hachiAPI.getMyCircles();
+      setCircles(res.rooms || []);
+    } catch (e) { console.error(e); }
+    finally { setPostsLoading(false); }
+  }, [profile?._id]);
+
   useEffect(() => {
     const init = async () => {
       if (!isOwnProfile) setIsLoading(true);
@@ -138,6 +154,9 @@ export default function ProfileScreen({ navigation, route }) {
   useEffect(() => {
     if (activeTab === 'bookmarks' && isOwnProfile && bookmarks.length === 0) {
       loadBookmarks();
+    }
+    if (activeTab === 'circles' && circles.length === 0) {
+      loadCircles();
     }
   }, [activeTab]);
 
@@ -329,27 +348,21 @@ export default function ProfileScreen({ navigation, route }) {
       </View>
 
       {/* Tabs */}
-      {isOwnProfile ? (
-        <View style={styles.tabs}>
-          {TABS.map((tab) => (
-            <TouchableOpacity key={tab} style={[styles.tab, activeTab === tab && styles.tabActive]} onPress={() => setActiveTab(tab)} activeOpacity={0.7}>
-              <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-                {tab === 'posts' ? t('profile.posts') : t('profile.bookmarks')}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      ) : (
-        <View style={styles.postsHeader}>
-          <View style={styles.postsHeaderLine} />
-          <Text style={styles.postsHeaderText}>{t('profile.posts')}</Text>
-          <View style={styles.postsHeaderLine} />
-        </View>
-      )}
+      <View style={styles.tabs}>
+        {TABS.filter((tab) => (tab === 'posts') || isOwnProfile).map((tab) => (
+          <TouchableOpacity key={tab} style={[styles.tab, activeTab === tab && styles.tabActive]} onPress={() => setActiveTab(tab)} activeOpacity={0.7}>
+            <Ionicons
+              name={TAB_ICONS[tab]}
+              size={20}
+              color={activeTab === tab ? COLORS.accent : COLORS.textMuted}
+            />
+          </TouchableOpacity>
+        ))}
+      </View>
     </View>
   );
 
-  const displayPosts = activeTab === 'bookmarks' ? bookmarks : posts;
+  const displayPosts = activeTab === 'bookmarks' ? bookmarks : activeTab === 'circles' ? [] : posts;
 
   if (isLoading) {
     return (
@@ -367,12 +380,73 @@ export default function ProfileScreen({ navigation, route }) {
         renderItem={({ item }) => <PostCard post={item} navigation={navigation} />}
         ListHeaderComponent={renderHeader}
         ListFooterComponent={
-          postsLoading
-            ? <ActivityIndicator size="small" color={COLORS.accent} style={{ padding: 20 }} />
-            : <View style={{ height: insets.bottom + 24 }} />
+          activeTab === 'circles' ? (
+            <View>
+              {circles.map((room) => (
+                <View key={room._id} style={styles.circleRow}>
+                  <TouchableOpacity
+                    style={styles.circleRowMain}
+                    onPress={() => navigation.navigate('HachiRoom', { roomId: room._id })}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.circleDot, { backgroundColor: room.isActive ? '#34C759' : COLORS.separator }]} />
+                    <View style={styles.circleInfo}>
+                      <Text style={styles.circleTitle} numberOfLines={1}>{room.title}</Text>
+                      <Text style={styles.circleMeta}>{room.memberCount || 1} members · {room.category}</Text>
+                    </View>
+                    {room.isActive ? (
+                      <View style={[styles.circleLiveBadge, { backgroundColor: '#34C75918' }]}>
+                        <Text style={styles.circleLiveText}>Live</Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.circleEndedText}>Ended</Text>
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.circleDeleteBtn}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    onPress={() => {
+                      Alert.alert(
+                        'Delete Circle?',
+                        'This will permanently delete the circle and all its messages.',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Delete',
+                            style: 'destructive',
+                            onPress: async () => {
+                              try {
+                                await hachiAPI.deleteRoom(room._id);
+                                setCircles((prev) => prev.filter((r) => r._id !== room._id));
+                              } catch (e) {
+                                Alert.alert('Error', e.message || 'Failed to delete');
+                              }
+                            },
+                          },
+                        ]
+                      );
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="trash-outline" size={18} color="#FF3B30" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+              {!postsLoading && circles.length === 0 && (
+                <View style={styles.empty}>
+                  <Text style={styles.emptyText}>No circles yet</Text>
+                </View>
+              )}
+              <View style={{ height: insets.bottom + 24 }} />
+            </View>
+          ) : (
+            postsLoading
+              ? <ActivityIndicator size="small" color={COLORS.accent} style={{ padding: 20 }} />
+              : <View style={{ height: insets.bottom + 24 }} />
+          )
         }
         ListEmptyComponent={
-          !postsLoading ? (
+          !postsLoading && activeTab !== 'circles' ? (
             <View style={styles.empty}>
               <Text style={styles.emptyText}>
                 {activeTab === 'bookmarks' ? 'No bookmarks yet' : t('profile.noPostsYet')}
@@ -384,7 +458,12 @@ export default function ProfileScreen({ navigation, route }) {
         onEndReachedThreshold={0.4}
         showsVerticalScrollIndicator={false}
         refreshing={false}
-        onRefresh={() => { loadProfile(); activeTab === 'posts' ? loadPosts(1) : loadBookmarks(); }}
+        onRefresh={() => {
+          loadProfile();
+          if (activeTab === 'posts') loadPosts(1);
+          else if (activeTab === 'bookmarks') loadBookmarks();
+          else loadCircles();
+        }}
       />
 
     </View>
@@ -440,4 +519,28 @@ const makeStyles = (C) => StyleSheet.create({
 
   empty: { paddingTop: 48, alignItems: 'center' },
   emptyText: { fontSize: 15, color: C.textMuted },
+
+  circleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingRight: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: C.separator,
+  },
+  circleRowMain: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: 16,
+    paddingVertical: 14,
+    gap: 12,
+  },
+  circleDot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
+  circleInfo: { flex: 1 },
+  circleTitle: { fontSize: 15, fontWeight: '600', color: C.text },
+  circleMeta: { fontSize: 12, color: C.textMuted, marginTop: 2 },
+  circleLiveBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10 },
+  circleLiveText: { fontSize: 12, fontWeight: '700', color: '#34C759' },
+  circleEndedText: { fontSize: 12, color: C.textMuted },
+  circleDeleteBtn: { paddingLeft: 12, paddingVertical: 14 },
 });

@@ -390,6 +390,59 @@ exports.handleVerificationRequest = async (req, res) => {
   }
 };
 
+// GET /api/admin/circles?page=1&limit=20&active=true
+exports.getCircles = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const activeFilter = req.query.active;
+
+    const query = {};
+    if (activeFilter === 'true') query.isActive = true;
+    if (activeFilter === 'false') query.isActive = false;
+
+    const [circles, total] = await Promise.all([
+      Hachi.find(query)
+        .populate('creator', 'username name profilePic')
+        .select('-messages')
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
+      Hachi.countDocuments(query),
+    ]);
+
+    res.json({ success: true, circles, total, page, pages: Math.ceil(total / limit) });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// DELETE /api/admin/circles/:id — force close (admin bypass)
+exports.forceCloseCircle = async (req, res) => {
+  try {
+    const room = await Hachi.findById(req.params.id);
+    if (!room) return res.status(404).json({ success: false, message: 'Circle not found' });
+
+    room.isActive = false;
+    room.summary = {
+      messageCount: room.messages.length,
+      participantCount: room.members.length,
+      excerpt: (room.messages[0]?.text || '').slice(0, 120),
+    };
+    await room.save();
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`hachi:${room._id}`).emit('hachiRoomClosed', { roomId: room._id });
+      io.emit('hachiRoomRemoved', { roomId: room._id });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 // PATCH /api/admin/suggestions/:id
 exports.updateSuggestion = async (req, res) => {
   try {

@@ -59,9 +59,14 @@ const dmSlice = createSlice({
   reducers: {
     addRealtimeMessage(state, action) {
       const { conversationId, message } = action.payload;
-      if (state.activeConversation?.conversation?._id === conversationId) {
+      const isActiveConv = state.activeConversation?.conversation?._id?.toString() === conversationId?.toString();
+
+      if (isActiveConv) {
+        // User is currently viewing this conversation — just append, no unread increment
         state.activeConversation.conversation.messages.push(message);
+        return;
       }
+
       const conv = state.conversations.find((c) => c._id === conversationId)
         || state.requests.find((c) => c._id === conversationId);
       if (conv) {
@@ -83,6 +88,13 @@ const dmSlice = createSlice({
     clearActiveConversation(state) {
       state.activeConversation = null;
     },
+    markConversationSeen(state) {
+      if (state.activeConversation?.conversation?.messages) {
+        state.activeConversation.conversation.messages.forEach((m) => {
+          m.isRead = true;
+        });
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -100,6 +112,16 @@ const dmSlice = createSlice({
       .addCase(fetchConversation.fulfilled, (state, action) => {
         state.loading = false;
         state.activeConversation = action.payload;
+        // Clear unread count for this conversation in the list immediately
+        const convId = action.payload?.conversation?._id?.toString();
+        if (convId) {
+          const conv = state.conversations.find((c) => c._id?.toString() === convId)
+            || state.requests.find((c) => c._id?.toString() === convId);
+          if (conv && conv.unread > 0) {
+            state.dmUnreadCount = Math.max(0, state.dmUnreadCount - conv.unread);
+            conv.unread = 0;
+          }
+        }
       })
       .addCase(fetchConversation.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
 
@@ -127,5 +149,5 @@ const dmSlice = createSlice({
   },
 });
 
-export const { addRealtimeMessage, setDmUnreadCount, clearActiveConversation, clearNeedsRefresh } = dmSlice.actions;
+export const { addRealtimeMessage, setDmUnreadCount, clearActiveConversation, clearNeedsRefresh, markConversationSeen } = dmSlice.actions;
 export default dmSlice.reducer;

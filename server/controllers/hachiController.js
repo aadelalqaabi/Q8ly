@@ -1,11 +1,14 @@
 const Hachi = require('../models/Hachi');
 
-// GET /api/hachi — list active rooms (optional ?category=food)
+// GET /api/hachi — list active rooms (optional ?category=food&creator=userId)
 exports.getRooms = async (req, res) => {
   try {
     const query = { isActive: true };
     if (req.query.category && req.query.category !== 'all') {
       query.category = req.query.category;
+    }
+    if (req.query.creator) {
+      query.creator = req.query.creator;
     }
     const rooms = await Hachi.find(query)
       .populate('creator', 'name username profilePic')
@@ -65,6 +68,9 @@ exports.getArchivedRooms = async (req, res) => {
     const query = { isActive: false, updatedAt: { $gte: sevenDaysAgo } };
     if (req.query.category && req.query.category !== 'all') {
       query.category = req.query.category;
+    }
+    if (req.query.creator) {
+      query.creator = req.query.creator;
     }
     const rooms = await Hachi.find(query)
       .populate('creator', 'name username profilePic')
@@ -149,6 +155,44 @@ exports.closeRoom = async (req, res) => {
     const io = req.app.get('io');
     io.to(`hachi:${room._id}`).emit('hachiRoomClosed', { roomId: room._id });
     io.emit('hachiRoomRemoved', { roomId: room._id });
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// GET /api/hachi/my — all rooms created by current user (active + ended)
+exports.getMyRooms = async (req, res) => {
+  try {
+    const rooms = await Hachi.find({ creator: req.user._id })
+      .populate('creator', 'name username profilePic')
+      .select('-messages')
+      .sort({ createdAt: -1 })
+      .limit(100);
+    res.json({ success: true, rooms });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// DELETE /api/hachi/:id/delete — permanently delete a circle (creator only)
+exports.deleteRoom = async (req, res) => {
+  try {
+    const room = await Hachi.findById(req.params.id);
+    if (!room) return res.status(404).json({ success: false, message: 'Room not found' });
+
+    if (room.creator.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`hachi:${room._id}`).emit('hachiRoomClosed', { roomId: room._id });
+      io.emit('hachiRoomRemoved', { roomId: room._id });
+    }
+
+    await Hachi.deleteOne({ _id: room._id });
 
     res.json({ success: true });
   } catch (err) {
