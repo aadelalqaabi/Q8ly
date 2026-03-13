@@ -4,7 +4,7 @@
     "slug": "kuwait-now",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./src/assets/icon.png",
+    "icon": "./src/assets/Logo.png",
     "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./src/assets/Splash.png",
@@ -24,7 +24,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./src/assets/adaptive-icon.png",
+        "foregroundImage": "./src/assets/Logo.png",
         "backgroundColor": "#0033A0"
       },
       "package": "app.kuwaitnow",

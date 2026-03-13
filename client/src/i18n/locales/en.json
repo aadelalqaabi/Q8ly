@@ -13,8 +13,8 @@
     "title": "KUWAI",
     "trending": "🔥 Trending Now",
     "noPostsYet": "Nothing here yet",
-    "followHint": "Follow TKs to see what's happening in KUWAIt",
-    "discoverBtn": "Find TKs to follow",
+    "followHint": "Follow users to see what's happening in Kuwait",
+    "discoverBtn": "Find users to follow",
     "filterAll": "All",
     "filterGovernment": "Government",
     "filterMedia": "Media",
@@ -61,6 +61,7 @@
     "posts": "Posts",
     "followers": "Followers",
     "followingPl": "Following",
+    "bookmarks": "Bookmarks",
     "noPostsYet": "No posts yet",
     "signOut": "Sign Out",
     "signOutMsg": "Are you sure?",
@@ -148,13 +149,13 @@
   },
 
   "discover": {
-    "title": "Find TKs",
-    "search": "Search TKs…",
-    "suggestedTitle": "TKs to Follow",
-    "noResultsTitle": "No TKs found",
+    "title": "Find Users",
+    "search": "Search users…",
+    "suggestedTitle": "Users to Follow",
+    "noResultsTitle": "No users found",
     "noResultsSub": "Try a different name or username",
     "noSuggestionsTitle": "No suggestions yet",
-    "noSuggestionsSub": "Come back later — we'll find your TKs"
+    "noSuggestionsSub": "Come back later — we'll find users for you"
   },
 
   "media": {

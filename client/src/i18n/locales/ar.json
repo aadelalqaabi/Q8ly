@@ -13,8 +13,8 @@
     "title": "KUWAI",
     "trending": "🔥 الرائج الآن",
     "noPostsYet": "لا يوجد شيء هنا بعد",
-    "followHint": "تابع TKs لترى ما يحدث في الكويت",
-    "discoverBtn": "ابحث عن TKs",
+    "followHint": "تابع مستخدمين لترى ما يحدث في الكويت",
+    "discoverBtn": "ابحث عن مستخدمين للمتابعة",
     "filterAll": "الكل",
     "filterGovernment": "حكومي",
     "filterMedia": "إعلام",
@@ -61,6 +61,7 @@
     "posts": "منشور",
     "followers": "متابع",
     "followingPl": "يتابع",
+    "bookmarks": "المحفوظات",
     "noPostsYet": "لا توجد منشورات بعد",
     "signOut": "تسجيل الخروج",
     "signOutMsg": "هل أنت متأكد؟",
@@ -148,13 +149,13 @@
   },
 
   "discover": {
-    "title": "ابحث عن TKs",
-    "search": "ابحث عن TKs...",
-    "suggestedTitle": "TKs للمتابعة",
-    "noResultsTitle": "لا يوجد TKs",
+    "title": "ابحث عن مستخدمين",
+    "search": "ابحث عن مستخدمين...",
+    "suggestedTitle": "مستخدمون للمتابعة",
+    "noResultsTitle": "لا يوجد مستخدمون",
     "noResultsSub": "جرّب اسماً أو اسم مستخدم آخر",
     "noSuggestionsTitle": "لا توجد اقتراحات بعد",
-    "noSuggestionsSub": "عد لاحقاً — سنجد TKs مناسبين لك"
+    "noSuggestionsSub": "عد لاحقاً — سنجد مستخدمين مناسبين لك"
   },
 
   "media": {

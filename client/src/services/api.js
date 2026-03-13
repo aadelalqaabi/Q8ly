@@ -96,6 +96,8 @@ export const dmAPI = {
   getConversation: (userId) => api.get(`/dm/${userId}`),
   sendMessage: (userId, text) => api.post(`/dm/${userId}`, { text }),
   getUnreadCount: () => api.get('/dm/unread-count'),
+  acceptRequest: (conversationId) => api.patch(`/dm/${conversationId}/accept`),
+  denyRequest: (conversationId) => api.delete(`/dm/${conversationId}/deny`),
 };
 
 // ── Topics ────────────────────────────────────────────────────────────────────

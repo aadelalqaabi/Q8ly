@@ -3,8 +3,7 @@ import { dmAPI } from '../../services/api';
 
 export const fetchConversations = createAsyncThunk('dm/fetchConversations', async (_, { rejectWithValue }) => {
   try {
-    const res = await dmAPI.getConversations();
-    return res.conversations;
+    return await dmAPI.getConversations(); // { conversations, requests }
   } catch (e) {
     return rejectWithValue(e.message);
   }
@@ -12,8 +11,7 @@ export const fetchConversations = createAsyncThunk('dm/fetchConversations', asyn
 
 export const fetchConversation = createAsyncThunk('dm/fetchConversation', async (userId, { rejectWithValue }) => {
   try {
-    const res = await dmAPI.getConversation(userId);
-    return res;
+    return await dmAPI.getConversation(userId);
   } catch (e) {
     return rejectWithValue(e.message);
   }
@@ -28,11 +26,30 @@ export const sendDmMessage = createAsyncThunk('dm/sendMessage', async ({ userId,
   }
 });
 
+export const acceptDmRequest = createAsyncThunk('dm/acceptRequest', async (conversationId, { rejectWithValue }) => {
+  try {
+    await dmAPI.acceptRequest(conversationId);
+    return conversationId;
+  } catch (e) {
+    return rejectWithValue(e.message);
+  }
+});
+
+export const denyDmRequest = createAsyncThunk('dm/denyRequest', async (conversationId, { rejectWithValue }) => {
+  try {
+    await dmAPI.denyRequest(conversationId);
+    return conversationId;
+  } catch (e) {
+    return rejectWithValue(e.message);
+  }
+});
+
 const dmSlice = createSlice({
   name: 'dm',
   initialState: {
     conversations: [],
-    activeConversation: null,   // { conversation, other }
+    requests: [],
+    activeConversation: null,
     dmUnreadCount: 0,
     loading: false,
     sending: false,
@@ -44,8 +61,8 @@ const dmSlice = createSlice({
       if (state.activeConversation?.conversation?._id === conversationId) {
         state.activeConversation.conversation.messages.push(message);
       }
-      // Update conversations list preview
-      const conv = state.conversations.find((c) => c._id === conversationId);
+      const conv = state.conversations.find((c) => c._id === conversationId)
+        || state.requests.find((c) => c._id === conversationId);
       if (conv) {
         conv.lastMessage = message.text?.slice(0, 80) || '';
         conv.unread = (conv.unread || 0) + 1;
@@ -64,8 +81,10 @@ const dmSlice = createSlice({
       .addCase(fetchConversations.pending, (state) => { state.loading = true; })
       .addCase(fetchConversations.fulfilled, (state, action) => {
         state.loading = false;
-        state.conversations = action.payload;
-        state.dmUnreadCount = action.payload.reduce((sum, c) => sum + (c.unread || 0), 0);
+        state.conversations = action.payload.conversations || [];
+        state.requests = action.payload.requests || [];
+        const all = [...(action.payload.conversations || []), ...(action.payload.requests || [])];
+        state.dmUnreadCount = all.reduce((sum, c) => sum + (c.unread || 0), 0);
       })
       .addCase(fetchConversations.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
 
@@ -83,7 +102,20 @@ const dmSlice = createSlice({
           state.activeConversation.conversation.messages.push(action.payload);
         }
       })
-      .addCase(sendDmMessage.rejected, (state) => { state.sending = false; });
+      .addCase(sendDmMessage.rejected, (state) => { state.sending = false; })
+
+      .addCase(acceptDmRequest.fulfilled, (state, action) => {
+        const convId = action.payload;
+        const idx = state.requests.findIndex((c) => c._id === convId);
+        if (idx !== -1) {
+          const conv = { ...state.requests[idx], status: 'accepted' };
+          state.requests.splice(idx, 1);
+          state.conversations.unshift(conv);
+        }
+      })
+      .addCase(denyDmRequest.fulfilled, (state, action) => {
+        state.requests = state.requests.filter((c) => c._id !== action.payload);
+      });
   },
 });
 

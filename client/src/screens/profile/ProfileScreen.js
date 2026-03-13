@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  Image, ActivityIndicator, Alert, Modal, TextInput, ScrollView,
+  Image, ActivityIndicator, Alert,
 } from 'react-native';
 import { useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
@@ -66,72 +66,6 @@ function fmt(n) {
   return String(n);
 }
 
-const VERIFY_TYPES = [
-  { value: 'government', label: 'Government / Official' },
-  { value: 'media', label: 'Media / Journalist' },
-  { value: 'influencer', label: 'Influencer / Creator' },
-  { value: 'business', label: 'Business / Brand' },
-];
-
-function VerifyRequestModal({ visible, onClose, onSubmit }) {
-  const [type, setType] = useState('influencer');
-  const [reason, setReason] = useState('');
-  const [loading, setLoading] = useState(false);
-  const { colors: COLORS } = useTheme();
-
-  const handleSubmit = async () => {
-    if (!reason.trim()) { Alert.alert('Please explain why you should be verified'); return; }
-    setLoading(true);
-    try {
-      await onSubmit(type, reason.trim());
-      onClose();
-    } catch (e) {
-      Alert.alert('Error', e.message || 'Could not submit');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: COLORS.white }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.separator }}>
-          <TouchableOpacity onPress={onClose}><Text style={{ fontSize: 16, color: COLORS.textMuted }}>Cancel</Text></TouchableOpacity>
-          <Text style={{ fontSize: 17, fontWeight: '700', color: COLORS.text }}>Request Verification</Text>
-          <TouchableOpacity onPress={handleSubmit} disabled={loading}>
-            <Text style={{ fontSize: 16, fontWeight: '700', color: COLORS.accent, opacity: loading ? 0.5 : 1 }}>Submit</Text>
-          </TouchableOpacity>
-        </View>
-        <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
-          <Text style={{ fontSize: 15, fontWeight: '600', color: COLORS.text }}>Category</Text>
-          {VERIFY_TYPES.map((v) => (
-            <TouchableOpacity
-              key={v.value}
-              onPress={() => setType(v.value)}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 }}
-            >
-              <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: type === v.value ? COLORS.accent : COLORS.separator, backgroundColor: type === v.value ? COLORS.accent : 'transparent', justifyContent: 'center', alignItems: 'center' }}>
-                {type === v.value && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff' }} />}
-              </View>
-              <Text style={{ fontSize: 15, color: COLORS.text }}>{v.label}</Text>
-            </TouchableOpacity>
-          ))}
-          <Text style={{ fontSize: 15, fontWeight: '600', color: COLORS.text, marginTop: 8 }}>Why should you be verified?</Text>
-          <TextInput
-            style={{ borderWidth: StyleSheet.hairlineWidth, borderColor: COLORS.separator, borderRadius: 10, padding: 12, fontSize: 15, color: COLORS.text, minHeight: 100, textAlignVertical: 'top', backgroundColor: COLORS.fill }}
-            placeholder="Explain your identity and why you qualify..."
-            placeholderTextColor={COLORS.textMuted}
-            value={reason}
-            onChangeText={setReason}
-            multiline
-            maxLength={500}
-          />
-          <Text style={{ fontSize: 12, color: COLORS.textMuted }}>Requests are reviewed within 2–5 business days.</Text>
-        </ScrollView>
-      </View>
-    </Modal>
-  );
-}
 
 const TABS = ['posts', 'bookmarks'];
 
@@ -157,8 +91,7 @@ export default function ProfileScreen({ navigation, route }) {
   const [hasMore, setHasMore] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isNotifyEnabled, setIsNotifyEnabled] = useState(false);
-  const [verifyModalVisible, setVerifyModalVisible] = useState(false);
-  const [verifyRequestStatus, setVerifyRequestStatus] = useState('none');
+  const [isBlocked, setIsBlocked] = useState(false);
 
   const loadProfile = useCallback(async () => {
     try {
@@ -166,7 +99,7 @@ export default function ProfileScreen({ navigation, route }) {
       setProfile(res.user);
       setIsFollowing(res.user.isFollowing || false);
       setIsNotifyEnabled(res.user.isNotifyEnabled || false);
-      setVerifyRequestStatus(res.user.verificationRequest?.status || 'none');
+      setIsBlocked(res.user.isBlocked || false);
     } catch (e) { console.error(e); }
   }, [username]);
 
@@ -254,10 +187,28 @@ export default function ProfileScreen({ navigation, route }) {
     navigation.navigate('DMConversation', { userId: profile._id, username: profile.username, name: profile.name });
   };
 
-  const handleVerifyRequest = async (type, reason) => {
-    await usersAPI.requestVerification(type, reason);
-    setVerifyRequestStatus('pending');
-    Alert.alert('Submitted', 'Your verification request has been sent.');
+  const handleBlock = () => {
+    const action = isBlocked ? 'Unblock' : 'Block';
+    Alert.alert(
+      `${action} @${profile?.username}?`,
+      isBlocked ? undefined : 'They will not be able to message or interact with you.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: action,
+          style: isBlocked ? 'default' : 'destructive',
+          onPress: async () => {
+            try {
+              const res = await usersAPI.toggleBlock(profile._id);
+              setIsBlocked(res.blocked);
+              if (res.blocked) setIsFollowing(false);
+            } catch (e) {
+              Alert.alert('Error', e.message || 'Something went wrong');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const renderHeader = () => (
@@ -285,6 +236,11 @@ export default function ProfileScreen({ navigation, route }) {
         {isOwnProfile && (
           <TouchableOpacity style={styles.navBtn} onPress={() => navigation.navigate('Settings')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Ionicons name="settings-outline" size={20} color={COLORS.textMuted} />
+          </TouchableOpacity>
+        )}
+        {isPushed && !isOwnProfile && (
+          <TouchableOpacity style={styles.navBtn} onPress={handleBlock} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Ionicons name={isBlocked ? 'ban' : 'ellipsis-horizontal'} size={20} color={COLORS.textMuted} />
           </TouchableOpacity>
         )}
       </View>
@@ -336,46 +292,38 @@ export default function ProfileScreen({ navigation, route }) {
       {/* Action row */}
       <View style={styles.actionRow}>
         {isOwnProfile ? (
-          <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-            <TouchableOpacity style={styles.editChip} onPress={() => navigation.navigate('EditProfile')} activeOpacity={0.7}>
-              <Ionicons name="create-outline" size={14} color={COLORS.textMuted} />
-              <Text style={styles.editChipText}>{t('profile.editProfile')}</Text>
-            </TouchableOpacity>
-            {!profile?.isVerified && verifyRequestStatus === 'none' && (
-              <TouchableOpacity style={styles.verifyChip} onPress={() => setVerifyModalVisible(true)} activeOpacity={0.7}>
-                <Ionicons name="shield-checkmark-outline" size={14} color={COLORS.accent} />
-                <Text style={[styles.editChipText, { color: COLORS.accent }]}>Get Verified</Text>
-              </TouchableOpacity>
-            )}
-            {verifyRequestStatus === 'pending' && (
-              <View style={styles.editChip}>
-                <Ionicons name="time-outline" size={14} color={COLORS.textMuted} />
-                <Text style={styles.editChipText}>Pending Review</Text>
-              </View>
-            )}
-          </View>
+          <TouchableOpacity style={styles.editChip} onPress={() => navigation.navigate('EditProfile')} activeOpacity={0.7}>
+            <Ionicons name="create-outline" size={14} color={COLORS.textMuted} />
+            <Text style={styles.editChipText}>{t('profile.editProfile')}</Text>
+          </TouchableOpacity>
         ) : (
           <View style={styles.followRow}>
-            {isFollowing ? (
-              <TouchableOpacity style={[styles.followingChip, followLoading && { opacity: 0.5 }]} onPress={handleFollow} activeOpacity={0.7} disabled={followLoading}>
-                <Ionicons name="checkmark" size={14} color={COLORS.textMuted} />
-                <Text style={styles.followingChipText}>{t('profile.following')}</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity style={[styles.followChip, followLoading && { opacity: 0.5 }]} onPress={handleFollow} activeOpacity={0.85} disabled={followLoading}>
-                <Text style={styles.followChipText}>{t('profile.follow')}</Text>
+            {!isBlocked && (
+              isFollowing ? (
+                <TouchableOpacity style={[styles.followingChip, followLoading && { opacity: 0.5 }]} onPress={handleFollow} activeOpacity={0.7} disabled={followLoading}>
+                  <Ionicons name="checkmark" size={14} color={COLORS.textMuted} />
+                  <Text style={styles.followingChipText}>{t('profile.following')}</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity style={[styles.followChip, followLoading && { opacity: 0.5 }]} onPress={handleFollow} activeOpacity={0.85} disabled={followLoading}>
+                  <Text style={styles.followChipText}>{t('profile.follow')}</Text>
+                </TouchableOpacity>
+              )
+            )}
+            {!isBlocked && (
+              <TouchableOpacity style={styles.messageBtn} onPress={handleMessage} activeOpacity={0.7}>
+                <Ionicons name="chatbubble-outline" size={18} color={COLORS.text} />
               </TouchableOpacity>
             )}
-            <TouchableOpacity style={styles.messageBtn} onPress={handleMessage} activeOpacity={0.7}>
-              <Ionicons name="chatbubble-outline" size={18} color={COLORS.text} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.notifyBtn} onPress={handleToggleNotify} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} activeOpacity={0.7}>
-              <Ionicons
-                name={isNotifyEnabled ? 'notifications' : 'notifications-outline'}
-                size={20}
-                color={isNotifyEnabled ? COLORS.accent : COLORS.textMuted}
-              />
-            </TouchableOpacity>
+            {!isBlocked && (
+              <TouchableOpacity style={styles.notifyBtn} onPress={handleToggleNotify} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} activeOpacity={0.7}>
+                <Ionicons
+                  name={isNotifyEnabled ? 'notifications' : 'notifications-outline'}
+                  size={20}
+                  color={isNotifyEnabled ? COLORS.accent : COLORS.textMuted}
+                />
+              </TouchableOpacity>
+            )}
           </View>
         )}
       </View>
@@ -386,7 +334,7 @@ export default function ProfileScreen({ navigation, route }) {
           {TABS.map((tab) => (
             <TouchableOpacity key={tab} style={[styles.tab, activeTab === tab && styles.tabActive]} onPress={() => setActiveTab(tab)} activeOpacity={0.7}>
               <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-                {tab === 'posts' ? t('profile.posts') : 'Bookmarks'}
+                {tab === 'posts' ? t('profile.posts') : t('profile.bookmarks')}
               </Text>
             </TouchableOpacity>
           ))}
@@ -439,11 +387,6 @@ export default function ProfileScreen({ navigation, route }) {
         onRefresh={() => { loadProfile(); activeTab === 'posts' ? loadPosts(1) : loadBookmarks(); }}
       />
 
-      <VerifyRequestModal
-        visible={verifyModalVisible}
-        onClose={() => setVerifyModalVisible(false)}
-        onSubmit={handleVerifyRequest}
-      />
     </View>
   );
 }
@@ -477,7 +420,6 @@ const makeStyles = (C) => StyleSheet.create({
   actionRow: { alignItems: 'center', paddingBottom: 20 },
   editChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, borderColor: C.separator, backgroundColor: C.fill },
   editChipText: { fontSize: 13, fontWeight: '500', color: C.textMuted },
-  verifyChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: C.accent + '60', backgroundColor: C.accent + '10' },
   followRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   notifyBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center' },
   messageBtn: { width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center', borderWidth: StyleSheet.hairlineWidth, borderColor: C.separator, backgroundColor: C.fill },

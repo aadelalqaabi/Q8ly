@@ -450,12 +450,13 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
   };
 
   const openImages = (startIndex) => {
-    const mediaArr = (post.images || []).map((uri) => ({ uri, type: 'image' }));
+    const mediaArr = (isRepost ? (originalPost?.images || []) : (post.images || [])).map((uri) => ({ uri, type: 'image' }));
     openViewer(mediaArr, startIndex);
   };
 
   const openVideo = () => {
-    openViewer([{ uri: post.video, type: 'video' }], 0);
+    const videoUri = isRepost ? originalPost?.video : post.video;
+    openViewer([{ uri: videoUri, type: 'video' }], 0);
   };
 
   const mainMenuOptions = isOwnPost
@@ -491,6 +492,11 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
   const repostAuthor = post.userId; // person who reposted
   const originalPost = isRepost ? post.originalPost : null;
   const displayAuthor = isRepost && originalPost?.userId ? originalPost.userId : post.userId;
+  // Show original post's content/media; reposter's comment (post.content) goes above if present
+  const displayContent = isRepost ? (originalPost?.content || '') : (post.content || '');
+  const displayImages = isRepost ? (originalPost?.images || []) : (post.images || []);
+  const displayVideo = isRepost ? (originalPost?.video || null) : (post.video || null);
+  const displayVideoThumb = isRepost ? (originalPost?.videoThumbnail || null) : (post.videoThumbnail || null);
 
   return (
     <>
@@ -541,10 +547,17 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
               </TouchableOpacity>
             </View>
 
-            {/* Text body */}
-            {!!post.content && (
-              <Text style={styles.body} numberOfLines={isDetailView ? undefined : 5}>
+            {/* Reposter's comment (if any) shown above original content */}
+            {isRepost && !!post.content && (
+              <Text style={[styles.body, { color: COLORS.textMuted, fontSize: 14 }]} numberOfLines={3}>
                 {post.content}
+              </Text>
+            )}
+
+            {/* Text body */}
+            {!!displayContent && (
+              <Text style={styles.body} numberOfLines={isDetailView ? undefined : 5}>
+                {displayContent}
               </Text>
             )}
 
@@ -554,16 +567,16 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
             )}
 
             {/* Images */}
-            {post.images && post.images.length > 0 && (
-              <ImageGrid images={post.images} onPressImage={openImages} />
+            {displayImages.length > 0 && (
+              <ImageGrid images={displayImages} onPressImage={openImages} />
             )}
 
             {/* Video */}
-            {!!post.video && (
+            {!!displayVideo && (
               <View style={{ marginBottom: 10 }}>
                 <VideoThumb
-                  video={post.video}
-                  videoThumbnail={post.videoThumbnail}
+                  video={displayVideo}
+                  videoThumbnail={displayVideoThumb}
                   onPress={openVideo}
                   COLORS={COLORS}
                 />

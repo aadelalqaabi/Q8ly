@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator,
+  View, Text, StyleSheet, FlatList, TouchableOpacity, Image,
+  ActivityIndicator, Alert,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { formatDistanceToNowStrict } from 'date-fns';
-import { fetchConversations } from '../../store/slices/dmSlice';
+import { fetchConversations, acceptDmRequest, denyDmRequest } from '../../store/slices/dmSlice';
 import { useTheme } from '../../context/ThemeContext';
 
 const PALETTE = ['#0033A0', '#007A3D', '#FF6B35', '#2196F3', '#9C27B0', '#00BCD4', '#FF9800'];
@@ -17,48 +19,70 @@ function avatarBg(name) {
   return PALETTE[Math.abs(h) % PALETTE.length];
 }
 
+function Avatar({ user, size = 48 }) {
+  const r = size / 2;
+  if (user?.profilePic) {
+    return <Image source={{ uri: user.profilePic }} style={{ width: size, height: size, borderRadius: r }} />;
+  }
+  return (
+    <View style={{ width: size, height: size, borderRadius: r, backgroundColor: avatarBg(user?.name), justifyContent: 'center', alignItems: 'center' }}>
+      <Text style={{ color: '#fff', fontSize: size * 0.37, fontWeight: '700' }}>{user?.name?.[0]?.toUpperCase() || '?'}</Text>
+    </View>
+  );
+}
+
 export default function DMListScreen({ navigation }) {
   const dispatch = useDispatch();
   const insets = useSafeAreaInsets();
   const { colors: COLORS } = useTheme();
   const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
-  const { conversations, loading } = useSelector((s) => s.dm);
+  const { conversations, requests, loading } = useSelector((s) => s.dm);
 
-  useEffect(() => {
-    dispatch(fetchConversations());
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      dispatch(fetchConversations());
+    }, [dispatch])
+  );
 
-  const renderItem = ({ item }) => {
+  const handleAccept = (convId) => {
+    dispatch(acceptDmRequest(convId));
+  };
+
+  const handleDeny = (convId) => {
+    Alert.alert('Decline request?', 'This will delete the conversation.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Decline', style: 'destructive', onPress: () => dispatch(denyDmRequest(convId)) },
+    ]);
+  };
+
+  const renderConvRow = (item) => {
     const other = item.other;
     const timeAgo = item.lastMessageAt
       ? formatDistanceToNowStrict(new Date(item.lastMessageAt), { addSuffix: false })
       : '';
+    const isPending = item.status === 'pending';
 
     return (
       <TouchableOpacity
+        key={item._id}
         style={styles.row}
         onPress={() => navigation.navigate('DMConversation', { userId: other._id, username: other.username, name: other.name })}
         activeOpacity={0.8}
       >
-        {/* Avatar */}
         <View style={styles.avatarWrap}>
-          {other.profilePic ? (
-            <Image source={{ uri: other.profilePic }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, { backgroundColor: avatarBg(other.name) }]}>
-              <Text style={styles.avatarInitial}>{other.name?.[0]?.toUpperCase() || '?'}</Text>
-            </View>
-          )}
-          {(item.unread || 0) > 0 && <View style={styles.unreadDot} />}
+          <Avatar user={other} size={48} />
+          {(item.unread || 0) > 0 && <View style={[styles.unreadDot, { backgroundColor: COLORS.accent }]} />}
         </View>
-
-        {/* Text */}
         <View style={styles.info}>
           <View style={styles.topRow}>
             <Text style={[styles.name, item.unread > 0 && styles.nameBold]} numberOfLines={1}>
               {other.name}
             </Text>
-            <Text style={styles.time}>{timeAgo}</Text>
+            {isPending ? (
+              <Text style={[styles.time, { color: COLORS.accent }]}>Pending</Text>
+            ) : (
+              <Text style={styles.time}>{timeAgo}</Text>
+            )}
           </View>
           <Text style={[styles.preview, item.unread > 0 && styles.previewBold]} numberOfLines={1}>
             {item.lastMessage || 'Start a conversation'}
@@ -68,29 +92,85 @@ export default function DMListScreen({ navigation }) {
     );
   };
 
+  const renderRequestRow = (item) => {
+    const other = item.other;
+    return (
+      <View key={item._id} style={styles.requestRow}>
+        <Avatar user={other} size={44} />
+        <View style={styles.requestInfo}>
+          <Text style={styles.requestName} numberOfLines={1}>{other.name}</Text>
+          <Text style={styles.requestPreview} numberOfLines={1}>{item.lastMessage || 'Wants to message you'}</Text>
+        </View>
+        <View style={styles.requestActions}>
+          <TouchableOpacity
+            style={[styles.requestBtn, { backgroundColor: COLORS.accent }]}
+            onPress={() => handleAccept(item._id)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.requestBtnAcceptText}>Accept</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.requestBtn, { backgroundColor: COLORS.fill }]}
+            onPress={() => handleDeny(item._id)}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.requestBtnText, { color: COLORS.textMuted }]}>Decline</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  const isEmpty = conversations.length === 0 && requests.length === 0;
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Ionicons name="chevron-back" size={24} color={COLORS.text} />
-        </TouchableOpacity>
         <Text style={styles.headerTitle}>Messages</Text>
-        <View style={{ width: 32 }} />
       </View>
 
-      {loading && conversations.length === 0 ? (
+      {loading && isEmpty ? (
         <ActivityIndicator style={{ flex: 1 }} color={COLORS.accent} />
       ) : (
         <FlatList
-          data={conversations}
-          keyExtractor={(item) => item._id}
-          renderItem={renderItem}
-          ListEmptyComponent={
-            <View style={styles.empty}>
-              <Ionicons name="chatbubble-ellipses-outline" size={48} color={COLORS.separator} />
-              <Text style={styles.emptyText}>No messages yet</Text>
-            </View>
+          data={[]}
+          renderItem={null}
+          ListHeaderComponent={
+            <>
+              {/* Message Requests */}
+              {requests.length > 0 && (
+                <View>
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Message Requests</Text>
+                    <View style={[styles.badge, { backgroundColor: COLORS.accent }]}>
+                      <Text style={styles.badgeText}>{requests.length}</Text>
+                    </View>
+                  </View>
+                  {requests.map((item) => renderRequestRow(item))}
+                  {conversations.length > 0 && <View style={styles.sectionDivider} />}
+                </View>
+              )}
+
+              {/* Conversations */}
+              {conversations.length > 0 && (
+                <View>
+                  {requests.length > 0 && (
+                    <View style={styles.sectionHeader}>
+                      <Text style={styles.sectionTitle}>Messages</Text>
+                    </View>
+                  )}
+                  {conversations.map((item) => renderConvRow(item))}
+                </View>
+              )}
+
+              {isEmpty && (
+                <View style={styles.empty}>
+                  <Ionicons name="chatbubble-ellipses-outline" size={48} color={COLORS.separator} />
+                  <Text style={styles.emptyText}>No messages yet</Text>
+                </View>
+              )}
+            </>
           }
           refreshing={loading}
           onRefresh={() => dispatch(fetchConversations())}
@@ -104,35 +184,30 @@ export default function DMListScreen({ navigation }) {
 const makeStyles = (C) => StyleSheet.create({
   container: { flex: 1, backgroundColor: C.white },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: C.separator,
+    paddingHorizontal: 16, paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.separator,
   },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: C.text },
+  headerTitle: { fontSize: 22, fontWeight: '800', color: C.text },
+
+  sectionHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8,
+  },
+  sectionTitle: { fontSize: 12, fontWeight: '600', color: C.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
+  badge: { borderRadius: 10, minWidth: 20, height: 20, paddingHorizontal: 5, justifyContent: 'center', alignItems: 'center' },
+  badgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  sectionDivider: { height: StyleSheet.hairlineWidth, backgroundColor: C.separator, marginTop: 4 },
+
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: C.separator,
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.separator,
     gap: 12,
   },
   avatarWrap: { position: 'relative' },
-  avatar: {
-    width: 48, height: 48, borderRadius: 24,
-    justifyContent: 'center', alignItems: 'center',
-  },
-  avatarInitial: { fontSize: 18, fontWeight: '700', color: '#fff' },
   unreadDot: {
     position: 'absolute', bottom: 0, right: 0,
-    width: 12, height: 12, borderRadius: 6,
-    backgroundColor: '#0033A0',
-    borderWidth: 2, borderColor: C.white,
+    width: 12, height: 12, borderRadius: 6, borderWidth: 2, borderColor: C.white,
   },
   info: { flex: 1 },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 },
@@ -141,6 +216,21 @@ const makeStyles = (C) => StyleSheet.create({
   time: { fontSize: 12, color: C.textMuted, marginLeft: 8 },
   preview: { fontSize: 13, color: C.textMuted },
   previewBold: { color: C.text, fontWeight: '600' },
-  empty: { flex: 1, alignItems: 'center', paddingTop: 80, gap: 12 },
+
+  requestRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.separator,
+    gap: 12,
+  },
+  requestInfo: { flex: 1 },
+  requestName: { fontSize: 15, fontWeight: '600', color: C.text, marginBottom: 2 },
+  requestPreview: { fontSize: 13, color: C.textMuted },
+  requestActions: { flexDirection: 'row', gap: 8 },
+  requestBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 16 },
+  requestBtnAcceptText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  requestBtnText: { fontSize: 13, fontWeight: '600' },
+
+  empty: { alignItems: 'center', paddingTop: 80, gap: 12 },
   emptyText: { fontSize: 15, color: C.textMuted },
 });

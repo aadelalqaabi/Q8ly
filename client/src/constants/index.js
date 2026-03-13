@@ -116,14 +116,14 @@ export const SPACING = { xs: 4, sm: 8, md: 12, base: 16, lg: 20, xl: 24, xxl: 32
 export const RADIUS  = { sm: 8, md: 12, lg: 16, xl: 20, pill: 9999 };
 
 export const REPORT_REASONS = [
-  { value: 'harassment',      label: 'تحرش أو مضايقة' },
-  { value: 'hate_speech',     label: 'خطاب كراهية' },
-  { value: 'fake_news',       label: 'معلومات مضللة' },
-  { value: 'spam',            label: 'بريد مزعج أو إعلانات' },
-  { value: 'explicit_content',label: 'محتوى غير لائق' },
-  { value: 'privacy',         label: 'انتهاك الخصوصية' },
-  { value: 'violence',        label: 'عنف أو تهديد' },
-  { value: 'other',           label: 'سبب آخر' },
+  { value: 'harassment',       label: 'Harassment or bullying' },
+  { value: 'hate_speech',      label: 'Hate speech' },
+  { value: 'fake_news',        label: 'Misinformation' },
+  { value: 'spam',             label: 'Spam or ads' },
+  { value: 'explicit_content', label: 'Explicit content' },
+  { value: 'privacy',          label: 'Privacy violation' },
+  { value: 'violence',         label: 'Violence or threats' },
+  { value: 'other',            label: 'Other' },
 ];
 
 export const POST_TYPES = ['text', 'photo', 'video', 'poll'];

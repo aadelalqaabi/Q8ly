@@ -3,7 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useDispatch, useSelector } from 'react-redux';
-import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -38,6 +38,7 @@ const Tab = createBottomTabNavigator();
 function MainTabs() {
   const insets = useSafeAreaInsets();
   const { colors: COLORS } = useTheme();
+  const dmUnreadCount = useSelector((s) => s.dm?.dmUnreadCount || 0);
   return (
     <Tab.Navigator
       screenOptions={{
@@ -70,6 +71,30 @@ function MainTabs() {
         options={{
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'chatbubbles' : 'chatbubbles-outline'} size={26} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="DMList"
+        component={DMListScreen}
+        options={{
+          tabBarIcon: ({ color, focused }) => (
+            <View style={{ position: 'relative' }}>
+              <Ionicons name={focused ? 'paper-plane' : 'paper-plane-outline'} size={24} color={color} />
+              {dmUnreadCount > 0 && (
+                <View style={{
+                  position: 'absolute', top: -4, right: -6,
+                  minWidth: 16, height: 16, borderRadius: 8,
+                  backgroundColor: '#FF3B30',
+                  justifyContent: 'center', alignItems: 'center',
+                  paddingHorizontal: 3,
+                }}>
+                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700', lineHeight: 12 }}>
+                    {dmUnreadCount > 99 ? '99+' : dmUnreadCount}
+                  </Text>
+                </View>
+              )}
+            </View>
           ),
         }}
       />
@@ -117,7 +142,6 @@ function AppStack() {
       <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Discover" component={DiscoverScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="DMList" component={DMListScreen} options={{ headerShown: false }} />
       <Stack.Screen name="DMConversation" component={DMConversationScreen} options={{ headerShown: false }} />
       <Stack.Screen
         name="MediaViewer"
