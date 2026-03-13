@@ -206,7 +206,8 @@ const searchUsers = async (req, res, next) => {
     }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
-    const regex = new RegExp(q.trim(), 'i');
+    const escaped = q.trim().slice(0, 100).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(escaped, 'i');
 
     const users = await User.find({
       isActive: true,
@@ -325,6 +326,43 @@ const savePushToken = async (req, res, next) => {
   }
 };
 
+// @desc    Request verification badge
+// @route   POST /api/users/verify-request
+// @access  Private
+const requestVerification = async (req, res, next) => {
+  try {
+    const { type, reason } = req.body;
+    const validTypes = ['government', 'media', 'influencer', 'business'];
+    if (!validTypes.includes(type)) {
+      return res.status(400).json({ success: false, message: 'Invalid verification type' });
+    }
+    if (!reason?.trim()) {
+      return res.status(400).json({ success: false, message: 'Reason is required' });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (user.isVerified) {
+      return res.status(400).json({ success: false, message: 'Account is already verified' });
+    }
+    if (user.verificationRequest?.status === 'pending') {
+      return res.status(409).json({ success: false, message: 'You already have a pending request' });
+    }
+
+    user.verificationRequest = {
+      status: 'pending',
+      type,
+      reason: reason.trim().slice(0, 500),
+      submittedAt: new Date(),
+      adminNote: '',
+    };
+    await user.save({ validateBeforeSave: false });
+
+    res.json({ success: true, message: 'Verification request submitted' });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getProfile,
   getUserPosts,
@@ -337,4 +375,5 @@ module.exports = {
   getSuggestions,
   savePushToken,
   togglePostNotifications,
+  requestVerification,
 };

@@ -393,6 +393,8 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
   const { colors: COLORS } = useTheme();
   const [liked, setLiked] = useState(post.isLiked);
   const [likesCount, setLikesCount] = useState(post.likesCount);
+  const [bookmarked, setBookmarked] = useState(post.isBookmarked || false);
+  const [reposted, setReposted] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
   const [deleteMenuVisible, setDeleteMenuVisible] = useState(false);
   const [reportMenuVisible, setReportMenuVisible] = useState(false);
@@ -419,6 +421,27 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
 
   const handleShare = async () => {
     try { await Share.share({ message: post.content }); } catch { /* silent */ }
+  };
+
+  const handleBookmark = async () => {
+    const next = !bookmarked;
+    setBookmarked(next);
+    try {
+      await postsAPI.toggleBookmark(post._id);
+    } catch {
+      setBookmarked(!next);
+    }
+  };
+
+  const handleRepost = async () => {
+    if (isOwnPost) return;
+    const next = !reposted;
+    setReposted(next);
+    try {
+      await postsAPI.repost(post._id);
+    } catch {
+      setReposted(!next);
+    }
   };
 
   // Open media viewer at a specific index
@@ -458,7 +481,16 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
   }));
 
   const toPost = () => { if (!isDetailView) navigation.navigate('PostDetail', { postId: post._id }); };
-  const toProfile = () => { if (author?.username) navigation.navigate('ProfileDetail', { username: author.username }); };
+  const toProfile = () => {
+    const un = displayAuthor?.username || author?.username;
+    if (un) navigation.navigate('ProfileDetail', { username: un });
+  };
+
+  // For repost: resolve the actual content source
+  const isRepost = post.type === 'repost' && post.originalPost;
+  const repostAuthor = post.userId; // person who reposted
+  const originalPost = isRepost ? post.originalPost : null;
+  const displayAuthor = isRepost && originalPost?.userId ? originalPost.userId : post.userId;
 
   return (
     <>
@@ -467,14 +499,23 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
         onPress={toPost}
         activeOpacity={isDetailView ? 1 : 0.97}
       >
+        {/* Repost banner */}
+        {isRepost && (
+          <View style={styles.repostBanner}>
+            <Ionicons name="repeat" size={13} color={COLORS.textMuted} />
+            <Text style={styles.repostBannerText}>
+              {repostAuthor?.name || repostAuthor?.username} reposted
+            </Text>
+          </View>
+        )}
         <View style={styles.row}>
           {/* Avatar */}
           <TouchableOpacity onPress={toProfile} activeOpacity={0.7} style={styles.avatarWrap}>
-            {author?.profilePic ? (
-              <Image source={{ uri: author.profilePic }} style={styles.avatar} />
+            {displayAuthor?.profilePic ? (
+              <Image source={{ uri: displayAuthor.profilePic }} style={styles.avatar} />
             ) : (
-              <View style={[styles.avatar, { backgroundColor: avatarBg(author?.name) }]}>
-                <Text style={styles.avatarInitial}>{author?.name?.[0]?.toUpperCase() || '?'}</Text>
+              <View style={[styles.avatar, { backgroundColor: avatarBg(displayAuthor?.name) }]}>
+                <Text style={styles.avatarInitial}>{displayAuthor?.name?.[0]?.toUpperCase() || '?'}</Text>
               </View>
             )}
           </TouchableOpacity>
@@ -486,9 +527,9 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
               <TouchableOpacity onPress={toProfile} style={styles.authorBlock} activeOpacity={0.7}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1 }}>
                   <Text style={styles.authorName} numberOfLines={1}>
-                    {author?.name}
+                    {displayAuthor?.name}
                   </Text>
-                  <VerifiedBadge badge={author?.verifiedBadge} />
+                  <VerifiedBadge badge={displayAuthor?.verifiedBadge} />
                 </View>
               </TouchableOpacity>
               <TouchableOpacity
@@ -560,9 +601,31 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
                 )}
               </TouchableOpacity>
 
-              {/* Share */}
-              <TouchableOpacity style={styles.action} onPress={handleShare} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
-                <Ionicons name="arrow-redo-outline" size={17} color={COLORS.textMuted} />
+              {/* Repost */}
+              <TouchableOpacity
+                style={styles.action}
+                onPress={isOwnPost ? undefined : handleRepost}
+                disabled={isOwnPost}
+                hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
+              >
+                <Ionicons
+                  name="repeat"
+                  size={17}
+                  color={reposted ? COLORS.accent : COLORS.textMuted}
+                  style={isOwnPost ? { opacity: 0.3 } : undefined}
+                />
+                {(post.repostsCount || 0) > 0 && (
+                  <Text style={[styles.actionCount, reposted && styles.actionCountLiked]}>{post.repostsCount}</Text>
+                )}
+              </TouchableOpacity>
+
+              {/* Bookmark */}
+              <TouchableOpacity style={styles.action} onPress={handleBookmark} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
+                <Ionicons
+                  name={bookmarked ? 'bookmark' : 'bookmark-outline'}
+                  size={17}
+                  color={bookmarked ? COLORS.accent : COLORS.textMuted}
+                />
               </TouchableOpacity>
             </View>
             {!!timestamp && <Text style={styles.timestamp}>{timestamp}</Text>}
@@ -586,6 +649,14 @@ const makeStyles = (C) => StyleSheet.create({
     paddingTop: 14,
     paddingHorizontal: 16,
   },
+  repostBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingBottom: 6,
+    paddingLeft: 50,
+  },
+  repostBannerText: { fontSize: 12, color: C.textMuted, fontWeight: '500' },
   row: { flexDirection: 'row', gap: 10 },
   avatarWrap: { width: 40, flexShrink: 0 },
   avatar: {

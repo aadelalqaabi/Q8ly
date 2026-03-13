@@ -1,13 +1,13 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  Image, ActivityIndicator, Alert,
+  Image, ActivityIndicator, Alert, Modal, TextInput, ScrollView,
 } from 'react-native';
 import { useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { usersAPI } from '../../services/api';
+import { usersAPI, postsAPI } from '../../services/api';
 import PostCard from '../../components/post/PostCard';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -66,6 +66,75 @@ function fmt(n) {
   return String(n);
 }
 
+const VERIFY_TYPES = [
+  { value: 'government', label: 'Government / Official' },
+  { value: 'media', label: 'Media / Journalist' },
+  { value: 'influencer', label: 'Influencer / Creator' },
+  { value: 'business', label: 'Business / Brand' },
+];
+
+function VerifyRequestModal({ visible, onClose, onSubmit }) {
+  const [type, setType] = useState('influencer');
+  const [reason, setReason] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { colors: COLORS } = useTheme();
+
+  const handleSubmit = async () => {
+    if (!reason.trim()) { Alert.alert('Please explain why you should be verified'); return; }
+    setLoading(true);
+    try {
+      await onSubmit(type, reason.trim());
+      onClose();
+    } catch (e) {
+      Alert.alert('Error', e.message || 'Could not submit');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: COLORS.white }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.separator }}>
+          <TouchableOpacity onPress={onClose}><Text style={{ fontSize: 16, color: COLORS.textMuted }}>Cancel</Text></TouchableOpacity>
+          <Text style={{ fontSize: 17, fontWeight: '700', color: COLORS.text }}>Request Verification</Text>
+          <TouchableOpacity onPress={handleSubmit} disabled={loading}>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: COLORS.accent, opacity: loading ? 0.5 : 1 }}>Submit</Text>
+          </TouchableOpacity>
+        </View>
+        <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
+          <Text style={{ fontSize: 15, fontWeight: '600', color: COLORS.text }}>Category</Text>
+          {VERIFY_TYPES.map((v) => (
+            <TouchableOpacity
+              key={v.value}
+              onPress={() => setType(v.value)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 }}
+            >
+              <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: type === v.value ? COLORS.accent : COLORS.separator, backgroundColor: type === v.value ? COLORS.accent : 'transparent', justifyContent: 'center', alignItems: 'center' }}>
+                {type === v.value && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff' }} />}
+              </View>
+              <Text style={{ fontSize: 15, color: COLORS.text }}>{v.label}</Text>
+            </TouchableOpacity>
+          ))}
+          <Text style={{ fontSize: 15, fontWeight: '600', color: COLORS.text, marginTop: 8 }}>Why should you be verified?</Text>
+          <TextInput
+            style={{ borderWidth: StyleSheet.hairlineWidth, borderColor: COLORS.separator, borderRadius: 10, padding: 12, fontSize: 15, color: COLORS.text, minHeight: 100, textAlignVertical: 'top', backgroundColor: COLORS.fill }}
+            placeholder="Explain your identity and why you qualify..."
+            placeholderTextColor={COLORS.textMuted}
+            value={reason}
+            onChangeText={setReason}
+            multiline
+            maxLength={500}
+          />
+          <Text style={{ fontSize: 12, color: COLORS.textMuted }}>Requests are reviewed within 2–5 business days.</Text>
+        </ScrollView>
+      </View>
+    </Modal>
+  );
+}
+
+const TABS = ['posts', 'bookmarks'];
+
 export default function ProfileScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
   const { user: currentUser } = useSelector((s) => s.auth);
@@ -78,15 +147,18 @@ export default function ProfileScreen({ navigation, route }) {
   const isOwnProfile = username === currentUser?.username;
   const isPushed = !!route.params?.username;
 
-  // Pre-populate with currentUser for own profile so the screen appears instantly
   const [profile, setProfile] = useState(isOwnProfile ? currentUser : null);
   const [posts, setPosts] = useState([]);
+  const [bookmarks, setBookmarks] = useState([]);
+  const [activeTab, setActiveTab] = useState('posts');
   const [isLoading, setIsLoading] = useState(!isOwnProfile);
   const [postsLoading, setPostsLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isNotifyEnabled, setIsNotifyEnabled] = useState(false);
+  const [verifyModalVisible, setVerifyModalVisible] = useState(false);
+  const [verifyRequestStatus, setVerifyRequestStatus] = useState('none');
 
   const loadProfile = useCallback(async () => {
     try {
@@ -94,6 +166,7 @@ export default function ProfileScreen({ navigation, route }) {
       setProfile(res.user);
       setIsFollowing(res.user.isFollowing || false);
       setIsNotifyEnabled(res.user.isNotifyEnabled || false);
+      setVerifyRequestStatus(res.user.verificationRequest?.status || 'none');
     } catch (e) { console.error(e); }
   }, [username]);
 
@@ -109,6 +182,16 @@ export default function ProfileScreen({ navigation, route }) {
     finally { setPostsLoading(false); }
   }, [username]);
 
+  const loadBookmarks = useCallback(async () => {
+    if (!isOwnProfile) return;
+    setPostsLoading(true);
+    try {
+      const res = await postsAPI.getBookmarks({ page: 1, limit: 30 });
+      setBookmarks(res.posts || []);
+    } catch (e) { console.error(e); }
+    finally { setPostsLoading(false); }
+  }, [isOwnProfile]);
+
   useEffect(() => {
     const init = async () => {
       if (!isOwnProfile) setIsLoading(true);
@@ -119,6 +202,12 @@ export default function ProfileScreen({ navigation, route }) {
     navigation.setOptions({ headerShown: false });
   }, [username]);
 
+  useEffect(() => {
+    if (activeTab === 'bookmarks' && isOwnProfile && bookmarks.length === 0) {
+      loadBookmarks();
+    }
+  }, [activeTab]);
+
   const [followLoading, setFollowLoading] = useState(false);
 
   const doFollow = async () => {
@@ -126,20 +215,14 @@ export default function ProfileScreen({ navigation, route }) {
     setFollowLoading(true);
     const wasFollowing = isFollowing;
     setIsFollowing(!wasFollowing);
-    setProfile((p) => ({
-      ...p,
-      followersCount: (p.followersCount || 0) + (wasFollowing ? -1 : 1),
-    }));
+    setProfile((p) => ({ ...p, followersCount: (p.followersCount || 0) + (wasFollowing ? -1 : 1) }));
     try {
       const res = await usersAPI.toggleFollow(profile._id);
       setIsFollowing(res.following);
       setProfile((p) => ({ ...p, followersCount: res.followersCount }));
-    } catch (e) {
+    } catch {
       setIsFollowing(wasFollowing);
-      setProfile((p) => ({
-        ...p,
-        followersCount: (p.followersCount || 0) + (wasFollowing ? 1 : -1),
-      }));
+      setProfile((p) => ({ ...p, followersCount: (p.followersCount || 0) + (wasFollowing ? 1 : -1) }));
     } finally {
       setFollowLoading(false);
     }
@@ -151,20 +234,15 @@ export default function ProfileScreen({ navigation, route }) {
       const res = await usersAPI.toggleNotifyPosts(profile._id);
       setIsNotifyEnabled(res.enabled);
     } catch {
-      setIsNotifyEnabled((prev) => !prev); // revert on error
+      setIsNotifyEnabled((prev) => !prev);
     }
   };
 
   const handleFollow = () => {
     if (followLoading) return;
     if (isFollowing) {
-      Alert.alert(
-        `Unfollow @${profile?.username}?`,
-        undefined,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Unfollow', style: 'destructive', onPress: doFollow },
-        ],
+      Alert.alert(`Unfollow @${profile?.username}?`, undefined,
+        [{ text: 'Cancel', style: 'cancel' }, { text: 'Unfollow', style: 'destructive', onPress: doFollow }],
         { cancelable: true }
       );
     } else {
@@ -172,31 +250,31 @@ export default function ProfileScreen({ navigation, route }) {
     }
   };
 
+  const handleMessage = () => {
+    navigation.navigate('DMConversation', { userId: profile._id, username: profile.username, name: profile.name });
+  };
+
+  const handleVerifyRequest = async (type, reason) => {
+    await usersAPI.requestVerification(type, reason);
+    setVerifyRequestStatus('pending');
+    Alert.alert('Submitted', 'Your verification request has been sent.');
+  };
+
   const renderHeader = () => (
     <View>
-      {/* ── Floating nav row ─────────────────────────────── */}
+      {/* Nav row */}
       <View style={[styles.navRow, { paddingTop: insets.top + 6 }]}>
         {isPushed ? (
-          <TouchableOpacity
-            style={styles.navBtn}
-            onPress={() => navigation.goBack()}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
+          <TouchableOpacity style={styles.navBtn} onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Ionicons name="chevron-back" size={22} color={COLORS.text} />
           </TouchableOpacity>
         ) : isOwnProfile ? (
-          <TouchableOpacity
-            style={styles.navBtn}
-            onPress={() => navigation.navigate('Notifications')}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
+          <TouchableOpacity style={styles.navBtn} onPress={() => navigation.navigate('Notifications')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <View style={{ position: 'relative' }}>
               <Ionicons name="notifications-outline" size={22} color={COLORS.text} />
               {unreadCount > 0 && (
                 <View style={styles.notifBadge}>
-                  <Text style={styles.notifBadgeText}>
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </Text>
+                  <Text style={styles.notifBadgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
                 </View>
               )}
             </View>
@@ -204,19 +282,14 @@ export default function ProfileScreen({ navigation, route }) {
         ) : (
           <View style={styles.navBtn} />
         )}
-
         {isOwnProfile && (
-          <TouchableOpacity
-            style={styles.navBtn}
-            onPress={() => navigation.navigate('Settings')}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
+          <TouchableOpacity style={styles.navBtn} onPress={() => navigation.navigate('Settings')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Ionicons name="settings-outline" size={20} color={COLORS.textMuted} />
           </TouchableOpacity>
         )}
       </View>
 
-      {/* ── Avatar ───────────────────────────────────────── */}
+      {/* Avatar */}
       <View style={styles.avatarSection}>
         <View style={styles.avatarRing}>
           {profile?.profilePic ? (
@@ -229,7 +302,7 @@ export default function ProfileScreen({ navigation, route }) {
         </View>
       </View>
 
-      {/* ── Identity ─────────────────────────────────────── */}
+      {/* Identity */}
       <View style={styles.identity}>
         <Text style={styles.name}>{profile?.name}</Text>
         <VerifiedBadge badge={profile?.verifiedBadge} />
@@ -242,7 +315,7 @@ export default function ProfileScreen({ navigation, route }) {
         )}
       </View>
 
-      {/* ── Stats row ────────────────────────────────────── */}
+      {/* Stats */}
       <View style={styles.statsRow}>
         <View style={styles.stat}>
           <Text style={styles.statNum}>{fmt(profile?.postsCount)}</Text>
@@ -260,45 +333,43 @@ export default function ProfileScreen({ navigation, route }) {
         </View>
       </View>
 
-      {/* ── Action ───────────────────────────────────────── */}
+      {/* Action row */}
       <View style={styles.actionRow}>
         {isOwnProfile ? (
-          <TouchableOpacity
-            style={styles.editChip}
-            onPress={() => navigation.navigate('EditProfile')}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="create-outline" size={14} color={COLORS.textMuted} />
-            <Text style={styles.editChipText}>{t('profile.editProfile')}</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+            <TouchableOpacity style={styles.editChip} onPress={() => navigation.navigate('EditProfile')} activeOpacity={0.7}>
+              <Ionicons name="create-outline" size={14} color={COLORS.textMuted} />
+              <Text style={styles.editChipText}>{t('profile.editProfile')}</Text>
+            </TouchableOpacity>
+            {!profile?.isVerified && verifyRequestStatus === 'none' && (
+              <TouchableOpacity style={styles.verifyChip} onPress={() => setVerifyModalVisible(true)} activeOpacity={0.7}>
+                <Ionicons name="shield-checkmark-outline" size={14} color={COLORS.accent} />
+                <Text style={[styles.editChipText, { color: COLORS.accent }]}>Get Verified</Text>
+              </TouchableOpacity>
+            )}
+            {verifyRequestStatus === 'pending' && (
+              <View style={styles.editChip}>
+                <Ionicons name="time-outline" size={14} color={COLORS.textMuted} />
+                <Text style={styles.editChipText}>Pending Review</Text>
+              </View>
+            )}
+          </View>
         ) : (
           <View style={styles.followRow}>
             {isFollowing ? (
-              <TouchableOpacity
-                style={[styles.followingChip, followLoading && { opacity: 0.5 }]}
-                onPress={handleFollow}
-                activeOpacity={0.7}
-                disabled={followLoading}
-              >
+              <TouchableOpacity style={[styles.followingChip, followLoading && { opacity: 0.5 }]} onPress={handleFollow} activeOpacity={0.7} disabled={followLoading}>
                 <Ionicons name="checkmark" size={14} color={COLORS.textMuted} />
                 <Text style={styles.followingChipText}>{t('profile.following')}</Text>
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity
-                style={[styles.followChip, followLoading && { opacity: 0.5 }]}
-                onPress={handleFollow}
-                activeOpacity={0.85}
-                disabled={followLoading}
-              >
+              <TouchableOpacity style={[styles.followChip, followLoading && { opacity: 0.5 }]} onPress={handleFollow} activeOpacity={0.85} disabled={followLoading}>
                 <Text style={styles.followChipText}>{t('profile.follow')}</Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity
-              style={styles.notifyBtn}
-              onPress={handleToggleNotify}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              activeOpacity={0.7}
-            >
+            <TouchableOpacity style={styles.messageBtn} onPress={handleMessage} activeOpacity={0.7}>
+              <Ionicons name="chatbubble-outline" size={18} color={COLORS.text} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.notifyBtn} onPress={handleToggleNotify} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} activeOpacity={0.7}>
               <Ionicons
                 name={isNotifyEnabled ? 'notifications' : 'notifications-outline'}
                 size={20}
@@ -309,14 +380,28 @@ export default function ProfileScreen({ navigation, route }) {
         )}
       </View>
 
-      {/* ── Posts header ─────────────────────────────────── */}
-      <View style={styles.postsHeader}>
-        <View style={styles.postsHeaderLine} />
-        <Text style={styles.postsHeaderText}>{t('profile.posts')}</Text>
-        <View style={styles.postsHeaderLine} />
-      </View>
+      {/* Tabs */}
+      {isOwnProfile ? (
+        <View style={styles.tabs}>
+          {TABS.map((tab) => (
+            <TouchableOpacity key={tab} style={[styles.tab, activeTab === tab && styles.tabActive]} onPress={() => setActiveTab(tab)} activeOpacity={0.7}>
+              <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
+                {tab === 'posts' ? t('profile.posts') : 'Bookmarks'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ) : (
+        <View style={styles.postsHeader}>
+          <View style={styles.postsHeaderLine} />
+          <Text style={styles.postsHeaderText}>{t('profile.posts')}</Text>
+          <View style={styles.postsHeaderLine} />
+        </View>
+      )}
     </View>
   );
+
+  const displayPosts = activeTab === 'bookmarks' ? bookmarks : posts;
 
   if (isLoading) {
     return (
@@ -329,7 +414,7 @@ export default function ProfileScreen({ navigation, route }) {
   return (
     <View style={styles.container}>
       <FlatList
-        data={posts}
+        data={displayPosts}
         keyExtractor={(item) => item._id}
         renderItem={({ item }) => <PostCard post={item} navigation={navigation} />}
         ListHeaderComponent={renderHeader}
@@ -341,15 +426,23 @@ export default function ProfileScreen({ navigation, route }) {
         ListEmptyComponent={
           !postsLoading ? (
             <View style={styles.empty}>
-              <Text style={styles.emptyText}>{t('profile.noPostsYet')}</Text>
+              <Text style={styles.emptyText}>
+                {activeTab === 'bookmarks' ? 'No bookmarks yet' : t('profile.noPostsYet')}
+              </Text>
             </View>
           ) : null
         }
-        onEndReached={() => { if (!postsLoading && hasMore) loadPosts(page + 1); }}
+        onEndReached={() => { if (!postsLoading && hasMore && activeTab === 'posts') loadPosts(page + 1); }}
         onEndReachedThreshold={0.4}
         showsVerticalScrollIndicator={false}
         refreshing={false}
-        onRefresh={() => { loadProfile(); loadPosts(1); }}
+        onRefresh={() => { loadProfile(); activeTab === 'posts' ? loadPosts(1) : loadBookmarks(); }}
+      />
+
+      <VerifyRequestModal
+        visible={verifyModalVisible}
+        onClose={() => setVerifyModalVisible(false)}
+        onSubmit={handleVerifyRequest}
       />
     </View>
   );
@@ -359,157 +452,50 @@ const makeStyles = (C) => StyleSheet.create({
   container: { flex: 1, backgroundColor: C.white },
   loader: { flex: 1, backgroundColor: C.white, justifyContent: 'center', alignItems: 'center' },
 
-  // ── Nav
-  navRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingBottom: 4,
-  },
-  navBtn: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  notifBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -6,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#FF3B30',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 3,
-  },
-  notifBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 12,
-  },
+  navRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 12, paddingBottom: 4 },
+  navBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+  notifBadge: { position: 'absolute', top: -4, right: -6, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: '#FF3B30', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3 },
+  notifBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '700', lineHeight: 12 },
 
-  // ── Avatar
-  avatarSection: {
-    alignItems: 'center',
-    paddingTop: 8,
-    paddingBottom: 16,
-  },
-  avatarRing: {
-    borderRadius: 52,
-  },
-  avatar: {
-    width: 104,
-    height: 104,
-    borderRadius: 52,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  avatarSection: { alignItems: 'center', paddingTop: 8, paddingBottom: 16 },
+  avatarRing: { borderRadius: 52 },
+  avatar: { width: 104, height: 104, borderRadius: 52, justifyContent: 'center', alignItems: 'center' },
   avatarInitial: { fontSize: 38, fontWeight: '700', color: '#fff' },
 
-  // ── Identity
-  identity: {
-    alignItems: 'center',
-    paddingHorizontal: 32,
-    paddingBottom: 20,
-    gap: 4,
-  },
+  identity: { alignItems: 'center', paddingHorizontal: 32, paddingBottom: 20, gap: 4 },
   name: { fontSize: 22, fontWeight: '800', color: C.text, textAlign: 'center', letterSpacing: -0.3 },
   bio: { fontSize: 14, color: C.text, lineHeight: 20, textAlign: 'center', marginTop: 6 },
   location: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 4 },
   locationText: { fontSize: 12, color: C.textMuted },
 
-  // ── Stats
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingBottom: 20,
-    gap: 16,
-  },
+  statsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingBottom: 20, gap: 16 },
   stat: { alignItems: 'center', gap: 2, minWidth: 60 },
   statNum: { fontSize: 17, fontWeight: '700', color: C.text, textAlign: 'center' },
   statLabel: { fontSize: 11, color: C.textMuted, fontWeight: '400', textAlign: 'center' },
-  statDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: C.separator,
-    marginBottom: 10,
-  },
+  statDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: C.separator, marginBottom: 10 },
 
-  // ── Action chip
-  actionRow: {
-    alignItems: 'center',
-    paddingBottom: 24,
-  },
-  editChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.separator,
-    backgroundColor: C.fill,
-  },
+  actionRow: { alignItems: 'center', paddingBottom: 20 },
+  editChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, borderColor: C.separator, backgroundColor: C.fill },
   editChipText: { fontSize: 13, fontWeight: '500', color: C.textMuted },
-  followRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  notifyBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'transparent',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'transparent',
-  },
-  followChip: {
-    paddingHorizontal: 36,
-    paddingVertical: 10,
-    borderRadius: 22,
-    backgroundColor: C.accent,
-  },
+  verifyChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: C.accent + '60', backgroundColor: C.accent + '10' },
+  followRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  notifyBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center' },
+  messageBtn: { width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center', borderWidth: StyleSheet.hairlineWidth, borderColor: C.separator, backgroundColor: C.fill },
+  followChip: { paddingHorizontal: 36, paddingVertical: 10, borderRadius: 22, backgroundColor: C.accent },
   followChipText: { fontSize: 15, fontWeight: '700', color: '#fff' },
-  followingChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.separator,
-    backgroundColor: C.fill,
-  },
+  followingChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, borderColor: C.separator, backgroundColor: C.fill },
   followingChipText: { fontSize: 13, fontWeight: '500', color: C.textMuted },
 
-  // ── Posts divider header
-  postsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 2,
-    gap: 12,
-  },
-  postsHeaderLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: C.separator },
-  postsHeaderText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: C.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
+  tabs: { flexDirection: 'row', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.separator },
+  tab: { flex: 1, alignItems: 'center', paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  tabActive: { borderBottomColor: C.accent },
+  tabText: { fontSize: 14, fontWeight: '500', color: C.textMuted },
+  tabTextActive: { color: C.accent, fontWeight: '700' },
 
-  // ── Empty
+  postsHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 2, gap: 12 },
+  postsHeaderLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: C.separator },
+  postsHeaderText: { fontSize: 11, fontWeight: '600', color: C.textMuted, textTransform: 'uppercase', letterSpacing: 1 },
+
   empty: { paddingTop: 48, alignItems: 'center' },
   emptyText: { fontSize: 15, color: C.textMuted },
 });

@@ -1,7 +1,10 @@
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const { checkContent } = require('../utils/contentFilter');
+
+const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 
 const initSocket = (server) => {
   const io = new Server(server, {
@@ -56,19 +59,23 @@ const initSocket = (server) => {
 
     // ── Space rooms ──────────────────────────────────────────────
     socket.on('joinSpace', (spaceId) => {
+      if (!isValidObjectId(spaceId)) return;
       socket.join(`space:${spaceId}`);
     });
 
     socket.on('leaveSpace', (spaceId) => {
+      if (!isValidObjectId(spaceId)) return;
       socket.leave(`space:${spaceId}`);
     });
 
     // ── Post rooms (for live comments) ───────────────────────────
     socket.on('joinPost', (postId) => {
+      if (!isValidObjectId(postId)) return;
       socket.join(`post:${postId}`);
     });
 
     socket.on('leavePost', (postId) => {
+      if (!isValidObjectId(postId)) return;
       socket.leave(`post:${postId}`);
     });
 
@@ -84,6 +91,7 @@ const initSocket = (server) => {
 
     // ── Hachi rooms ───────────────────────────────────────────────
     socket.on('joinHachi', async (roomId) => {
+      if (!isValidObjectId(roomId)) return;
       try {
         const Hachi = require('../models/Hachi');
         const room = await Hachi.findById(roomId).select('isPublic creator members blockedMembers joinRequests');

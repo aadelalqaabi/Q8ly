@@ -37,7 +37,7 @@ export default function LoginScreen({ navigation }) {
           <View style={styles.logoCircle}>
             <Text style={styles.logoEmoji}>🇰🇼</Text>
           </View>
-          <Text style={styles.appName}>Kuwaa</Text>
+          <Text style={styles.appName}>KUWAI</Text>
           <Text style={styles.tagline}>الكويت في جيبك</Text>
         </View>
 
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   logoEmoji: { fontSize: 48 },
-  appName: { fontSize: 28, fontWeight: '800', color: COLORS.text, letterSpacing: -0.5 },
+  appName: { fontSize: 28, fontWeight: '800', color: '#000000', letterSpacing: -0.5 },
   tagline: { fontSize: 15, color: COLORS.textMuted, marginTop: 4 },
   form: { marginBottom: 24 },
   formTitle: { fontSize: 22, fontWeight: '700', color: COLORS.text, marginBottom: 20, letterSpacing: -0.4 },

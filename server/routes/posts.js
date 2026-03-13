@@ -6,6 +6,7 @@ const validate = require('../middleware/validate');
 const {
   getFeed, getTrending, getPost, createPost,
   toggleLike, repost, deletePost, reportPost, votePoll, searchPosts,
+  toggleBookmark, getBookmarks,
 } = require('../controllers/postController');
 const { getComments, addComment, likeComment, deleteComment } = require('../controllers/commentController');
 
@@ -13,6 +14,7 @@ const { getComments, addComment, likeComment, deleteComment } = require('../cont
 router.get('/feed', protect, getFeed);
 router.get('/trending', optionalAuth, getTrending);
 router.get('/search', optionalAuth, searchPosts);
+router.get('/bookmarks', protect, getBookmarks);
 
 // Single post
 router.get('/:id', optionalAuth, getPost);
@@ -32,6 +34,7 @@ router.post(
 
 // Interactions
 router.post('/:id/like', protect, toggleLike);
+router.post('/:id/bookmark', protect, toggleBookmark);
 router.post('/:id/repost', protect, repost);
 router.delete('/:id', protect, deletePost);
 router.post('/:id/report', protect, [

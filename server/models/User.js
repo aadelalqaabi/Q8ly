@@ -133,6 +133,16 @@ const userSchema = new mongoose.Schema(
     },
     // Push notification token (Expo)
     expoPushToken: { type: String, default: null },
+    // Bookmarked posts
+    bookmarks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }],
+    // Verification request
+    verificationRequest: {
+      status: { type: String, enum: ['none', 'pending', 'approved', 'rejected'], default: 'none' },
+      type: { type: String, enum: ['government', 'media', 'influencer', 'business', ''], default: '' },
+      reason: { type: String, maxlength: 500, default: '' },
+      submittedAt: { type: Date, default: null },
+      adminNote: { type: String, default: '' },
+    },
   },
   {
     timestamps: true,

@@ -10,10 +10,10 @@
   },
 
   "home": {
-    "title": "Kuwaa",
+    "title": "KUWAI",
     "trending": "🔥 Trending Now",
     "noPostsYet": "Nothing here yet",
-    "followHint": "Follow TKs to see what's happening in Kuwait",
+    "followHint": "Follow TKs to see what's happening in KUWAIt",
     "discoverBtn": "Find TKs to follow",
     "filterAll": "All",
     "filterGovernment": "Government",
@@ -29,7 +29,7 @@
   },
 
   "post": {
-    "placeholder": "What's happening in Kuwait?",
+    "placeholder": "What's happening in KUWAIt?",
     "publish": "Post",
     "replies_one": "1 Reply",
     "replies_other": "{{count}} Replies",
@@ -98,7 +98,7 @@
     "beFirst": "Say something! Be the first to chat.",
     "someoneDefault": "Someone",
     "lockTitle": "Start a Circle",
-    "lockDesc": "You need {{count}} activity points to start a Circle. This ensures Circles are started by active Kuwaa members.",
+    "lockDesc": "You need {{count}} activity points to start a Circle. This ensures Circles are started by active KUWAI members.",
     "lockProgress": "{{current}} / {{required}} points",
     "lockHowTitle": "How to earn points?",
     "lockEarnPost": "Post something",
@@ -166,7 +166,7 @@
     "videos": "Videos",
     "noMedia": "No media found",
     "allowAccess": "Allow Access",
-    "permMsg": "Allow Kuwaa to access your photos and videos"
+    "permMsg": "Allow KUWAI to access your photos and videos"
   },
 
   "suggest": {
@@ -206,7 +206,7 @@
   },
 
   "auth": {
-    "tagline": "Kuwait speaks here",
+    "tagline": "KUWAIt speaks here",
     "phoneTitle": "What's your number?",
     "phoneSub": "We'll send you a one-time code",
     "phoneHint": "+965 numbers only",
@@ -225,7 +225,7 @@
     "nameSub": "How you'll appear to others",
     "nameHint": "Use your real name",
     "namePlaceholder": "Your full name",
-    "join": "Join Kuwaa"
+    "join": "Join KUWAI"
   },
 
   "badge": {

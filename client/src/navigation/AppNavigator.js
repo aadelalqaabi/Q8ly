@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { restoreSession } from '../store/slices/authSlice';
 import { addNotificationRealtime } from '../store/slices/notificationsSlice';
+import { addRealtimeMessage } from '../store/slices/dmSlice';
 import { getSocket } from '../services/socket';
 import { useTheme } from '../context/ThemeContext';
 import { registerForPushNotifications } from '../services/notificationService';
@@ -28,6 +29,8 @@ import HachiScreen from '../screens/hachi/HachiScreen';
 import HachiRoomScreen from '../screens/hachi/HachiRoomScreen';
 import SettingsScreen from '../screens/settings/SettingsScreen';
 import MediaViewerScreen from '../screens/media/MediaViewerScreen';
+import DMListScreen from '../screens/dm/DMListScreen';
+import DMConversationScreen from '../screens/dm/DMConversationScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -114,6 +117,8 @@ function AppStack() {
       <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Discover" component={DiscoverScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="DMList" component={DMListScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="DMConversation" component={DMConversationScreen} options={{ headerShown: false }} />
       <Stack.Screen
         name="MediaViewer"
         component={MediaViewerScreen}
@@ -136,7 +141,8 @@ export default function AppNavigator() {
     const socket = getSocket();
     if (!socket) return;
     socket.on('notification', (n) => dispatch(addNotificationRealtime(n)));
-    return () => { socket.off('notification'); };
+    socket.on('dmMessage', (data) => dispatch(addRealtimeMessage(data)));
+    return () => { socket.off('notification'); socket.off('dmMessage'); };
   }, [isAuthenticated]);
 
   // Register for Expo push notifications once authenticated

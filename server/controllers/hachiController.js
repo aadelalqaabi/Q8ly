@@ -161,7 +161,8 @@ exports.searchRooms = async (req, res) => {
   try {
     const { q = '' } = req.query;
     if (!q.trim()) return res.json({ success: true, rooms: [] });
-    const regex = new RegExp(q.trim(), 'i');
+    const escaped = q.trim().slice(0, 100).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(escaped, 'i');
     const rooms = await Hachi.find({ title: { $regex: regex } })
       .populate('creator', 'name username profilePic')
       .select('-messages')

@@ -22,6 +22,7 @@ const eventRoutes = require('./routes/events');
 const uploadRoutes = require('./routes/upload');
 const hachiRoutes = require('./routes/hachi');
 const adminRoutes = require('./routes/admin');
+const dmRoutes = require('./routes/dm');
 const suggestionRoutes = require('./routes/suggestions');
 const adRoutes = require('./routes/ads');
 
@@ -37,17 +38,22 @@ const io = initSocket(server);
 // Make io accessible to routes
 app.set('io', io);
 
-// Admin panel — serve static files with relaxed CSP (before helmet)
+// Admin panel — serve static files with tightened CSP
 app.use('/admin', (req, res, next) => {
   res.setHeader(
     'Content-Security-Policy',
-    "default-src 'self' https: data: 'unsafe-inline' 'unsafe-eval'"
+    "default-src 'self' https:; script-src 'self' https://cdn.tailwindcss.com https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' https: 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https:;"
   );
   next();
 }, express.static(path.join(__dirname, 'public/admin')));
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginEmbedderPolicy: false,
+  hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+  frameguard: { action: 'deny' },
+  contentSecurityPolicy: false, // API server — CSP set per-route above
+}));
 const allowedOrigins = process.env.NODE_ENV === 'production'
   ? [process.env.CLIENT_URL, process.env.FRONTEND_URL].filter(Boolean)
   : [process.env.CLIENT_URL, process.env.FRONTEND_URL, 'http://localhost:19000', 'http://localhost:3000', /^exp:\/\//];
@@ -74,22 +80,32 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// Stricter limiter for auth
+// Stricter limiter for auth (10 attempts per 15 min)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: 10,
   message: 'Too many auth attempts, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 app.use('/api/auth', authLimiter);
 
-// Body parsing
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Strict limiter for admin login (5 attempts per 15 min)
+const adminLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: 'Too many admin login attempts, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/admin/login', adminLoginLimiter);
+
+// Body parsing — keep low for regular API, uploads use multer limits
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 // Logging
-if (process.env.NODE_ENV === 'development') {
-  app.use(morgan('dev'));
-}
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
 // Health check
 app.get('/health', (req, res) => {
@@ -107,6 +123,7 @@ app.use('/api/events', eventRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/hachi', hachiRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/dm', dmRoutes);
 app.use('/api/suggestions', suggestionRoutes);
 app.use('/api/ads', adRoutes);
 

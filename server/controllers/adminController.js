@@ -27,7 +27,8 @@ exports.login = async (req, res) => {
     admin.lastLogin = new Date();
     await admin.save();
 
-    const token = jwt.sign({ id: admin._id, isAdmin: true }, process.env.JWT_SECRET, { expiresIn: '8h' });
+    const secret = process.env.JWT_ADMIN_SECRET || process.env.JWT_SECRET;
+    const token = jwt.sign({ id: admin._id, isAdmin: true }, secret, { expiresIn: '8h' });
     res.json({ success: true, token, admin: { username: admin.username, name: admin.name } });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -107,7 +108,8 @@ exports.getUsers = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
-    const search = req.query.search?.trim();
+    const rawSearch = req.query.search?.trim();
+    const search = rawSearch ? rawSearch.slice(0, 100).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : null;
 
     const query = { role: 'user' };
     if (search) {
@@ -330,6 +332,59 @@ exports.sendPushNotification = async (req, res) => {
     await sendToAll(title.trim(), body.trim(), { type: 'admin' });
     const count = await User.countDocuments({ expoPushToken: { $exists: true, $ne: null } });
     res.json({ success: true, sent: count });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// GET /api/admin/verify-requests?status=pending&page=1
+exports.getVerificationRequests = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const status = req.query.status || 'pending';
+
+    const query = { 'verificationRequest.status': status };
+    const [users, total] = await Promise.all([
+      User.find(query)
+        .select('username name profilePic phone postsCount followersCount verifiedBadge verificationRequest createdAt')
+        .sort({ 'verificationRequest.submittedAt': -1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
+      User.countDocuments(query),
+    ]);
+
+    res.json({ success: true, users, total, page, pages: Math.ceil(total / limit) });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// PATCH /api/admin/verify-requests/:id
+exports.handleVerificationRequest = async (req, res) => {
+  try {
+    const { action, adminNote, verifiedBadge } = req.body;
+    if (!['approve', 'reject'].includes(action)) {
+      return res.status(400).json({ success: false, message: 'action must be approve or reject' });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user || user.role === 'admin') {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (action === 'approve') {
+      const badge = verifiedBadge || user.verificationRequest?.type || 'influencer';
+      user.verifiedBadge = badge;
+      user.isVerified = true;
+      user.verificationRequest.status = 'approved';
+    } else {
+      user.verificationRequest.status = 'rejected';
+    }
+    if (adminNote !== undefined) user.verificationRequest.adminNote = adminNote;
+    await user.save({ validateBeforeSave: false });
+
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

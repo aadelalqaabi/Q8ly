@@ -223,10 +223,7 @@ export default function HomeScreen({ navigation }) {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.wordmark}>
-          <Text style={styles.wordmarkHuna}>Kuw</Text>
-          <Text style={styles.wordmarkTK}>aa</Text>
-        </Text>
+        <Text style={styles.wordmark}>KUWAI</Text>
         <TouchableOpacity
           onPress={() => navigation.navigate('Discover')}
           style={styles.headerBtn}
@@ -324,9 +321,7 @@ const makeStyles = (C) => StyleSheet.create({
     backgroundColor: C.white,
     zIndex: 10,
   },
-  wordmark: { flex: 1, fontSize: 22, letterSpacing: -0.8 },
-  wordmarkHuna: { fontWeight: '800', color: C.text },
-  wordmarkTK: { fontWeight: '800', color: C.accent },
+  wordmark: { flex: 1, fontSize: 22, letterSpacing: -0.8, fontWeight: '800', color: C.text },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   headerBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   badge: {

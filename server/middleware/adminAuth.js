@@ -11,11 +11,14 @@ const adminAuth = async (req, res, next) => {
       return res.status(401).json({ success: false, message: 'Admin token required' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // Use a dedicated admin secret if set — prevents user tokens from being accepted
+    const secret = process.env.JWT_ADMIN_SECRET || process.env.JWT_SECRET;
+    const decoded = jwt.verify(token, secret);
     if (!decoded.isAdmin) {
       return res.status(403).json({ success: false, message: 'Not an admin token' });
     }
 
+    // Always verify against DB — never trust payload alone
     const admin = await Admin.findById(decoded.id);
     if (!admin) {
       return res.status(403).json({ success: false, message: 'Admin not found' });

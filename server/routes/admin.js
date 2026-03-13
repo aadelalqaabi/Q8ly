@@ -4,7 +4,7 @@ const adminAuth = require('../middleware/adminAuth');
 const {
   login, getStats, getUsers, banUser, deleteUser, verifyUser,
   getPosts, removePost, getReportedPosts, dismissReport, getSuggestions, updateSuggestion,
-  sendPushNotification,
+  sendPushNotification, getVerificationRequests, handleVerificationRequest,
 } = require('../controllers/adminController');
 const { getAllAds, createAd, updateAd, deleteAd } = require('../controllers/adController');
 
@@ -28,6 +28,10 @@ router.patch('/posts/:id/dismiss-report', dismissReport);
 
 router.get('/suggestions', getSuggestions);
 router.patch('/suggestions/:id', updateSuggestion);
+
+// Verification requests
+router.get('/verify-requests', getVerificationRequests);
+router.patch('/verify-requests/:id', handleVerificationRequest);
 
 // Push notifications
 router.post('/push', sendPushNotification);

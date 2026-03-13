@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Post = require('../models/Post');
 const User = require('../models/User');
 const Comment = require('../models/Comment');
@@ -37,15 +38,17 @@ const getFeed = async (req, res, next) => {
       .lean()
       .populate('userId', 'username name profilePic verifiedBadge accountType')
       .populate('topicTags', 'name nameAr slug color')
-      .populate('originalPost', 'content images userId')
+      .populate({ path: 'originalPost', select: 'content images video videoThumbnail userId createdAt', populate: { path: 'userId', select: 'username name profilePic verifiedBadge' } })
       .sort(tab === 'following' ? { createdAt: -1 } : { trendingScore: -1, createdAt: -1 })
       .skip(skip)
       .limit(limitInt);
 
-    // Mark which posts are liked by current user
+    // Mark which posts are liked / bookmarked by current user
     const userIdStr = req.user._id.toString();
+    const userBookmarks = (req.user.bookmarks || []).map((id) => id.toString());
     const postsWithLikeStatus = posts.map((post) => {
       post.isLiked = post.likes ? post.likes.some((id) => id.toString() === userIdStr) : false;
+      post.isBookmarked = userBookmarks.includes(post._id.toString());
       post.likes = undefined;
       return post;
     });
@@ -117,6 +120,9 @@ const getTrending = async (req, res, next) => {
 // @access  Public
 const getPost = async (req, res, next) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(404).json({ success: false, message: 'Post not found' });
+    }
     const post = await Post.findById(req.params.id)
       .lean()
       .populate('userId', 'username name profilePic verifiedBadge accountType bio')
@@ -375,7 +381,7 @@ const deletePost = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Post not found' });
     }
 
-    if (post.userId.toString() !== req.user._id.toString() && req.user.accountType !== 'official') {
+    if (post.userId.toString() !== req.user._id.toString()) {
       return res.status(403).json({ success: false, message: 'Not authorized to delete this post' });
     }
 
@@ -498,7 +504,8 @@ const searchPosts = async (req, res, next) => {
     const { q = '', page = 1, limit = 20 } = req.query;
     if (!q.trim()) return res.json({ success: true, posts: [], total: 0 });
     const skip = (parseInt(page) - 1) * parseInt(limit);
-    const regex = new RegExp(q.trim(), 'i');
+    const escaped = q.trim().slice(0, 100).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(escaped, 'i');
     const filter = { isRemoved: false, visibility: 'public', content: { $regex: regex } };
     const [posts, total] = await Promise.all([
       Post.find(filter)
@@ -514,4 +521,59 @@ const searchPosts = async (req, res, next) => {
   }
 };
 
-module.exports = { getFeed, getTrending, getPost, createPost, toggleLike, repost, deletePost, reportPost, votePoll, searchPosts };
+// @desc    Bookmark / Unbookmark post
+// @route   POST /api/posts/:id/bookmark
+// @access  Private
+const toggleBookmark = async (req, res, next) => {
+  try {
+    const post = await Post.findById(req.params.id);
+    if (!post || post.isRemoved) {
+      return res.status(404).json({ success: false, message: 'Post not found' });
+    }
+
+    const user = await User.findById(req.user._id);
+    const isBookmarked = user.bookmarks.some((id) => id.toString() === req.params.id);
+
+    if (isBookmarked) {
+      user.bookmarks.pull(req.params.id);
+    } else {
+      user.bookmarks.push(req.params.id);
+    }
+    await user.save({ validateBeforeSave: false });
+
+    res.json({ success: true, bookmarked: !isBookmarked });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get bookmarked posts
+// @route   GET /api/posts/bookmarks
+// @access  Private
+const getBookmarks = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const user = await User.findById(req.user._id).select('bookmarks');
+    const bookmarkIds = user.bookmarks || [];
+    // Reverse so newest-bookmarked comes first
+    const sliced = [...bookmarkIds].reverse().slice(skip, skip + parseInt(limit));
+
+    const posts = await Post.find({ _id: { $in: sliced }, isRemoved: false })
+      .lean()
+      .populate('userId', 'username name profilePic verifiedBadge accountType')
+      .populate('topicTags', 'name nameAr slug color')
+      .populate('originalPost', 'content images userId createdAt');
+
+    // Restore order
+    const ordered = sliced.map((id) => posts.find((p) => p._id.toString() === id.toString())).filter(Boolean);
+    const userIdStr = req.user._id.toString();
+    ordered.forEach((p) => { p.isLiked = p.likes?.some((id) => id.toString() === userIdStr) || false; p.likes = undefined; p.isBookmarked = true; });
+
+    res.json({ success: true, posts: ordered, hasMore: skip + sliced.length < bookmarkIds.length });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { getFeed, getTrending, getPost, createPost, toggleLike, repost, deletePost, reportPost, votePoll, searchPosts, toggleBookmark, getBookmarks };

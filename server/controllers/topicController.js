@@ -167,7 +167,8 @@ const searchTopics = async (req, res, next) => {
     const { q } = req.query;
     if (!q) return res.status(400).json({ success: false, message: 'Query required' });
 
-    const regex = new RegExp(q, 'i');
+    const escaped = String(q).trim().slice(0, 100).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(escaped, 'i');
     const topics = await Topic.find({
       isActive: true,
       $or: [{ name: regex }, { nameAr: regex }, { slug: regex }],

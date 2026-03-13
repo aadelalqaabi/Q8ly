@@ -4,7 +4,7 @@ const { protect, optionalAuth } = require('../middleware/auth');
 const {
   getProfile, getUserPosts, toggleFollow, toggleBlock,
   updateProfile, searchUsers, getFollowers, reportUser, getSuggestions, savePushToken,
-  togglePostNotifications,
+  togglePostNotifications, requestVerification,
 } = require('../controllers/userController');
 
 router.post('/push-token', protect, savePushToken);
@@ -19,5 +19,6 @@ router.post('/:id/notify-posts', protect, togglePostNotifications);
 router.post('/:id/block', protect, toggleBlock);
 router.post('/:id/report', protect, reportUser);
 router.put('/profile', protect, updateProfile);
+router.post('/verify-request', protect, requestVerification);
 
 module.exports = router;

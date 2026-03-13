@@ -55,10 +55,7 @@ export default function PhoneScreen({ navigation }) {
 
         {/* Wordmark */}
         <View style={styles.logoWrap}>
-          <Text style={styles.wordmark}>
-            <Text style={styles.wordmarkHuna}>Kuw</Text>
-            <Text style={styles.wordmarkTK}>aa</Text>
-          </Text>
+          <Text style={styles.wordmark}>KUWAI</Text>
           <Text style={styles.tagline}>{t('auth.tagline')}</Text>
         </View>
 
@@ -151,9 +148,7 @@ const styles = StyleSheet.create({
   inner: { flex: 1, paddingHorizontal: 24 },
 
   logoWrap: { alignItems: 'center', marginBottom: 44 },
-  wordmark: { fontSize: 44, letterSpacing: -2, marginBottom: 6 },
-  wordmarkHuna: { fontWeight: '800', color: COLORS.text },
-  wordmarkTK: { fontWeight: '800', color: COLORS.accent },
+  wordmark: { fontSize: 44, letterSpacing: -2, marginBottom: 6, fontWeight: '800', color: COLORS.text },
   tagline: { fontSize: 14, color: COLORS.textMuted, letterSpacing: 0.3 },
 
   stepRow: { flexDirection: 'row', marginBottom: 40 },

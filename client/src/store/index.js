@@ -6,6 +6,7 @@ import spacesReducer from './slices/spacesSlice';
 import notificationsReducer from './slices/notificationsSlice';
 import uiReducer from './slices/uiSlice';
 import hachiReducer from './slices/hachiSlice';
+import dmReducer from './slices/dmSlice';
 
 export const store = configureStore({
   reducer: {
@@ -16,6 +17,7 @@ export const store = configureStore({
     notifications: notificationsReducer,
     ui: uiReducer,
     hachi: hachiReducer,
+    dm: dmReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

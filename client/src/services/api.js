@@ -62,6 +62,8 @@ export const postsAPI = {
   createPost: (data) => api.post('/posts', data),
   deletePost: (id) => api.delete(`/posts/${id}`),
   toggleLike: (id) => api.post(`/posts/${id}/like`),
+  toggleBookmark: (id) => api.post(`/posts/${id}/bookmark`),
+  getBookmarks: (params) => api.get('/posts/bookmarks', { params }),
   repost: (id, comment) => api.post(`/posts/${id}/repost`, { comment }),
   reportPost: (id, data) => api.post(`/posts/${id}/report`, data),
   votePoll: (id, optionIndex) => api.post(`/posts/${id}/vote`, { optionIndex }),
@@ -85,6 +87,15 @@ export const usersAPI = {
   reportUser: (id, data) => api.post(`/users/${id}/report`, data),
   savePushToken: (token) => api.post('/users/push-token', { token }),
   toggleNotifyPosts: (id) => api.post(`/users/${id}/notify-posts`),
+  requestVerification: (type, reason) => api.post('/users/verify-request', { type, reason }),
+};
+
+// ── Direct Messages ───────────────────────────────────────────────────────────
+export const dmAPI = {
+  getConversations: () => api.get('/dm'),
+  getConversation: (userId) => api.get(`/dm/${userId}`),
+  sendMessage: (userId, text) => api.post(`/dm/${userId}`, { text }),
+  getUnreadCount: () => api.get('/dm/unread-count'),
 };
 
 // ── Topics ────────────────────────────────────────────────────────────────────

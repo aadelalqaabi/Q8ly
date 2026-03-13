@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Kuwaa",
+    "name": "KUWAI",
     "slug": "kuwait-now",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -16,10 +16,10 @@
       "bundleIdentifier": "app.kuwaitnow",
       "buildNumber": "1",
       "infoPlist": {
-        "NSCameraUsageDescription": "Kuwaa needs camera access to take photos for posts.",
-        "NSPhotoLibraryUsageDescription": "Kuwaa needs photo library access to share photos and videos in posts.",
-        "NSPhotoLibraryAddUsageDescription": "Kuwaa needs access to save photos and videos.",
-        "NSMicrophoneUsageDescription": "Kuwaa needs microphone access for video recording."
+        "NSCameraUsageDescription": "KUWAI needs camera access to take photos for posts.",
+        "NSPhotoLibraryUsageDescription": "KUWAI needs photo library access to share photos and videos in posts.",
+        "NSPhotoLibraryAddUsageDescription": "KUWAI needs access to save photos and videos.",
+        "NSMicrophoneUsageDescription": "KUWAI needs microphone access for video recording."
       }
     },
     "android": {
@@ -66,8 +66,8 @@
       [
         "expo-media-library",
         {
-          "photosPermission": "Allow Kuwaa to access your photos and videos.",
-          "savePhotosPermission": "Allow Kuwaa to save photos.",
+          "photosPermission": "Allow KUWAI to access your photos and videos.",
+          "savePhotosPermission": "Allow KUWAI to save photos.",
           "isAccessMediaLocationEnabled": true
         }
       ],
