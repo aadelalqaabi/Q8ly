@@ -122,7 +122,9 @@ const postsSlice = createSlice({
         const hasMoreKey = tab === 'following' ? 'followingHasMore' : 'forYouHasMore';
 
         if (page === 1) {
-          state[key] = posts;
+          // Preserve client-side isBookmarked:true to survive stale-cache race conditions
+          const bookmarkedIds = new Set(state[key].filter((p) => p.isBookmarked).map((p) => p._id));
+          state[key] = posts.map((p) => ({ ...p, isBookmarked: bookmarkedIds.has(p._id) || p.isBookmarked }));
           if (hotPosts?.length) state.hotPosts = hotPosts;
         } else {
           state[key] = [...state[key], ...posts];

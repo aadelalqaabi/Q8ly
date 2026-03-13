@@ -559,7 +559,8 @@ const getBookmarks = async (req, res, next) => {
     const { page = 1, limit = 20 } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const user = await User.findById(req.user._id).select('bookmarks');
-    const bookmarkIds = user.bookmarks || [];
+    // Filter out any corrupted non-ObjectId entries before querying
+    const bookmarkIds = (user.bookmarks || []).filter((id) => mongoose.Types.ObjectId.isValid(id.toString()));
     // Reverse so newest-bookmarked comes first
     const sliced = [...bookmarkIds].reverse().slice(skip, skip + parseInt(limit));
 
