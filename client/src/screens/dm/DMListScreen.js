@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { formatDistanceToNowStrict } from 'date-fns';
-import { fetchConversations, acceptDmRequest, denyDmRequest } from '../../store/slices/dmSlice';
+import { fetchConversations, acceptDmRequest, denyDmRequest, clearNeedsRefresh } from '../../store/slices/dmSlice';
 import { useTheme } from '../../context/ThemeContext';
 
 const PALETTE = ['#0033A0', '#007A3D', '#FF6B35', '#2196F3', '#9C27B0', '#00BCD4', '#FF9800'];
@@ -36,7 +36,7 @@ export default function DMListScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { colors: COLORS } = useTheme();
   const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
-  const { conversations, requests, loading } = useSelector((s) => s.dm);
+  const { conversations, requests, loading, needsRefresh } = useSelector((s) => s.dm);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -44,8 +44,20 @@ export default function DMListScreen({ navigation }) {
     }, [dispatch])
   );
 
-  const handleAccept = (convId) => {
-    dispatch(acceptDmRequest(convId));
+  useEffect(() => {
+    if (needsRefresh) {
+      dispatch(fetchConversations());
+      dispatch(clearNeedsRefresh());
+    }
+  }, [needsRefresh, dispatch]);
+
+  const goToConversation = (other) => {
+    navigation.navigate('DMConversation', { userId: other._id, username: other.username, name: other.name });
+  };
+
+  const handleAccept = async (item) => {
+    await dispatch(acceptDmRequest(item._id));
+    goToConversation(item.other);
   };
 
   const handleDeny = (convId) => {
@@ -66,7 +78,7 @@ export default function DMListScreen({ navigation }) {
       <TouchableOpacity
         key={item._id}
         style={styles.row}
-        onPress={() => navigation.navigate('DMConversation', { userId: other._id, username: other.username, name: other.name })}
+        onPress={() => goToConversation(other)}
         activeOpacity={0.8}
       >
         <View style={styles.avatarWrap}>
@@ -95,7 +107,12 @@ export default function DMListScreen({ navigation }) {
   const renderRequestRow = (item) => {
     const other = item.other;
     return (
-      <View key={item._id} style={styles.requestRow}>
+      <TouchableOpacity
+        key={item._id}
+        style={styles.requestRow}
+        onPress={() => goToConversation(other)}
+        activeOpacity={0.8}
+      >
         <Avatar user={other} size={44} />
         <View style={styles.requestInfo}>
           <Text style={styles.requestName} numberOfLines={1}>{other.name}</Text>
@@ -104,20 +121,20 @@ export default function DMListScreen({ navigation }) {
         <View style={styles.requestActions}>
           <TouchableOpacity
             style={[styles.requestBtn, { backgroundColor: COLORS.accent }]}
-            onPress={() => handleAccept(item._id)}
+            onPress={(e) => { e.stopPropagation?.(); handleAccept(item); }}
             activeOpacity={0.8}
           >
             <Text style={styles.requestBtnAcceptText}>Accept</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.requestBtn, { backgroundColor: COLORS.fill }]}
-            onPress={() => handleDeny(item._id)}
+            onPress={(e) => { e.stopPropagation?.(); handleDeny(item._id); }}
             activeOpacity={0.8}
           >
             <Text style={[styles.requestBtnText, { color: COLORS.textMuted }]}>Decline</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 

@@ -51,6 +51,7 @@ const dmSlice = createSlice({
     requests: [],
     activeConversation: null,
     dmUnreadCount: 0,
+    needsRefresh: false,
     loading: false,
     sending: false,
     error: null,
@@ -65,9 +66,16 @@ const dmSlice = createSlice({
         || state.requests.find((c) => c._id === conversationId);
       if (conv) {
         conv.lastMessage = message.text?.slice(0, 80) || '';
+        conv.lastMessageAt = message.createdAt || new Date().toISOString();
         conv.unread = (conv.unread || 0) + 1;
+      } else {
+        // New conversation not in list yet — signal a refresh
+        state.needsRefresh = true;
       }
       state.dmUnreadCount = Math.max(0, state.dmUnreadCount + 1);
+    },
+    clearNeedsRefresh(state) {
+      state.needsRefresh = false;
     },
     setDmUnreadCount(state, action) {
       state.dmUnreadCount = action.payload;
@@ -119,5 +127,5 @@ const dmSlice = createSlice({
   },
 });
 
-export const { addRealtimeMessage, setDmUnreadCount, clearActiveConversation } = dmSlice.actions;
+export const { addRealtimeMessage, setDmUnreadCount, clearActiveConversation, clearNeedsRefresh } = dmSlice.actions;
 export default dmSlice.reducer;

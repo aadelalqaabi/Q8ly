@@ -93,6 +93,16 @@ const postsSlice = createSlice({
       state.followingPosts = state.followingPosts.filter((p) => p._id !== id);
       state.trendingPosts = state.trendingPosts.filter((p) => p._id !== id);
     },
+    updateBookmark: (state, action) => {
+      const { postId, bookmarked } = action.payload;
+      const update = (list) => {
+        const post = list.find((p) => p._id === postId);
+        if (post) post.isBookmarked = bookmarked;
+      };
+      update(state.forYouPosts);
+      update(state.followingPosts);
+      update(state.trendingPosts);
+    },
   },
   extraReducers: (builder) => {
     // Fetch feed
@@ -170,5 +180,5 @@ const postsSlice = createSlice({
   },
 });
 
-export const { clearCreatePostError, addPostRealtime, updatePostLike, removePost } = postsSlice.actions;
+export const { clearCreatePostError, addPostRealtime, updatePostLike, removePost, updateBookmark } = postsSlice.actions;
 export default postsSlice.reducer;

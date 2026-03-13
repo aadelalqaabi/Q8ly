@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
 import { getDateLocale } from '../../i18n';
-import { toggleLike, deletePost } from '../../store/slices/postsSlice';
+import { toggleLike, deletePost, updateBookmark } from '../../store/slices/postsSlice';
 import { postsAPI } from '../../services/api';
 import { REPORT_REASONS } from '../../constants';
 import { useTheme } from '../../context/ThemeContext';
@@ -394,7 +394,6 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
   const [liked, setLiked] = useState(post.isLiked);
   const [likesCount, setLikesCount] = useState(post.likesCount);
   const [bookmarked, setBookmarked] = useState(post.isBookmarked || false);
-  const [reposted, setReposted] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
   const [deleteMenuVisible, setDeleteMenuVisible] = useState(false);
   const [reportMenuVisible, setReportMenuVisible] = useState(false);
@@ -427,20 +426,12 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
     const next = !bookmarked;
     setBookmarked(next);
     try {
-      await postsAPI.toggleBookmark(post._id);
+      const res = await postsAPI.toggleBookmark(post._id);
+      const confirmed = res?.bookmarked ?? next;
+      setBookmarked(confirmed);
+      dispatch(updateBookmark({ postId: post._id, bookmarked: confirmed }));
     } catch {
       setBookmarked(!next);
-    }
-  };
-
-  const handleRepost = async () => {
-    if (isOwnPost) return;
-    const next = !reposted;
-    setReposted(next);
-    try {
-      await postsAPI.repost(post._id);
-    } catch {
-      setReposted(!next);
     }
   };
 
@@ -611,24 +602,6 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
                   <Text style={[styles.actionCount, liked && styles.actionCountLiked]}>
                     {likesCount}
                   </Text>
-                )}
-              </TouchableOpacity>
-
-              {/* Repost */}
-              <TouchableOpacity
-                style={styles.action}
-                onPress={isOwnPost ? undefined : handleRepost}
-                disabled={isOwnPost}
-                hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
-              >
-                <Ionicons
-                  name="repeat"
-                  size={17}
-                  color={reposted ? COLORS.accent : COLORS.textMuted}
-                  style={isOwnPost ? { opacity: 0.3 } : undefined}
-                />
-                {(post.repostsCount || 0) > 0 && (
-                  <Text style={[styles.actionCount, reposted && styles.actionCountLiked]}>{post.repostsCount}</Text>
                 )}
               </TouchableOpacity>
 

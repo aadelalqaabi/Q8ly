@@ -64,7 +64,6 @@ export const postsAPI = {
   toggleLike: (id) => api.post(`/posts/${id}/like`),
   toggleBookmark: (id) => api.post(`/posts/${id}/bookmark`),
   getBookmarks: (params) => api.get('/posts/bookmarks', { params }),
-  repost: (id, comment) => api.post(`/posts/${id}/repost`, { comment }),
   reportPost: (id, data) => api.post(`/posts/${id}/report`, data),
   votePoll: (id, optionIndex) => api.post(`/posts/${id}/vote`, { optionIndex }),
   getComments: (id, params) => api.get(`/posts/${id}/comments`, { params }),
