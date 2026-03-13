@@ -63,7 +63,6 @@ export const postsAPI = {
   deletePost: (id) => api.delete(`/posts/${id}`),
   toggleLike: (id) => api.post(`/posts/${id}/like`),
   toggleBookmark: (id) => api.post(`/posts/${id}/bookmark`),
-  getBookmarks: (params) => api.get('/posts/bookmarks', { params }),
   reportPost: (id, data) => api.post(`/posts/${id}/report`, data),
   votePoll: (id, optionIndex) => api.post(`/posts/${id}/vote`, { optionIndex }),
   getComments: (id, params) => api.get(`/posts/${id}/comments`, { params }),
@@ -87,6 +86,7 @@ export const usersAPI = {
   savePushToken: (token) => api.post('/users/push-token', { token }),
   toggleNotifyPosts: (id) => api.post(`/users/${id}/notify-posts`),
   requestVerification: (type, reason) => api.post('/users/verify-request', { type, reason }),
+  getBookmarks: (params) => api.get('/users/bookmarks', { params }),
 };
 
 // ── Direct Messages ───────────────────────────────────────────────────────────

@@ -6,10 +6,12 @@ const {
   updateProfile, searchUsers, getFollowers, reportUser, getSuggestions, savePushToken,
   togglePostNotifications, requestVerification,
 } = require('../controllers/userController');
+const { getBookmarks } = require('../controllers/postController');
 
 router.post('/push-token', protect, savePushToken);
 router.get('/search', optionalAuth, searchUsers);
 router.get('/suggestions', protect, getSuggestions);
+router.get('/bookmarks', protect, getBookmarks);
 router.get('/:username', optionalAuth, getProfile);
 router.get('/:username/posts', optionalAuth, getUserPosts);
 router.get('/:username/followers', optionalAuth, getFollowers);

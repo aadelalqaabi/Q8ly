@@ -7,7 +7,7 @@ import { useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { usersAPI, postsAPI } from '../../services/api';
+import { usersAPI } from '../../services/api';
 import PostCard from '../../components/post/PostCard';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -119,7 +119,7 @@ export default function ProfileScreen({ navigation, route }) {
     if (!isOwnProfile) return;
     setPostsLoading(true);
     try {
-      const res = await postsAPI.getBookmarks({ page: 1, limit: 30 });
+      const res = await usersAPI.getBookmarks({ page: 1, limit: 30 });
       setBookmarks(res.posts || []);
     } catch (e) { console.error(e); }
     finally { setPostsLoading(false); }
