@@ -18,6 +18,9 @@ const conversationSchema = new mongoose.Schema(
     lastSenderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     // unreadCounts: { userId -> count }
     unreadCounts: { type: Map, of: Number, default: {} },
+    // DM request flow
+    status: { type: String, enum: ['pending', 'accepted'], default: 'accepted' },
+    initiator: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },
   { timestamps: true }
 );

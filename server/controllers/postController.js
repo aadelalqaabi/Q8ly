@@ -128,7 +128,7 @@ const getPost = async (req, res, next) => {
       .populate('userId', 'username name profilePic verifiedBadge accountType bio')
       .populate('topicTags', 'name nameAr slug color')
       .populate('spaceTags', 'name nameAr slug type')
-      .populate('originalPost', 'content images userId createdAt')
+      .populate({ path: 'originalPost', select: 'content images video videoThumbnail userId createdAt', populate: { path: 'userId', select: 'username name profilePic verifiedBadge' } })
       .populate('communityNote.addedBy', 'username name verifiedBadge');
 
     if (!post || post.isRemoved) {
@@ -541,6 +541,10 @@ const toggleBookmark = async (req, res, next) => {
     }
     await user.save({ validateBeforeSave: false });
 
+    // Invalidate the auth cache so the next feed request reflects the new bookmark state
+    const { invalidateUserCache } = require('../middleware/auth');
+    invalidateUserCache(req.user._id);
+
     res.json({ success: true, bookmarked: !isBookmarked });
   } catch (error) {
     next(error);
@@ -563,7 +567,7 @@ const getBookmarks = async (req, res, next) => {
       .lean()
       .populate('userId', 'username name profilePic verifiedBadge accountType')
       .populate('topicTags', 'name nameAr slug color')
-      .populate('originalPost', 'content images userId createdAt');
+      .populate({ path: 'originalPost', select: 'content images video videoThumbnail userId createdAt', populate: { path: 'userId', select: 'username name profilePic verifiedBadge' } });
 
     // Restore order
     const ordered = sliced.map((id) => posts.find((p) => p._id.toString() === id.toString())).filter(Boolean);
