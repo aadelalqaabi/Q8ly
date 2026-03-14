@@ -362,7 +362,58 @@ export default function ProfileScreen({ navigation, route }) {
     </View>
   );
 
-  const displayPosts = activeTab === 'bookmarks' ? bookmarks : activeTab === 'circles' ? [] : posts;
+  const listData = activeTab === 'circles' ? circles : activeTab === 'bookmarks' ? bookmarks : posts;
+
+  const renderCircleItem = useCallback(({ item: room }) => (
+    <View style={styles.circleRow}>
+      <TouchableOpacity
+        style={styles.circleRowMain}
+        onPress={() => navigation.navigate('HachiRoom', { roomId: room._id })}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.circleDot, { backgroundColor: room.isActive ? '#34C759' : COLORS.separator }]} />
+        <View style={styles.circleInfo}>
+          <Text style={styles.circleTitle} numberOfLines={1}>{room.title}</Text>
+          <Text style={styles.circleMeta}>{room.memberCount || 1} members · {room.category}</Text>
+        </View>
+        {room.isActive ? (
+          <View style={[styles.circleLiveBadge, { backgroundColor: '#34C75918' }]}>
+            <Text style={styles.circleLiveText}>Live</Text>
+          </View>
+        ) : (
+          <Text style={styles.circleEndedText}>Ended</Text>
+        )}
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.circleDeleteBtn}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        onPress={() => {
+          Alert.alert(
+            'Delete Circle?',
+            'This will permanently delete the circle and all its messages.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Delete',
+                style: 'destructive',
+                onPress: async () => {
+                  try {
+                    await hachiAPI.deleteRoom(room._id);
+                    setCircles((prev) => prev.filter((r) => r._id !== room._id));
+                  } catch (e) {
+                    Alert.alert('Error', e.message || 'Failed to delete');
+                  }
+                },
+              },
+            ]
+          );
+        }}
+        activeOpacity={0.7}
+      >
+        <Ionicons name="trash-outline" size={18} color="#FF3B30" />
+      </TouchableOpacity>
+    </View>
+  ), [circles, COLORS]);
 
   if (isLoading) {
     return (
@@ -375,81 +426,20 @@ export default function ProfileScreen({ navigation, route }) {
   return (
     <View style={styles.container}>
       <FlatList
-        data={displayPosts}
+        data={listData}
         keyExtractor={(item) => item._id}
-        renderItem={({ item }) => <PostCard post={item} navigation={navigation} />}
+        renderItem={activeTab === 'circles' ? renderCircleItem : ({ item }) => <PostCard post={item} navigation={navigation} />}
         ListHeaderComponent={renderHeader}
         ListFooterComponent={
-          activeTab === 'circles' ? (
-            <View>
-              {circles.map((room) => (
-                <View key={room._id} style={styles.circleRow}>
-                  <TouchableOpacity
-                    style={styles.circleRowMain}
-                    onPress={() => navigation.navigate('HachiRoom', { roomId: room._id })}
-                    activeOpacity={0.7}
-                  >
-                    <View style={[styles.circleDot, { backgroundColor: room.isActive ? '#34C759' : COLORS.separator }]} />
-                    <View style={styles.circleInfo}>
-                      <Text style={styles.circleTitle} numberOfLines={1}>{room.title}</Text>
-                      <Text style={styles.circleMeta}>{room.memberCount || 1} members · {room.category}</Text>
-                    </View>
-                    {room.isActive ? (
-                      <View style={[styles.circleLiveBadge, { backgroundColor: '#34C75918' }]}>
-                        <Text style={styles.circleLiveText}>Live</Text>
-                      </View>
-                    ) : (
-                      <Text style={styles.circleEndedText}>Ended</Text>
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.circleDeleteBtn}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    onPress={() => {
-                      Alert.alert(
-                        'Delete Circle?',
-                        'This will permanently delete the circle and all its messages.',
-                        [
-                          { text: 'Cancel', style: 'cancel' },
-                          {
-                            text: 'Delete',
-                            style: 'destructive',
-                            onPress: async () => {
-                              try {
-                                await hachiAPI.deleteRoom(room._id);
-                                setCircles((prev) => prev.filter((r) => r._id !== room._id));
-                              } catch (e) {
-                                Alert.alert('Error', e.message || 'Failed to delete');
-                              }
-                            },
-                          },
-                        ]
-                      );
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="trash-outline" size={18} color="#FF3B30" />
-                  </TouchableOpacity>
-                </View>
-              ))}
-              {!postsLoading && circles.length === 0 && (
-                <View style={styles.empty}>
-                  <Text style={styles.emptyText}>No circles yet</Text>
-                </View>
-              )}
-              <View style={{ height: insets.bottom + 24 }} />
-            </View>
-          ) : (
-            postsLoading
-              ? <ActivityIndicator size="small" color={COLORS.accent} style={{ padding: 20 }} />
-              : <View style={{ height: insets.bottom + 24 }} />
-          )
+          postsLoading
+            ? <ActivityIndicator size="small" color={COLORS.accent} style={{ padding: 20 }} />
+            : <View style={{ height: insets.bottom + 24 }} />
         }
         ListEmptyComponent={
-          !postsLoading && activeTab !== 'circles' ? (
+          !postsLoading ? (
             <View style={styles.empty}>
               <Text style={styles.emptyText}>
-                {activeTab === 'bookmarks' ? 'No bookmarks yet' : t('profile.noPostsYet')}
+                {activeTab === 'circles' ? 'No circles yet' : activeTab === 'bookmarks' ? 'No bookmarks yet' : t('profile.noPostsYet')}
               </Text>
             </View>
           ) : null
