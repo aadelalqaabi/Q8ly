@@ -14,10 +14,9 @@
 
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import { I18nManager } from 'react-native';
+import { I18nManager, NativeModules, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ar as arLocale, enUS } from 'date-fns/locale';
-import * as Localization from 'expo-localization';
 
 import ar from './locales/ar.json';
 import en from './locales/en.json';
@@ -44,11 +43,18 @@ export default i18n;
 /** Detect the device's system language — 'ar' if Arabic, 'en' otherwise. */
 function getDeviceLang() {
   try {
-    // expo-localization reads the actual device locale list (most reliable)
-    const locales = Localization.getLocales?.() ?? [];
-    const primary = locales[0]?.languageCode ?? locales[0]?.languageTag ?? '';
-    if (primary) return primary.startsWith('ar') ? 'ar' : 'en';
-    // Fallback: Intl API
+    // iOS: read device locale from NativeModules
+    const iosLocale =
+      NativeModules.SettingsManager?.settings?.AppleLocale ||
+      NativeModules.SettingsManager?.settings?.AppleLanguages?.[0] ||
+      '';
+    if (iosLocale) return iosLocale.startsWith('ar') ? 'ar' : 'en';
+
+    // Android: read from I18nManager / NativeModules
+    const androidLocale = NativeModules.I18nManager?.localeIdentifier || '';
+    if (androidLocale) return androidLocale.startsWith('ar') ? 'ar' : 'en';
+
+    // Fallback: Intl API (works in Hermes SDK 47+)
     const intlLocale = Intl.DateTimeFormat().resolvedOptions().locale || '';
     return intlLocale.startsWith('ar') ? 'ar' : 'en';
   } catch {

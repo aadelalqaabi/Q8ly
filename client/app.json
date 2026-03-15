@@ -73,8 +73,7 @@
           "isAccessMediaLocationEnabled": true
         }
       ],
-      "expo-font",
-      "expo-localization"
+      "expo-font"
     ],
     "extra": {
       "API_URL": "https://kuwaa-production.up.railway.app/api",
