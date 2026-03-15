@@ -108,6 +108,7 @@ const authSlice = createSlice({
     user: null,
     token: null,
     isAuthenticated: false,
+    isGuest: false,
     needsName: false,
     isLoading: false,
     isSessionRestored: false,
@@ -119,6 +120,12 @@ const authSlice = createSlice({
       if (state.user) {
         state.user = { ...state.user, ...action.payload };
       }
+    },
+    enterGuestMode: (state) => {
+      state.isGuest = true;
+    },
+    exitGuestMode: (state) => {
+      state.isGuest = false;
     },
   },
   extraReducers: (builder) => {
@@ -134,6 +141,7 @@ const authSlice = createSlice({
       .addCase(verifyOtp.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isAuthenticated = true;
+        state.isGuest = false;
         state.user = action.payload.user;
         state.token = action.payload.token;
         state.needsName = action.payload.isNewUser && !action.payload.user?.name;
@@ -182,22 +190,28 @@ const authSlice = createSlice({
         state.isSessionRestored = true;
         if (action.payload) {
           state.isAuthenticated = true;
+          state.isGuest = false;
           state.user = action.payload.user;
           state.token = action.payload.token;
           state.needsName = !action.payload.user?.name;
+        } else {
+          // No saved session — enter guest mode automatically
+          state.isGuest = true;
         }
       })
       .addCase(restoreSession.rejected, (state) => {
         state.isLoading = false;
         state.isSessionRestored = true;
         state.isAuthenticated = false;
+        state.isGuest = true; // Session expired — guest mode until they log in
         state.user = null;
         state.token = null;
       });
 
-    // Logout
+    // Logout → back to guest browsing, not phone screen
     builder.addCase(logout.fulfilled, (state) => {
       state.isAuthenticated = false;
+      state.isGuest = true;
       state.user = null;
       state.token = null;
     });
@@ -210,5 +224,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearError, updateUserLocally } = authSlice.actions;
+export const { clearError, updateUserLocally, enterGuestMode, exitGuestMode } = authSlice.actions;
 export default authSlice.reducer;

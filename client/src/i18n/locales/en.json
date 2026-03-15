@@ -15,7 +15,7 @@
     "noPostsYet": "Nothing here yet",
     "followHint": "Follow users to see what's happening in Kuwait",
     "discoverBtn": "Find users to follow",
-    "filterAll": "All",
+    "filterAll": "For You",
     "filterGovernment": "Government",
     "filterMedia": "Media",
     "filterInfluencer": "Influencer",
@@ -111,7 +111,7 @@
     "minutesLeft": "{{n}}m",
     "hoursLeft": "{{n}}h",
     "expiringSoon": "Expiring soon",
-    "catAll": "For You",
+    "catAll": "All",
     "catGeneral": "General",
     "catFood": "Food",
     "catCoffee": "Coffee",
@@ -236,5 +236,8 @@
     "media":      "Media",
     "business":   "Business",
     "influencer": "Public Figure"
+  },
+  "dm": {
+    "isTyping": "{{name}} is typing"
   }
 }

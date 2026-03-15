@@ -12,6 +12,7 @@ import PostCard from '../../components/post/PostCard';
 import AdCard from '../../components/ui/AdCard';
 import { SHADOWS } from '../../constants';
 import { useTheme } from '../../context/ThemeContext';
+import { useGuestGate } from '../../context/GuestGateContext';
 import { adsAPI } from '../../services/api';
 
 // ── Deterministic-random helper ────────────────────────────────────────────────
@@ -87,6 +88,7 @@ export default function HomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { colors: COLORS } = useTheme();
   const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
+  const { guestGate } = useGuestGate();
   const { forYouPosts, hotPosts, isLoading, isLoadingMore, forYouHasMore, forYouPage, error } =
     useSelector((s) => s.posts);
   const { unreadCount } = useSelector((s) => s.notifications);
@@ -358,7 +360,7 @@ export default function HomeScreen({ navigation }) {
             />
           }
           onEndReached={() => {
-            if (!isLoadingMore && forYouHasMore) loadFeed(forYouPage + 1);
+            if (!isLoadingMore && forYouHasMore && forYouPosts.length > 0) loadFeed(forYouPage + 1);
           }}
           onEndReachedThreshold={0.5}
           showsVerticalScrollIndicator={false}
@@ -369,8 +371,8 @@ export default function HomeScreen({ navigation }) {
 
       {/* Compose FAB */}
       <TouchableOpacity
-        style={[styles.fab, { bottom: 24 + insets.bottom }]}
-        onPress={() => navigation.navigate('CreatePost')}
+        style={[styles.fab, { bottom: 20 }]}
+        onPress={() => guestGate(() => navigation.navigate('CreatePost'))}
         activeOpacity={0.9}
       >
         <Text style={styles.fabPlus}>+</Text>
@@ -556,12 +558,12 @@ const makeStyles = (C) => StyleSheet.create({
 
   fab: {
     position: 'absolute', right: 20,
-    width: 52, height: 52, borderRadius: 26,
+    width: 62, height: 62, borderRadius: 31,
     backgroundColor: C.accent, justifyContent: 'center', alignItems: 'center',
     ...SHADOWS.heavy,
   },
   fabPlus: {
-    color: '#fff', fontSize: 30, fontWeight: '400',
-    lineHeight: 34, marginTop: -1,
+    color: '#fff', fontSize: 36, fontWeight: '400',
+    lineHeight: 40, marginTop: -1,
   },
 });

@@ -108,8 +108,13 @@ const postsSlice = createSlice({
     // Fetch feed
     builder
       .addCase(fetchFeed.pending, (state, action) => {
-        if (action.meta.arg.page === 1) state.isLoading = true;
-        else state.isLoadingMore = true;
+        if (action.meta.arg.page === 1) {
+          state.isLoading = true;
+          state.forYouHasMore = true;
+          state.followingHasMore = true;
+        } else {
+          state.isLoadingMore = true;
+        }
         state.error = null;
       })
       .addCase(fetchFeed.fulfilled, (state, action) => {
@@ -136,6 +141,8 @@ const postsSlice = createSlice({
         state.isLoading = false;
         state.isLoadingMore = false;
         state.error = action.payload;
+        state.forYouHasMore = false;
+        state.followingHasMore = false;
       });
 
     // Fetch trending

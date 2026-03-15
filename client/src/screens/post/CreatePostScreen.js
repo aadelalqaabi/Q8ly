@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   ScrollView, Image, ActivityIndicator, Alert,
+  Keyboard, Animated, Platform,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
@@ -45,6 +46,26 @@ export default function CreatePostScreen({ navigation }) {
   const [pollQuestion, setPollQuestion] = useState('');
   const [pollOptions, setPollOptions] = useState(['', '']);
   const [pollDuration, setPollDuration] = useState('1'); // days
+
+  const toolbarBottom = useRef(new Animated.Value(insets.bottom)).current;
+
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardWillShow', (e) => {
+      Animated.timing(toolbarBottom, {
+        toValue: e.endCoordinates.height,
+        duration: e.duration || 250,
+        useNativeDriver: false,
+      }).start();
+    });
+    const hide = Keyboard.addListener('keyboardWillHide', (e) => {
+      Animated.timing(toolbarBottom, {
+        toValue: insets.bottom,
+        duration: e.duration || 250,
+        useNativeDriver: false,
+      }).start();
+    });
+    return () => { show.remove(); hide.remove(); };
+  }, [insets.bottom]);
 
   const charRemaining = 500 - content.length;
   const pollValid = pollQuestion.trim().length > 0 && pollOptions.filter(o => o.trim()).length >= 2;
@@ -200,6 +221,9 @@ export default function CreatePostScreen({ navigation }) {
         imageUrls = res.urls;
       }
 
+      let videoWidth = 0;
+      let videoHeight = 0;
+
       if (videos.length > 0) {
         setIsUploading(true);
         setUploadProgress('Uploading video…');
@@ -209,6 +233,9 @@ export default function CreatePostScreen({ navigation }) {
         const res = await uploadAPI.video(formData);
         videoUrl = res.url;
         videoThumbnail = res.thumbnail;
+        // Prefer server-returned dimensions; fall back to local asset dimensions
+        videoWidth = res.width || vid.width || 0;
+        videoHeight = res.height || vid.height || 0;
       }
 
       setUploadProgress('Publishing…');
@@ -219,6 +246,8 @@ export default function CreatePostScreen({ navigation }) {
         images: imageUrls,
         video: videoUrl,
         videoThumbnail,
+        videoWidth,
+        videoHeight,
       })).unwrap();
       navigation.goBack();
       promptNotificationsIfNeeded();
@@ -268,7 +297,7 @@ export default function CreatePostScreen({ navigation }) {
         style={styles.body}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 72 }}
       >
         {/* Compose row */}
         <View style={styles.composeRow}>
@@ -314,10 +343,13 @@ export default function CreatePostScreen({ navigation }) {
 
         {/* Video preview */}
         {videoItem && (
-          <View style={styles.videoPreview}>
+          <View style={[
+            styles.videoPreview,
+            { aspectRatio: (videoItem.width && videoItem.height) ? videoItem.width / videoItem.height : 16 / 9 },
+          ]}>
             <Video
               source={{ uri: videoItem.uri }}
-              style={styles.videoPlayer}
+              style={StyleSheet.absoluteFill}
               resizeMode={ResizeMode.COVER}
               shouldPlay={false}
               useNativeControls
@@ -397,7 +429,7 @@ export default function CreatePostScreen({ navigation }) {
       </ScrollView>
 
       {/* Toolbar */}
-      <View style={[styles.toolbar, { paddingBottom: insets.bottom + 10 }]}>
+      <Animated.View style={[styles.toolbar, { bottom: toolbarBottom }]}>
         {/* Gallery button */}
         <TouchableOpacity
           onPress={() => setPickerVisible(true)}
@@ -459,7 +491,7 @@ export default function CreatePostScreen({ navigation }) {
         <Text style={[styles.charCount, charRemaining <= 50 && styles.charCountWarn]}>
           {charRemaining}
         </Text>
-      </View>
+      </Animated.View>
 
       {/* Custom media picker */}
       <MediaPickerSheet
@@ -528,15 +560,17 @@ const makeStyles = (C) => StyleSheet.create({
   videoPreview: {
     marginHorizontal: 16, marginTop: 12,
     borderRadius: 12, overflow: 'hidden',
-    position: 'relative',
+    width: '100%',
   },
-  videoPlayer: { width: '100%', height: 220 },
   removeVideoBtn: { position: 'absolute', top: 8, right: 8 },
 
   toolbar: {
+    position: 'absolute',
+    left: 0, right: 0,
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingTop: 12,
+    paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12,
     borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.separator,
+    backgroundColor: C.white,
   },
   toolBtn: {
     width: 40, height: 40, justifyContent: 'center', alignItems: 'center',

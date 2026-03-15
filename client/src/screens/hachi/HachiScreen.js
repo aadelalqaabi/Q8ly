@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   ActivityIndicator, TextInput, Modal, KeyboardAvoidingView,
-  Platform, ScrollView,
+  Platform, ScrollView, Share,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +13,7 @@ import { fetchRooms, fetchArchivedRooms, createRoom, addRoomRealtime, removeRoom
 import { getSocket } from '../../services/socket';
 import { getDateLocale } from '../../i18n';
 import { useTheme } from '../../context/ThemeContext';
+import { useGuestGate } from '../../context/GuestGateContext';
 
 const HACHI_REQUIRED = 50;
 
@@ -40,6 +41,14 @@ function RoomCard({ room, onPress, archived, isJoined }) {
     : '';
   const catEmoji = CATEGORY_EMOJIS[room.category] || '💬';
   const dom = dominantReaction(room.reactions);
+
+  const handleShare = async (e) => {
+    e.stopPropagation?.();
+    const url = `kuwai://circle/${room._id}`;
+    try {
+      await Share.share(Platform.OS === 'ios' ? { url } : { message: url });
+    } catch { /* silent */ }
+  };
 
   return (
     <TouchableOpacity
@@ -151,6 +160,7 @@ export default function HachiScreen({ navigation }) {
   const { user: currentUser } = useSelector((s) => s.auth);
   const { colors: COLORS } = useTheme();
   const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
+  const { guestGate } = useGuestGate();
 
   const hachiPoints = currentUser?.hachiPoints || 0;
   const hasBadge = currentUser?.verifiedBadge && currentUser.verifiedBadge !== 'none';
@@ -334,7 +344,7 @@ export default function HachiScreen({ navigation }) {
               room={item}
               archived={!item.isActive}
               isJoined={isRoomJoined(item)}
-              onPress={() => navigation.navigate('HachiRoom', { roomId: item._id, title: item.title })}
+              onPress={() => guestGate(() => navigation.navigate('HachiRoom', { roomId: item._id, title: item.title }))}
             />
           )}
           ListEmptyComponent={renderEmpty}

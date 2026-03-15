@@ -54,7 +54,7 @@ const initSocket = (server) => {
 
     if (userId) {
       socket.join(`user:${userId}`);
-      console.log(`User ${socket.user.username} connected (socket: ${socket.id})`);
+      console.log(`[socket] ${socket.user.username} connected → joined user:${userId} (socket: ${socket.id})`);
     }
 
     // ── Space rooms ──────────────────────────────────────────────
@@ -417,11 +417,13 @@ const initSocket = (server) => {
 
     // ── DM: typing indicator ──────────────────────────────────────
     socket.on('dmTyping', ({ otherUserId, isTyping }) => {
-      if (!socket.user) return;
+      if (!socket.user) { console.log('[dmTyping] rejected: no socket.user'); return; }
       const otherIdStr = String(otherUserId || '');
-      if (!isValidObjectId(otherIdStr)) return;
-      console.log(`[dmTyping] ${socket.user.username} → user:${otherIdStr} isTyping=${isTyping}`);
-      io.to(`user:${otherIdStr}`).emit('dmTyping', {
+      if (!isValidObjectId(otherIdStr)) { console.log('[dmTyping] rejected: invalid otherUserId', otherIdStr); return; }
+      const roomName = `user:${otherIdStr}`;
+      const roomSize = io.sockets.adapter.rooms.get(roomName)?.size || 0;
+      console.log(`[dmTyping] ${socket.user.username} → ${roomName} (${roomSize} sockets in room) isTyping=${isTyping}`);
+      io.to(roomName).emit('dmTyping', {
         fromUserId: socket.user._id.toString(),
         isTyping: !!isTyping,
       });
@@ -437,6 +439,13 @@ const initSocket = (server) => {
         const userIdStr = socket.user._id.toString();
         if (!conv.participants.some((p) => p.toString() === userIdStr)) return;
 
+        // Emit immediately (like typing) — don't wait for DB save
+        const otherId = conv.participants.find((p) => p.toString() !== userIdStr)?.toString();
+        if (otherId) {
+          io.to(`user:${otherId}`).emit('dmSeen', { conversationId });
+        }
+
+        // Persist to DB in background
         let dirty = false;
         conv.messages.forEach((m) => {
           if (m.sender.toString() !== userIdStr && !m.isRead) {
@@ -447,10 +456,6 @@ const initSocket = (server) => {
         if (dirty) {
           conv.unreadCounts.set(userIdStr, 0);
           await conv.save();
-          const otherId = conv.participants.find((p) => p.toString() !== userIdStr)?.toString();
-          if (otherId) {
-            io.to(`user:${otherId}`).emit('dmSeen', { conversationId });
-          }
         }
       } catch (err) {
         console.error('dmMarkSeen error:', err.message);

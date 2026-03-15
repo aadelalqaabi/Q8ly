@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import {
   View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity,
   TextInput, KeyboardAvoidingView, Platform, ActivityIndicator,
-  Image, Modal, Alert,
+  Image, Modal, Alert, Keyboard, Share,
 } from 'react-native';
 import BottomMenu from '../../components/ui/BottomMenu';
 import { useDispatch, useSelector } from 'react-redux';
@@ -119,6 +119,7 @@ export default function HachiRoomScreen({ navigation, route }) {
   const [selectedMsg, setSelectedMsg] = useState(null); // message long-pressed
   const [showRequests, setShowRequests] = useState(false); // join requests modal
   const [isViewOnly, setIsViewOnly] = useState(false); // removed/blocked — can view but not send
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
   const isCreator = activeRoom?.creator?._id === currentUser?._id
     || activeRoom?.creator === currentUser?._id;
@@ -239,20 +240,43 @@ export default function HachiRoomScreen({ navigation, route }) {
   }, [roomId]);
 
   useEffect(() => {
+    const show = Keyboard.addListener('keyboardWillShow', () => {
+      setKeyboardVisible(true);
+      setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 150);
+    });
+    const hide = Keyboard.addListener('keyboardWillHide', () => setKeyboardVisible(false));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
+
+  useEffect(() => {
     if (activeRoom?.messages?.length) {
-      setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
+      setTimeout(() => flatRef.current?.scrollToEnd({ animated: false }), 300);
     }
   }, [activeRoom?.messages?.length]);
+
+  const handleShare = async () => {
+    const url = `kuwai://circle/${roomId}`;
+    try {
+      await Share.share(Platform.OS === 'ios' ? { url } : { message: url });
+    } catch { /* silent */ }
+  };
 
   useEffect(() => {
     if (!activeRoom) return;
     navigation.setOptions({
       title: activeRoom.title,
-      headerRight: () => (isCreator && activeRoom.isActive) ? (
-        <TouchableOpacity onPress={() => setEndMenuVisible(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={{ fontSize: 15, color: COLORS.error }}>{t('hachi.endHachi')}</Text>
-        </TouchableOpacity>
-      ) : null,
+      headerRight: () => (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <TouchableOpacity onPress={handleShare} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="share-outline" size={22} color={COLORS.accent} />
+          </TouchableOpacity>
+          {isCreator && activeRoom.isActive && (
+            <TouchableOpacity onPress={() => setEndMenuVisible(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={{ fontSize: 15, color: COLORS.error }}>{t('hachi.endHachi')}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      ),
     });
   }, [activeRoom, isCreator]);
 
@@ -407,8 +431,8 @@ export default function HachiRoomScreen({ navigation, route }) {
     <>
       <KeyboardAvoidingView
         style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 44 : 0}
       >
         {/* Room info bar */}
         {activeRoom && (
@@ -440,6 +464,7 @@ export default function HachiRoomScreen({ navigation, route }) {
                 <Text style={styles.joinReqText}>{joinRequests.length} طلب</Text>
               </TouchableOpacity>
             )}
+
           </View>
         )}
 
@@ -499,12 +524,12 @@ export default function HachiRoomScreen({ navigation, route }) {
 
         {/* Input bar / view-only notice */}
         {isViewOnly ? (
-          <View style={[styles.viewOnlyBar, { paddingBottom: insets.bottom + 8 }]}>
+          <View style={[styles.viewOnlyBar, { paddingBottom: keyboardVisible ? 8 : insets.bottom + 8 }]}>
             <Ionicons name="eye-outline" size={14} color={COLORS.textMuted} />
             <Text style={styles.viewOnlyText}>تمت إزالتك · للقراءة فقط</Text>
           </View>
         ) : (
-          <View style={[styles.inputBar, { paddingBottom: insets.bottom + 10 }]}>
+          <View style={[styles.inputBar, { paddingBottom: keyboardVisible ? 10 : insets.bottom + 10 }]}>
             <TextInput
               style={styles.input}
               placeholder={t('hachi.messagePlaceholder')}

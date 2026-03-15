@@ -61,7 +61,7 @@ export default function PostDetailScreen({ navigation, route }) {
     const socket = getSocket();
     if (socket) {
       socket.on('newComment', ({ comment, postId: pid }) => {
-        if (pid === postId) {
+        if (pid === postId && comment?.userId?._id !== user?._id && comment?.userId !== user?._id) {
           setComments((prev) => [comment, ...prev]);
           setPost((p) => p ? { ...p, commentsCount: p.commentsCount + 1 } : p);
         }
@@ -83,7 +83,7 @@ export default function PostDetailScreen({ navigation, route }) {
       });
       setCommentText('');
       setReplyTo(null);
-      setComments((prev) => [res.comment, ...prev]);
+      setComments((prev) => prev.some((c) => c._id === res.comment._id) ? prev : [res.comment, ...prev]);
       setPost((p) => p ? { ...p, commentsCount: p.commentsCount + 1 } : p);
     } catch (e) {
       Alert.alert(t('common.error'), e.message);

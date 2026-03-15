@@ -2,24 +2,26 @@
   "expo": {
     "name": "KUWAI",
     "slug": "kuwait-now",
+    "scheme": "kuwai",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./src/assets/Logo.png",
     "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./src/assets/Splash.png",
-      "resizeMode": "fit",
+      "resizeMode": "contain",
       "backgroundColor": "#0033A0"
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "app.kuwaitnow",
+      "bundleIdentifier": "kuwai.cotan.com",
       "buildNumber": "1",
       "infoPlist": {
         "NSCameraUsageDescription": "KUWAI needs camera access to take photos for posts.",
         "NSPhotoLibraryUsageDescription": "KUWAI needs photo library access to share photos and videos in posts.",
         "NSPhotoLibraryAddUsageDescription": "KUWAI needs access to save photos and videos.",
-        "NSMicrophoneUsageDescription": "KUWAI needs microphone access for video recording."
+        "NSMicrophoneUsageDescription": "KUWAI needs microphone access for video recording.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {

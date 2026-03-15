@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { restoreSession } from '../store/slices/authSlice';
+import { GuestGateProvider, useGuestGate } from '../context/GuestGateContext';
 import { addNotificationRealtime } from '../store/slices/notificationsSlice';
 import { addRealtimeMessage, updateConversationAccepted } from '../store/slices/dmSlice';
 import { getSocket } from '../services/socket';
@@ -39,7 +40,8 @@ function MainTabs() {
   const insets = useSafeAreaInsets();
   const { colors: COLORS } = useTheme();
   const dmUnreadCount = useSelector((s) => s.dm?.dmUnreadCount || 0);
-  const { user } = useSelector((s) => s.auth);
+  const { user, isGuest } = useSelector((s) => s.auth);
+  const { guestGate } = useGuestGate();
   return (
     <Tab.Navigator
       screenOptions={{
@@ -67,15 +69,6 @@ function MainTabs() {
         }}
       />
       <Tab.Screen
-        name="Discover"
-        component={DiscoverScreen}
-        options={{
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'search' : 'search-outline'} size={24} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
         name="Hachi"
         component={HachiScreen}
         options={{
@@ -85,8 +78,25 @@ function MainTabs() {
         }}
       />
       <Tab.Screen
+        name="Discover"
+        component={DiscoverScreen}
+        options={{
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'search' : 'search-outline'} size={24} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
         name="DMList"
         component={DMListScreen}
+        listeners={{
+          tabPress: (e) => {
+            if (isGuest) {
+              e.preventDefault();
+              guestGate(null);
+            }
+          },
+        }}
         options={{
           tabBarIcon: ({ color, focused }) => (
             <View style={{ position: 'relative' }}>
@@ -111,6 +121,14 @@ function MainTabs() {
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
+        listeners={{
+          tabPress: (e) => {
+            if (isGuest) {
+              e.preventDefault();
+              guestGate(null);
+            }
+          },
+        }}
         options={{
           tabBarIcon: ({ focused }) => (
             user?.profilePic ? (
@@ -169,9 +187,19 @@ function AppStack() {
   );
 }
 
+const linking = {
+  prefixes: ['kuwai://'],
+  config: {
+    screens: {
+      PostDetail: 'post/:postId',
+      HachiRoom: 'circle/:roomId',
+    },
+  },
+};
+
 export default function AppNavigator() {
   const dispatch = useDispatch();
-  const { isAuthenticated, isSessionRestored, needsName } = useSelector((s) => s.auth);
+  const { isAuthenticated, isSessionRestored, needsName, isGuest } = useSelector((s) => s.auth);
   const { colors: COLORS } = useTheme();
   const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
 
@@ -214,8 +242,8 @@ export default function AppNavigator() {
   }
 
   let content;
-  if (!isAuthenticated) content = <AuthStack />;
-  else if (needsName) content = (
+  if (!isAuthenticated && !isGuest) content = <AuthStack />;
+  else if (isAuthenticated && needsName) content = (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="NameSetup" component={NameScreen} />
     </Stack.Navigator>
@@ -223,8 +251,10 @@ export default function AppNavigator() {
   else content = <AppStack />;
 
   return (
-    <NavigationContainer>
-      {content}
+    <NavigationContainer linking={linking}>
+      <GuestGateProvider>
+        {content}
+      </GuestGateProvider>
     </NavigationContainer>
   );
 }

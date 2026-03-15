@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, Image, Share, Dimensions, Alert,
+  View, Text, StyleSheet, TouchableOpacity, Image, Share, Dimensions, Alert, Platform,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
@@ -433,7 +433,10 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
   };
 
   const handleShare = async () => {
-    try { await Share.share({ message: post.content }); } catch { /* silent */ }
+    const url = `kuwai://post/${post._id}`;
+    try {
+      await Share.share(Platform.OS === 'ios' ? { url } : { message: url });
+    } catch { /* silent */ }
   };
 
   const handleBookmark = async () => {
@@ -634,6 +637,11 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
                   size={17}
                   color={bookmarked ? COLORS.accent : COLORS.textMuted}
                 />
+              </TouchableOpacity>
+
+              {/* Share */}
+              <TouchableOpacity style={styles.action} onPress={handleShare} hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}>
+                <Ionicons name="share-outline" size={17} color={COLORS.textMuted} />
               </TouchableOpacity>
             </View>
             {!!timestamp && <Text style={styles.timestamp}>{timestamp}</Text>}

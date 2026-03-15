@@ -40,11 +40,23 @@ export default i18n;
 
 // ── Language helpers ──────────────────────────────────────────────────────────
 
+/** Detect the device's system language — 'ar' if Arabic, 'en' otherwise. */
+function getDeviceLang() {
+  try {
+    // Intl is available in Hermes (Expo SDK 47+)
+    const locale = Intl.DateTimeFormat().resolvedOptions().locale || '';
+    return locale.startsWith('ar') ? 'ar' : 'en';
+  } catch {
+    // Fallback: RTL means Arabic keyboard/locale is active
+    return I18nManager.isRTL ? 'ar' : 'en';
+  }
+}
+
 /** Call once in App.js before rendering to apply stored preference. */
 export async function initLanguage() {
   const stored = await AsyncStorage.getItem(LANG_KEY).catch(() => null);
-  const lang = (stored === 'ar' || stored === 'en') ? stored
-    : (I18nManager.isRTL ? 'ar' : 'en');
+  // Use stored preference if explicitly set; otherwise follow device language
+  const lang = (stored === 'ar' || stored === 'en') ? stored : getDeviceLang();
 
   I18nManager.forceRTL(lang === 'ar');
   await i18n.changeLanguage(lang);

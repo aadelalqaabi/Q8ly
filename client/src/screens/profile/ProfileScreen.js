@@ -11,6 +11,7 @@ import { usersAPI, hachiAPI } from '../../services/api';
 import PostCard from '../../components/post/PostCard';
 import BottomMenu from '../../components/ui/BottomMenu';
 import { useTheme } from '../../context/ThemeContext';
+import { useGuestGate } from '../../context/GuestGateContext';
 
 const BADGE_COLORS = {
   government: '#0033A0',
@@ -82,6 +83,7 @@ export default function ProfileScreen({ navigation, route }) {
   const { t } = useTranslation();
   const { colors: COLORS } = useTheme();
   const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
+  const { guestGate } = useGuestGate();
 
   const username = route.params?.username || currentUser?.username;
   const isOwnProfile = username === currentUser?.username;
@@ -312,18 +314,18 @@ export default function ProfileScreen({ navigation, route }) {
           <View style={styles.followRow}>
             {!isBlocked && (
               isFollowing ? (
-                <TouchableOpacity style={[styles.followingChip, followLoading && { opacity: 0.5 }]} onPress={handleFollow} activeOpacity={0.7} disabled={followLoading}>
+                <TouchableOpacity style={[styles.followingChip, followLoading && { opacity: 0.5 }]} onPress={() => guestGate(handleFollow)} activeOpacity={0.7} disabled={followLoading}>
                   <Ionicons name="checkmark" size={14} color={COLORS.textMuted} />
                   <Text style={styles.followingChipText}>{t('profile.following')}</Text>
                 </TouchableOpacity>
               ) : (
-                <TouchableOpacity style={[styles.followChip, followLoading && { opacity: 0.5 }]} onPress={handleFollow} activeOpacity={0.85} disabled={followLoading}>
+                <TouchableOpacity style={[styles.followChip, followLoading && { opacity: 0.5 }]} onPress={() => guestGate(handleFollow)} activeOpacity={0.85} disabled={followLoading}>
                   <Text style={styles.followChipText}>{t('profile.follow')}</Text>
                 </TouchableOpacity>
               )
             )}
             {!isBlocked && (
-              <TouchableOpacity style={styles.messageBtn} onPress={handleMessage} activeOpacity={0.7}>
+              <TouchableOpacity style={styles.messageBtn} onPress={() => guestGate(handleMessage)} activeOpacity={0.7}>
                 <Ionicons name="chatbubble-outline" size={18} color={COLORS.text} />
               </TouchableOpacity>
             )}

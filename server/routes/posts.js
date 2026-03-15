@@ -11,7 +11,7 @@ const {
 const { getComments, addComment, likeComment, deleteComment } = require('../controllers/commentController');
 
 // Feed and discovery
-router.get('/feed', protect, getFeed);
+router.get('/feed', optionalAuth, getFeed);
 router.get('/trending', optionalAuth, getTrending);
 router.get('/search', optionalAuth, searchPosts);
 // Single post

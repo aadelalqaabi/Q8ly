@@ -15,7 +15,7 @@
     "noPostsYet": "لا يوجد شيء هنا بعد",
     "followHint": "تابع مستخدمين لترى ما يحدث في الكويت",
     "discoverBtn": "ابحث عن مستخدمين للمتابعة",
-    "filterAll": "الكل",
+    "filterAll": "لك",
     "filterGovernment": "حكومي",
     "filterMedia": "إعلام",
     "filterInfluencer": "مؤثر",
@@ -111,7 +111,7 @@
     "minutesLeft": "{{n}} د",
     "hoursLeft": "{{n}} س",
     "expiringSoon": "ينتهي قريباً",
-    "catAll": "لك",
+    "catAll": "الكل",
     "catGeneral": "عام",
     "catFood": "أكل",
     "catCoffee": "قهوة",
@@ -236,5 +236,8 @@
     "media":      "إعلام",
     "business":   "تجاري",
     "influencer": "شخصية عامة"
+  },
+  "dm": {
+    "isTyping": "{{name}} يكتب..."
   }
 }

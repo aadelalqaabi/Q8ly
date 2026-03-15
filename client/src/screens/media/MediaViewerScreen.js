@@ -157,16 +157,30 @@ function ZoomableImage({ uri, onZoomChange }) {
 // ── Video page ─────────────────────────────────────────────────────────────────
 function VideoPage({ uri }) {
   const videoRef = useRef(null);
+  const [videoSize, setVideoSize] = useState({ width: SW, height: SW * 0.5625 });
+
+  const onReadyForDisplay = ({ naturalSize }) => {
+    if (!naturalSize?.width || !naturalSize?.height) return;
+    const ratio = naturalSize.width / naturalSize.height;
+    // Fit within screen without stretching
+    if (ratio >= SW / SH) {
+      setVideoSize({ width: SW, height: SW / ratio });
+    } else {
+      setVideoSize({ width: SH * ratio, height: SH });
+    }
+  };
+
   return (
     <View style={styles.page}>
       <Video
         ref={videoRef}
         source={{ uri }}
-        style={{ width: SW, height: SW * 0.5625 }}
+        style={{ width: videoSize.width, height: videoSize.height }}
         resizeMode={ResizeMode.CONTAIN}
         useNativeControls
         shouldPlay
-        isLooping={false}
+        isLooping={true}
+        onReadyForDisplay={onReadyForDisplay}
       />
     </View>
   );
@@ -178,7 +192,13 @@ export default function MediaViewerScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [isZoomed, setIsZoomed] = useState(false);
+  const isZoomedRef = useRef(false);
   const listRef = useRef(null);
+
+  const handleZoomChange = useCallback((zoomed) => {
+    isZoomedRef.current = zoomed;
+    setIsZoomed(zoomed);
+  }, []);
 
   // Swipe-to-dismiss
   const translateY = useRef(new Animated.Value(0)).current;
@@ -197,6 +217,7 @@ export default function MediaViewerScreen({ navigation, route }) {
 
   const onDismissPanState = ({ nativeEvent: ev }) => {
     if (ev.state !== State.END && ev.state !== State.CANCELLED) return;
+    if (isZoomedRef.current) return; // zoomed — ignore dismiss gesture
     const { translationY, velocityY } = ev;
     if (Math.abs(translationY) > 100 || Math.abs(velocityY) > 600) {
       navigation.goBack();
@@ -216,7 +237,7 @@ export default function MediaViewerScreen({ navigation, route }) {
     if (item.type === 'video') return <VideoPage uri={item.uri} />;
     return (
       <View style={styles.page}>
-        <ZoomableImage uri={item.uri} onZoomChange={setIsZoomed} />
+        <ZoomableImage uri={item.uri} onZoomChange={handleZoomChange} />
       </View>
     );
   };
@@ -228,7 +249,6 @@ export default function MediaViewerScreen({ navigation, route }) {
 
       <PanGestureHandler
         ref={dismissPanRef}
-        enabled={!isZoomed}
         onGestureEvent={onDismissPanEvent}
         onHandlerStateChange={onDismissPanState}
         activeOffsetY={[-10, 10]}

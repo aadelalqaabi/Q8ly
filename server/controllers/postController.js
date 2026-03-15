@@ -18,7 +18,10 @@ const getFeed = async (req, res, next) => {
 
     let query = { isRemoved: false, visibility: 'public' };
 
-    if (tab === 'following') {
+    if (!req.user) {
+      // Guest: all public posts, no personalisation
+      query = { isRemoved: false, visibility: { $ne: 'space' } };
+    } else if (tab === 'following') {
       // Only posts from followed users
       query.userId = { $in: [...req.user.following, req.user._id] };
     } else {
@@ -44,11 +47,11 @@ const getFeed = async (req, res, next) => {
       .limit(limitInt);
 
     // Mark which posts are liked / bookmarked by current user
-    const userIdStr = req.user._id.toString();
-    const userBookmarks = (req.user.bookmarks || []).map((id) => id.toString());
+    const userIdStr = req.user?._id?.toString();
+    const userBookmarks = (req.user?.bookmarks || []).map((id) => id.toString());
     const postsWithLikeStatus = posts.map((post) => {
-      post.isLiked = post.likes ? post.likes.some((id) => id.toString() === userIdStr) : false;
-      post.isBookmarked = userBookmarks.includes(post._id.toString());
+      post.isLiked = userIdStr && post.likes ? post.likes.some((id) => id.toString() === userIdStr) : false;
+      post.isBookmarked = userIdStr ? userBookmarks.includes(post._id.toString()) : false;
       post.likes = undefined;
       return post;
     });
@@ -56,13 +59,13 @@ const getFeed = async (req, res, next) => {
     // Hot stranger posts — velocity-based, last 24h, outside the user's network
     let hotPosts = [];
     if (tab !== 'following' && parseInt(page) === 1) {
-      const followedUserIds = [...req.user.following, req.user._id];
-      const blockedIds = req.user.blockedUsers || [];
+      const followedUserIds = req.user ? [...req.user.following, req.user._id] : [];
+      const blockedIds = req.user?.blockedUsers || [];
       const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
       const rawHot = await Post.find({
         isRemoved: false,
         visibility: 'public',
-        userId: { $nin: [...followedUserIds, ...blockedIds] },
+        ...(followedUserIds.length > 0 && { userId: { $nin: [...followedUserIds, ...blockedIds] } }),
         createdAt: { $gt: since },
         trendingScore: { $gt: 2 },
       })
@@ -72,7 +75,7 @@ const getFeed = async (req, res, next) => {
         .limit(6);
 
       hotPosts = rawHot.map((post) => {
-        post.isLiked = post.likes ? post.likes.some((id) => id.toString() === userIdStr) : false;
+        post.isLiked = userIdStr && post.likes ? post.likes.some((id) => id.toString() === userIdStr) : false;
         post.likes = undefined;
         return post;
       });
@@ -154,7 +157,7 @@ const getPost = async (req, res, next) => {
 // @access  Private
 const createPost = async (req, res, next) => {
   try {
-    const { content, type = 'text', images, video, videoThumbnail, topicTags, spaceTags, visibility, poll, location } = req.body;
+    const { content, type = 'text', images, video, videoThumbnail, videoWidth, videoHeight, topicTags, spaceTags, visibility, poll, location } = req.body;
 
     if (!content && (!images || images.length === 0) && !video && !poll) {
       return res.status(400).json({ success: false, message: 'Post must have content, media, or a poll' });
@@ -195,6 +198,8 @@ const createPost = async (req, res, next) => {
       images: images || [],
       video,
       videoThumbnail: videoThumbnail || null,
+      videoWidth: videoWidth || 0,
+      videoHeight: videoHeight || 0,
       topicTags: topicTags || [],
       spaceTags: spaceTags || [],
       visibility: visibility || 'public',

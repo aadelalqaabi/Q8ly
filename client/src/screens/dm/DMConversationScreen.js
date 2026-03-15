@@ -1,14 +1,15 @@
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput,
-  KeyboardAvoidingView, Platform, Image, ActivityIndicator,
+  KeyboardAvoidingView, Platform, Image, ActivityIndicator, Keyboard,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { format } from 'date-fns';
 import { useFocusEffect } from '@react-navigation/native';
-import { fetchConversation, sendDmMessage, clearActiveConversation, markConversationSeen } from '../../store/slices/dmSlice';
+import { useTranslation } from 'react-i18next';
+import { fetchConversation, sendDmMessage, clearActiveConversation } from '../../store/slices/dmSlice';
 import { getSocket } from '../../services/socket';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -22,6 +23,7 @@ function avatarBg(name) {
 
 export default function DMConversationScreen({ navigation, route }) {
   const { userId, username, name: otherName } = route.params;
+  const { t } = useTranslation();
   const dispatch = useDispatch();
   const insets = useSafeAreaInsets();
   const { colors: COLORS } = useTheme();
@@ -30,10 +32,12 @@ export default function DMConversationScreen({ navigation, route }) {
   const { activeConversation, loading, sending } = useSelector((s) => s.dm);
   const [text, setText] = useState('');
   const [otherTyping, setOtherTyping] = useState(false);
+  const [lastSeenMsgId, setLastSeenMsgId] = useState(null);
   const flatListRef = useRef(null);
   const conversationIdRef = useRef(null);
   const userIdRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const messagesRef = useRef([]);
 
   const messages = activeConversation?.conversation?.messages || [];
   const other = activeConversation?.other;
@@ -42,6 +46,7 @@ export default function DMConversationScreen({ navigation, route }) {
   // Keep refs up-to-date to avoid stale closures in socket handlers
   conversationIdRef.current = conversation?._id ?? null;
   userIdRef.current = user?._id ?? null;
+  messagesRef.current = messages;
 
   // Am I the one who initiated this pending request?
   const isPendingInitiator = useMemo(() => {
@@ -50,15 +55,16 @@ export default function DMConversationScreen({ navigation, route }) {
     return initiatorId === user?._id?.toString();
   }, [conversation, user]);
 
-  // Index of the last message I sent that the other person has read
-  const lastSeenIdx = useMemo(() => {
-    let idx = -1;
-    messages.forEach((m, i) => {
+  // Initialize lastSeenMsgId from DB: find the last sent message that is already read
+  useEffect(() => {
+    if (!messages.length) return;
+    let lastReadId = null;
+    messages.forEach((m) => {
       const isMe = m.sender?._id?.toString() === user?._id?.toString() || m.sender?.toString() === user?._id?.toString();
-      if (isMe && m.isRead) idx = i;
+      if (isMe && m.isRead) lastReadId = m._id;
     });
-    return idx;
-  }, [messages, user]);
+    if (lastReadId) setLastSeenMsgId(lastReadId);
+  }, [activeConversation]);
 
   useEffect(() => {
     dispatch(fetchConversation(userId));
@@ -89,7 +95,12 @@ export default function DMConversationScreen({ navigation, route }) {
 
     const onSeen = (data) => {
       if (!conversationIdRef.current || data.conversationId?.toString() !== conversationIdRef.current?.toString()) return;
-      dispatch(markConversationSeen());
+      // Find the last message I sent and mark that specific one as seen
+      const myMsgs = messagesRef.current.filter((m) => {
+        return m.sender?._id?.toString() === userIdRef.current || m.sender?.toString() === userIdRef.current;
+      });
+      const lastMine = myMsgs[myMsgs.length - 1];
+      if (lastMine?._id) setLastSeenMsgId(lastMine._id);
     };
 
     socket.on('dmMessage', onMessage);
@@ -130,6 +141,22 @@ export default function DMConversationScreen({ navigation, route }) {
     }
   }, [messages.length]);
 
+  // Scroll to bottom when typing indicator appears so bubbles aren't hidden
+  useEffect(() => {
+    if (otherTyping) {
+      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 50);
+    }
+  }, [otherTyping]);
+
+  // Scroll to bottom when keyboard opens so latest messages stay visible
+  useEffect(() => {
+    const show = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100),
+    );
+    return () => show.remove();
+  }, []);
+
   const emitTyping = (isTyping) => {
     const socket = getSocket();
     if (!socket) { console.warn('[dmTyping] no socket'); return; }
@@ -154,6 +181,7 @@ export default function DMConversationScreen({ navigation, route }) {
     setText('');
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     emitTyping(false);
+    setLastSeenMsgId(null);
     await dispatch(sendDmMessage({ userId, text: trimmed }));
     if (!conversation || conversation.status === 'pending') {
       await dispatch(fetchConversation(userId));
@@ -164,7 +192,7 @@ export default function DMConversationScreen({ navigation, route }) {
   const renderMessage = ({ item, index }) => {
     const isMe = item.sender?._id?.toString() === user?._id?.toString() || item.sender?.toString() === user?._id?.toString();
     const showTime = index === 0 || (index > 0 && new Date(item.createdAt) - new Date(messages[index - 1]?.createdAt) > 5 * 60 * 1000);
-    const showSeen = isMe && index === lastSeenIdx;
+    const showSeen = isMe && item._id && item._id.toString() === lastSeenMsgId?.toString();
 
     return (
       <View>
@@ -241,6 +269,8 @@ export default function DMConversationScreen({ navigation, route }) {
           renderItem={renderMessage}
           contentContainerStyle={{ padding: 16, gap: 4, paddingBottom: 8 }}
           showsVerticalScrollIndicator={false}
+          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+          onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
           ListEmptyComponent={
             <View style={styles.empty}>
               <Text style={styles.emptyText}>Say hi 👋</Text>
@@ -252,11 +282,15 @@ export default function DMConversationScreen({ navigation, route }) {
       {/* Typing indicator */}
       {otherTyping && (
         <View style={styles.typingRow}>
-          <Text style={styles.typingText}>{other?.name || otherName} is typing</Text>
-          <View style={styles.typingDots}>
-            <View style={[styles.dot, styles.dot1]} />
-            <View style={[styles.dot, styles.dot2]} />
-            <View style={[styles.dot, styles.dot3]} />
+          <View style={styles.typingBubble}>
+            <View style={styles.typingDots}>
+              <View style={styles.dot} />
+              <View style={styles.dot} />
+              <View style={styles.dot} />
+            </View>
+            <Text style={styles.typingText}>
+              {t('dm.isTyping', { name: other?.name || otherName })}
+            </Text>
           </View>
         </View>
       )}
@@ -352,14 +386,17 @@ const makeStyles = (C) => StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
   typingRow: {
+    paddingHorizontal: 16,
+    paddingBottom: 4,
+  },
+  typingBubble: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
     gap: 6,
+    alignSelf: 'flex-start',
+    backgroundColor: 'transparent',
   },
-  typingText: { fontSize: 12, color: C.textMuted },
   typingDots: { flexDirection: 'row', gap: 3, alignItems: 'center' },
-  dot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: C.textMuted },
-  dot1: {}, dot2: {}, dot3: {},
+  typingText: { fontSize: 12, color: C.textMuted, writingDirection: 'auto' },
+  dot: { width: 4, height: 4, borderRadius: 2, backgroundColor: C.textMuted },
 });
