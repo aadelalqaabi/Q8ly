@@ -134,9 +134,13 @@ export default function PhoneScreen({ navigation }) {
 
         <Text style={styles.legal}>
           {t('auth.termsPrefix')}{' '}
-          <Text style={styles.legalLink}>{t('auth.terms')}</Text>
+          <Text style={styles.legalLink} onPress={() => navigation.navigate('Terms')}>
+            {t('auth.terms')}
+          </Text>
           {' '}{t('auth.and')}{' '}
-          <Text style={styles.legalLink}>{t('auth.privacy')}</Text>
+          <Text style={styles.legalLink} onPress={() => navigation.navigate('Terms')}>
+            {t('auth.privacy')}
+          </Text>
         </Text>
       </View>
     </KeyboardAvoidingView>

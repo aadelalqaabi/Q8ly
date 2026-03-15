@@ -16,9 +16,9 @@
     "followHint": "Follow users to see what's happening in Kuwait",
     "discoverBtn": "Find users to follow",
     "filterAll": "For You",
-    "filterGovernment": "Government",
+    "filterGovernment": "Official",
     "filterMedia": "Media",
-    "filterInfluencer": "Influencer",
+    "filterInfluencer": "Public Figure",
     "filterBusiness": "Business",
     "loadError": "Couldn't load posts",
     "loadErrorSub": "Check your connection and try again.",
@@ -239,5 +239,12 @@
   },
   "dm": {
     "isTyping": "{{name}} is typing"
+  },
+  "guest": {
+    "title": "Join the Conversation",
+    "subtitle": "Kuwait is talking — be part of the conversation.",
+    "createAccount": "Create Account",
+    "logIn": "Log In",
+    "notNow": "Not now"
   }
 }

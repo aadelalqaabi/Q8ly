@@ -18,6 +18,8 @@ const postSchema = new mongoose.Schema(
     images: [{ type: String }],
     video: { type: String, default: null },
     videoThumbnail: { type: String, default: null },
+    videoWidth: { type: Number, default: 0 },
+    videoHeight: { type: Number, default: 0 },
     // Post type
     type: {
       type: String,

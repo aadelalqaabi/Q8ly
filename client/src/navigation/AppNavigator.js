@@ -19,6 +19,7 @@ import * as Notifications from 'expo-notifications';
 import PhoneScreen from '../screens/auth/PhoneScreen';
 import OtpScreen from '../screens/auth/OtpScreen';
 import NameScreen from '../screens/auth/NameScreen';
+import TermsScreen from '../screens/auth/TermsScreen';
 import HomeScreen from '../screens/home/HomeScreen';
 import DiscoverScreen from '../screens/discover/DiscoverScreen';
 import NotificationsScreen from '../screens/notifications/NotificationsScreen';
@@ -151,6 +152,7 @@ function AuthStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Phone" component={PhoneScreen} />
       <Stack.Screen name="OtpVerify" component={OtpScreen} />
+      <Stack.Screen name="Terms" component={TermsScreen} options={{ presentation: 'modal' }} />
     </Stack.Navigator>
   );
 }
@@ -177,6 +179,7 @@ function AppStack() {
       <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Discover" component={DiscoverScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="Terms" component={TermsScreen} options={{ headerShown: false, presentation: 'modal' }} />
       <Stack.Screen name="DMConversation" component={DMConversationScreen} options={{ headerShown: false }} />
       <Stack.Screen
         name="MediaViewer"

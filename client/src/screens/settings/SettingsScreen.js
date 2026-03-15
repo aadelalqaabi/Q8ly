@@ -63,7 +63,14 @@ export default function SettingsScreen({ navigation }) {
   };
 
   const logoutOptions = [
-    { label: t('profile.exit'), destructive: true, onPress: () => dispatch(logout()) },
+    {
+      label: t('profile.exit'),
+      destructive: true,
+      onPress: async () => {
+        await dispatch(logout());
+        navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
+      },
+    },
   ];
 
   return (

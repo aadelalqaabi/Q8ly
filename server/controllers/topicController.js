@@ -2,18 +2,52 @@ const Topic = require('../models/Topic');
 const Post = require('../models/Post');
 const User = require('../models/User');
 
-// @desc    Get trending topics
+// @desc    Get trending topics (ranked by posts in the last 24 h)
 // @route   GET /api/topics/trending
 // @access  Public
 const getTrending = async (req, res, next) => {
   try {
-    const { limit = 20 } = req.query;
+    const { limit = 15, window = 24 } = req.query;
+    const since = new Date(Date.now() - parseInt(window) * 60 * 60 * 1000);
 
-    const topics = await Topic.find({ isActive: true })
-      .sort({ trendingScore: -1, followersCount: -1 })
-      .limit(parseInt(limit));
+    // Count how many posts used each topic tag in the time window
+    const counts = await Post.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: since },
+          isRemoved: false,
+          visibility: 'public',
+          topicTags: { $exists: true, $not: { $size: 0 } },
+        },
+      },
+      { $unwind: '$topicTags' },
+      { $group: { _id: '$topicTags', recentPosts: { $sum: 1 } } },
+      { $sort: { recentPosts: -1 } },
+      { $limit: parseInt(limit) },
+    ]);
 
-    res.json({ success: true, topics });
+    if (!counts.length) {
+      // Fallback: return topics with most all-time posts
+      const fallback = await Topic.find({ isActive: true })
+        .sort({ postsCount: -1 })
+        .limit(parseInt(limit));
+      return res.json({ success: true, topics: fallback });
+    }
+
+    const idToCount = {};
+    counts.forEach((c) => { idToCount[c._id.toString()] = c.recentPosts; });
+
+    const topics = await Topic.find({
+      _id: { $in: counts.map((c) => c._id) },
+      isActive: true,
+    });
+
+    // Attach recentPosts count and sort by it
+    const ranked = topics
+      .map((t) => ({ ...t.toObject(), recentPosts: idToCount[t._id.toString()] || 0 }))
+      .sort((a, b) => b.recentPosts - a.recentPosts);
+
+    res.json({ success: true, topics: ranked });
   } catch (error) {
     next(error);
   }

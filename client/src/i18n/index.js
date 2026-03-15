@@ -17,6 +17,7 @@ import { initReactI18next } from 'react-i18next';
 import { I18nManager } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ar as arLocale, enUS } from 'date-fns/locale';
+import * as Localization from 'expo-localization';
 
 import ar from './locales/ar.json';
 import en from './locales/en.json';
@@ -43,11 +44,14 @@ export default i18n;
 /** Detect the device's system language — 'ar' if Arabic, 'en' otherwise. */
 function getDeviceLang() {
   try {
-    // Intl is available in Hermes (Expo SDK 47+)
-    const locale = Intl.DateTimeFormat().resolvedOptions().locale || '';
-    return locale.startsWith('ar') ? 'ar' : 'en';
+    // expo-localization reads the actual device locale list (most reliable)
+    const locales = Localization.getLocales?.() ?? [];
+    const primary = locales[0]?.languageCode ?? locales[0]?.languageTag ?? '';
+    if (primary) return primary.startsWith('ar') ? 'ar' : 'en';
+    // Fallback: Intl API
+    const intlLocale = Intl.DateTimeFormat().resolvedOptions().locale || '';
+    return intlLocale.startsWith('ar') ? 'ar' : 'en';
   } catch {
-    // Fallback: RTL means Arabic keyboard/locale is active
     return I18nManager.isRTL ? 'ar' : 'en';
   }
 }

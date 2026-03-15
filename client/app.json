@@ -3,7 +3,7 @@
     "name": "KUWAI",
     "slug": "kuwait-now",
     "scheme": "kuwai",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./src/assets/Logo.png",
     "userInterfaceStyle": "automatic",
@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "kuwai.cotan.com",
-      "buildNumber": "1",
+      "buildNumber": "2",
       "infoPlist": {
         "NSCameraUsageDescription": "KUWAI needs camera access to take photos for posts.",
         "NSPhotoLibraryUsageDescription": "KUWAI needs photo library access to share photos and videos in posts.",
@@ -30,7 +30,7 @@
         "backgroundColor": "#0033A0"
       },
       "package": "app.kuwaitnow",
-      "versionCode": 1,
+      "versionCode": 2,
       "permissions": [
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
@@ -73,7 +73,8 @@
           "isAccessMediaLocationEnabled": true
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-localization"
     ],
     "extra": {
       "API_URL": "https://kuwaa-production.up.railway.app/api",

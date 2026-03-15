@@ -217,10 +217,14 @@ const authSlice = createSlice({
     });
 
     // Update profile
-    builder.addCase(updateProfile.fulfilled, (state, action) => {
-      state.user = { ...state.user, ...action.payload.user };
-      if (action.payload.user?.name) state.needsName = false;
-    });
+    builder
+      .addCase(updateProfile.pending, (state) => { state.isLoading = true; state.error = null; })
+      .addCase(updateProfile.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.user = { ...state.user, ...action.payload.user };
+        if (action.payload.user?.name) state.needsName = false;
+      })
+      .addCase(updateProfile.rejected, (state, action) => { state.isLoading = false; state.error = action.payload; });
   },
 });
 

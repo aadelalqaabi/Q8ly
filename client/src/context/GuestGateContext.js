@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { exitGuestMode } from '../store/slices/authSlice';
 import { useTheme } from './ThemeContext';
 
@@ -13,6 +14,7 @@ const GuestGateContext = createContext(null);
 export function GuestGateProvider({ children, navigationRef }) {
   const { colors: COLORS } = useTheme();
   const dispatch = useDispatch();
+  const { t } = useTranslation();
   const { isGuest } = useSelector((s) => s.auth);
   const [visible, setVisible] = useState(false);
   const translateY = useRef(new Animated.Value(300)).current;
@@ -75,9 +77,9 @@ export function GuestGateProvider({ children, navigationRef }) {
             <Ionicons name="person-add-outline" size={28} color={COLORS.accent} />
           </View>
 
-          <Text style={[styles.title, { color: COLORS.text }]}>Join the Conversation</Text>
+          <Text style={[styles.title, { color: COLORS.text }]}>{t('guest.title')}</Text>
           <Text style={[styles.subtitle, { color: COLORS.textMuted }]}>
-            Create an account to post, follow people, send messages, and join circles.
+            {t('guest.subtitle')}
           </Text>
 
           <TouchableOpacity
@@ -85,7 +87,7 @@ export function GuestGateProvider({ children, navigationRef }) {
             onPress={handleSignUp}
             activeOpacity={0.85}
           >
-            <Text style={styles.primaryBtnText}>Create Account</Text>
+            <Text style={styles.primaryBtnText}>{t('guest.createAccount')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -93,11 +95,11 @@ export function GuestGateProvider({ children, navigationRef }) {
             onPress={handleSignUp}
             activeOpacity={0.7}
           >
-            <Text style={[styles.secondaryBtnText, { color: COLORS.text }]}>Log In</Text>
+            <Text style={[styles.secondaryBtnText, { color: COLORS.text }]}>{t('guest.logIn')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity onPress={hide} activeOpacity={0.6} style={styles.notNow}>
-            <Text style={[styles.notNowText, { color: COLORS.textMuted }]}>Not now</Text>
+            <Text style={[styles.notNowText, { color: COLORS.textMuted }]}>{t('guest.notNow')}</Text>
           </TouchableOpacity>
         </Animated.View>
       </Modal>

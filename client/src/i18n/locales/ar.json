@@ -16,10 +16,10 @@
     "followHint": "تابع مستخدمين لترى ما يحدث في الكويت",
     "discoverBtn": "ابحث عن مستخدمين للمتابعة",
     "filterAll": "لك",
-    "filterGovernment": "حكومي",
+    "filterGovernment": "رسمي",
     "filterMedia": "إعلام",
-    "filterInfluencer": "مؤثر",
-    "filterBusiness": "أعمال",
+    "filterInfluencer": "شخصية عامة",
+    "filterBusiness": "تجاري",
     "loadError": "تعذّر تحميل المنشورات",
     "loadErrorSub": "تحقق من اتصالك بالإنترنت وحاول مجدداً.",
     "retry": "إعادة المحاولة",
@@ -239,5 +239,12 @@
   },
   "dm": {
     "isTyping": "{{name}} يكتب..."
+  },
+  "guest": {
+    "title": "انضم للنقاش",
+    "subtitle": "الكويت تتكلم — كن جزءاً من الحدث.",
+    "createAccount": "إنشاء حساب",
+    "logIn": "تسجيل الدخول",
+    "notNow": "ليس الآن"
   }
 }
