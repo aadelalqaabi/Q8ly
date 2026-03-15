@@ -129,12 +129,21 @@ const uploadVideo = async (req, res, next) => {
       folder: 'kuwait-now/videos',
       resource_type: 'video',
       transformation: [{ quality: 'auto' }],
+      eager: [{ format: 'jpg', transformation: [{ width: 720, crop: 'scale' }, { so: '0' }] }],
+      eager_async: false,
     });
 
-    // Cloudinary generates a poster thumbnail by swapping the extension to .jpg
-    const thumbnail = result.secure_url.replace(/\.[^/.]+$/, '.jpg');
+    // Use eager thumbnail if available, otherwise build from public_id
+    const thumbnail = result.eager?.[0]?.secure_url
+      || `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/video/upload/so_0,w_720/${result.public_id}.jpg`;
 
-    res.json({ success: true, url: result.secure_url, thumbnail });
+    res.json({
+      success: true,
+      url: result.secure_url,
+      thumbnail,
+      width: result.width || 0,
+      height: result.height || 0,
+    });
   } catch (error) {
     next(error);
   }

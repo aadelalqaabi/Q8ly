@@ -160,6 +160,7 @@ export const uploadAPI = {
   }),
   video: (formData) => api.post('/upload/video', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 0, // no timeout — video uploads can take a while
   }),
   profilePic: (formData) => api.post('/upload/profile-pic', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
