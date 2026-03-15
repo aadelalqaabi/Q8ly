@@ -8,7 +8,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Video, ResizeMode } from 'expo-av';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { createPost } from '../../store/slices/postsSlice';
@@ -16,6 +16,18 @@ import { uploadAPI } from '../../services/api';
 import { useTheme } from '../../context/ThemeContext';
 import MediaPickerSheet from '../../components/ui/MediaPickerSheet';
 import { getPermissionStatus, registerForPushNotifications } from '../../services/notificationService';
+
+function VideoPreview({ uri }) {
+  const player = useVideoPlayer({ uri }, (p) => { p.pause(); });
+  return (
+    <VideoView
+      player={player}
+      style={StyleSheet.absoluteFill}
+      contentFit="cover"
+      nativeControls={false}
+    />
+  );
+}
 
 const PALETTE = ['#0033A0', '#007A3D', '#FF6B35', '#2196F3', '#9C27B0'];
 function avatarBg(name) {
@@ -347,13 +359,7 @@ export default function CreatePostScreen({ navigation }) {
             styles.videoPreview,
             { aspectRatio: (videoItem.width && videoItem.height) ? videoItem.width / videoItem.height : 16 / 9 },
           ]}>
-            <Video
-              source={{ uri: videoItem.uri }}
-              style={StyleSheet.absoluteFill}
-              resizeMode={ResizeMode.COVER}
-              shouldPlay={false}
-              useNativeControls
-            />
+            <VideoPreview uri={videoItem.uri} />
             <TouchableOpacity
               style={styles.removeVideoBtn}
               onPress={() => removeMedia(media.indexOf(videoItem))}

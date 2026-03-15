@@ -639,10 +639,7 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
                 />
               </TouchableOpacity>
 
-              {/* Share */}
-              <TouchableOpacity style={styles.action} onPress={handleShare} hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}>
-                <Ionicons name="share-outline" size={17} color={COLORS.textMuted} />
-              </TouchableOpacity>
+              {/* Share — disabled */}
             </View>
             {!!timestamp && <Text style={styles.timestamp}>{timestamp}</Text>}
             </View>

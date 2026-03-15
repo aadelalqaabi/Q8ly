@@ -157,7 +157,13 @@
     "noResultsTitle": "No users found",
     "noResultsSub": "Try a different name or username",
     "noSuggestionsTitle": "No suggestions yet",
-    "noSuggestionsSub": "Come back later — we'll find users for you"
+    "noSuggestionsSub": "Come back later — we'll find users for you",
+    "trendingTitle": "Trending in Kuwait",
+    "trendingSub": "Most discussed right now",
+    "noTrendingTitle": "No trends yet",
+    "noTrendingSub": "Check back later",
+    "posts": "posts",
+    "today": "today"
   },
 
   "media": {

@@ -1,108 +1,108 @@
 import React, { useState, useRef, useCallback } from 'react';
 import {
-  View, StyleSheet, FlatList, Image, Animated,
+  View, StyleSheet, FlatList,
   TouchableOpacity, Text, Dimensions, StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Video, ResizeMode } from 'expo-av';
+import { VideoView, useVideoPlayer } from 'expo-video';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  interpolate,
+  Extrapolation,
+  runOnJS,
+} from 'react-native-reanimated';
 import {
   GestureHandlerRootView,
-  PinchGestureHandler,
-  PanGestureHandler,
-  TapGestureHandler,
-  State,
+  GestureDetector,
+  Gesture,
 } from 'react-native-gesture-handler';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 const MAX_SCALE = 5;
 
 // ── Zoomable image ─────────────────────────────────────────────────────────────
-function ZoomableImage({ uri, onZoomChange }) {
-  const [isZoomed, setIsZoomed] = useState(false);
+function ZoomableImage({ uri, onZoomChange, isZoomedShared }) {
   const [imgH, setImgH] = useState(SW * 0.75);
 
-  // Scale — multiply base (committed) × live pinch delta
-  const baseScale  = useRef(new Animated.Value(1)).current;
-  const pinchScale = useRef(new Animated.Value(1)).current;
-  const scale      = useRef(Animated.multiply(baseScale, pinchScale)).current;
-  const lastScale  = useRef(1);
+  const scale      = useSharedValue(1);
+  const savedScale = useSharedValue(1);
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const savedX     = useSharedValue(0);
+  const savedY     = useSharedValue(0);
 
-  // Translation — offset holds committed value; value holds live delta
-  const panX    = useRef(new Animated.Value(0)).current;
-  const panY    = useRef(new Animated.Value(0)).current;
-  const lastPanX = useRef(0);
-  const lastPanY = useRef(0);
-
-  const pinchRef    = useRef(null);
-  const panRef      = useRef(null);
-  const doubleTapRef = useRef(null);
+  const notifyZoom = useCallback((val) => onZoomChange?.(val), [onZoomChange]);
 
   const resetZoom = () => {
-    lastScale.current = 1;
-    baseScale.setValue(1);
-    pinchScale.setValue(1);
-    lastPanX.current = 0;
-    lastPanY.current = 0;
-    panX.setOffset(0);
-    panY.setOffset(0);
-    panX.setValue(0);
-    panY.setValue(0);
-    setIsZoomed(false);
-    onZoomChange?.(false);
+    'worklet';
+    scale.value      = withSpring(1);
+    savedScale.value = 1;
+    translateX.value = withSpring(0);
+    translateY.value = withSpring(0);
+    savedX.value     = 0;
+    savedY.value     = 0;
+    isZoomedShared.value = false;
+    runOnJS(notifyZoom)(false);
   };
 
-  // ── Pinch ──────────────────────────────────────────────────────────────────
-  const onPinchEvent = Animated.event(
-    [{ nativeEvent: { scale: pinchScale } }],
-    { useNativeDriver: true }
+  const pinchGesture = Gesture.Pinch()
+    .onUpdate((e) => {
+      scale.value = Math.max(1, Math.min(MAX_SCALE, savedScale.value * e.scale));
+    })
+    .onEnd((e) => {
+      const next = Math.max(1, Math.min(MAX_SCALE, savedScale.value * e.scale));
+      savedScale.value = next;
+      scale.value = next;
+      if (next <= 1.05) {
+        resetZoom();
+      } else {
+        isZoomedShared.value = true;
+        runOnJS(notifyZoom)(true);
+      }
+    });
+
+  const panGesture = Gesture.Pan()
+    .minPointers(1)
+    .maxPointers(1)
+    .onUpdate((e) => {
+      if (!isZoomedShared.value) return;
+      translateX.value = savedX.value + e.translationX;
+      translateY.value = savedY.value + e.translationY;
+    })
+    .onEnd((e) => {
+      if (!isZoomedShared.value) return;
+      savedX.value += e.translationX;
+      savedY.value += e.translationY;
+    });
+
+  const doubleTapGesture = Gesture.Tap()
+    .numberOfTaps(2)
+    .onEnd(() => {
+      if (isZoomedShared.value) {
+        resetZoom();
+      } else {
+        scale.value      = withSpring(2.5);
+        savedScale.value = 2.5;
+        isZoomedShared.value = true;
+        runOnJS(notifyZoom)(true);
+      }
+    });
+
+  const composed = Gesture.Simultaneous(
+    doubleTapGesture,
+    Gesture.Simultaneous(pinchGesture, panGesture),
   );
 
-  const onPinchStateChange = ({ nativeEvent: ev }) => {
-    if (ev.state !== State.END && ev.state !== State.CANCELLED) return;
-    const next = Math.max(1, Math.min(MAX_SCALE, lastScale.current * ev.scale));
-    lastScale.current = next;
-    baseScale.setValue(next);
-    pinchScale.setValue(1);
-
-    if (next <= 1.05) {
-      resetZoom();
-    } else {
-      setIsZoomed(true);
-      onZoomChange?.(true);
-    }
-  };
-
-  // ── Pan (only when zoomed) ─────────────────────────────────────────────────
-  const onPanEvent = Animated.event(
-    [{ nativeEvent: { translationX: panX, translationY: panY } }],
-    { useNativeDriver: true }
-  );
-
-  const onPanStateChange = ({ nativeEvent: ev }) => {
-    if (ev.state !== State.END && ev.state !== State.CANCELLED) return;
-    lastPanX.current += ev.translationX;
-    lastPanY.current += ev.translationY;
-    panX.setOffset(lastPanX.current);
-    panX.setValue(0);
-    panY.setOffset(lastPanY.current);
-    panY.setValue(0);
-  };
-
-  // ── Double-tap ─────────────────────────────────────────────────────────────
-  const onDoubleTap = ({ nativeEvent: ev }) => {
-    if (ev.state !== State.ACTIVE) return;
-    if (lastScale.current > 1.05) {
-      resetZoom();
-    } else {
-      lastScale.current = 2.5;
-      Animated.spring(baseScale, {
-        toValue: 2.5, useNativeDriver: true, damping: 15, stiffness: 180,
-      }).start();
-      setIsZoomed(true);
-      onZoomChange?.(true);
-    }
-  };
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { scale: scale.value },
+    ],
+  }));
 
   const onLoad = (e) => {
     const { width, height } = e.nativeEvent.source;
@@ -111,58 +111,30 @@ function ZoomableImage({ uri, onZoomChange }) {
     }
   };
 
-  // Gesture handlers wrap only the image — not the full page.
-  // Touches on the black area above/below the image bubble up to the parent TouchableOpacity.
   return (
-    <TapGestureHandler
-      ref={doubleTapRef}
-      numberOfTaps={2}
-      onHandlerStateChange={onDoubleTap}
-    >
-      <Animated.View>
-        <PanGestureHandler
-          ref={panRef}
-          simultaneousHandlers={[pinchRef]}
-          enabled={isZoomed}
-          onGestureEvent={onPanEvent}
-          onHandlerStateChange={onPanStateChange}
-          minPointers={1}
-          maxPointers={1}
-        >
-          <Animated.View>
-            <PinchGestureHandler
-              ref={pinchRef}
-              simultaneousHandlers={[panRef]}
-              onGestureEvent={onPinchEvent}
-              onHandlerStateChange={onPinchStateChange}
-            >
-              <Animated.Image
-                source={{ uri }}
-                style={{
-                  width: SW,
-                  height: imgH,
-                  transform: [{ translateX: panX }, { translateY: panY }, { scale }],
-                }}
-                resizeMode="contain"
-                onLoad={onLoad}
-              />
-            </PinchGestureHandler>
-          </Animated.View>
-        </PanGestureHandler>
-      </Animated.View>
-    </TapGestureHandler>
+    <GestureDetector gesture={composed}>
+      <Animated.Image
+        source={{ uri }}
+        style={[{ width: SW, height: imgH }, animStyle]}
+        resizeMode="contain"
+        onLoad={onLoad}
+      />
+    </GestureDetector>
   );
 }
 
 // ── Video page ─────────────────────────────────────────────────────────────────
 function VideoPage({ uri }) {
-  const videoRef = useRef(null);
   const [videoSize, setVideoSize] = useState({ width: SW, height: SW * 0.5625 });
 
-  const onReadyForDisplay = ({ naturalSize }) => {
-    if (!naturalSize?.width || !naturalSize?.height) return;
-    const ratio = naturalSize.width / naturalSize.height;
-    // Fit within screen without stretching
+  const player = useVideoPlayer({ uri }, (p) => {
+    p.loop = true;
+    p.play();
+  });
+
+  const onVideoSizeChange = ({ width, height }) => {
+    if (!width || !height) return;
+    const ratio = width / height;
     if (ratio >= SW / SH) {
       setVideoSize({ width: SW, height: SW / ratio });
     } else {
@@ -172,15 +144,12 @@ function VideoPage({ uri }) {
 
   return (
     <View style={styles.page}>
-      <Video
-        ref={videoRef}
-        source={{ uri }}
+      <VideoView
+        player={player}
         style={{ width: videoSize.width, height: videoSize.height }}
-        resizeMode={ResizeMode.CONTAIN}
-        useNativeControls
-        shouldPlay
-        isLooping={true}
-        onReadyForDisplay={onReadyForDisplay}
+        contentFit="contain"
+        nativeControls
+        onVideoSizeChange={onVideoSizeChange}
       />
     </View>
   );
@@ -192,41 +161,52 @@ export default function MediaViewerScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [isZoomed, setIsZoomed] = useState(false);
-  const isZoomedRef = useRef(false);
   const listRef = useRef(null);
 
+  // Shared value for zoom state — readable from UI-thread worklets
+  const isZoomedShared = useSharedValue(false);
+
   const handleZoomChange = useCallback((zoomed) => {
-    isZoomedRef.current = zoomed;
+    isZoomedShared.value = zoomed;
     setIsZoomed(zoomed);
-  }, []);
+  }, [isZoomedShared]);
 
   // Swipe-to-dismiss
-  const translateY = useRef(new Animated.Value(0)).current;
-  const bgOpacity = translateY.interpolate({
-    inputRange: [-SH / 2, 0, SH / 2],
-    outputRange: [0, 1, 0],
-    extrapolate: 'clamp',
-  });
+  const dismissY = useSharedValue(0);
 
-  const dismissPanRef = useRef(null);
+  const bgStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      dismissY.value,
+      [-SH / 2, 0, SH / 2],
+      [0, 1, 0],
+      Extrapolation.CLAMP,
+    ),
+  }));
 
-  const onDismissPanEvent = Animated.event(
-    [{ nativeEvent: { translationY: translateY } }],
-    { useNativeDriver: true }
-  );
+  const sliderStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: dismissY.value }],
+  }));
 
-  const onDismissPanState = ({ nativeEvent: ev }) => {
-    if (ev.state !== State.END && ev.state !== State.CANCELLED) return;
-    if (isZoomedRef.current) return; // zoomed — ignore dismiss gesture
-    const { translationY, velocityY } = ev;
-    if (Math.abs(translationY) > 100 || Math.abs(velocityY) > 600) {
-      navigation.goBack();
-    } else {
-      Animated.spring(translateY, {
-        toValue: 0, useNativeDriver: true, damping: 20, stiffness: 260,
-      }).start();
-    }
-  };
+  const goBack = useCallback(() => navigation.goBack(), [navigation]);
+
+  const dismissGesture = Gesture.Pan()
+    .activeOffsetY([-10, 10])
+    .failOffsetX([-20, 20])
+    .onUpdate((e) => {
+      if (isZoomedShared.value) return;
+      dismissY.value = e.translationY;
+    })
+    .onEnd((e) => {
+      if (isZoomedShared.value) {
+        dismissY.value = withSpring(0);
+        return;
+      }
+      if (Math.abs(e.translationY) > 100 || Math.abs(e.velocityY) > 600) {
+        runOnJS(goBack)();
+      } else {
+        dismissY.value = withSpring(0);
+      }
+    });
 
   const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 });
   const onViewableItemsChanged = useCallback(({ viewableItems }) => {
@@ -237,7 +217,11 @@ export default function MediaViewerScreen({ navigation, route }) {
     if (item.type === 'video') return <VideoPage uri={item.uri} />;
     return (
       <View style={styles.page}>
-        <ZoomableImage uri={item.uri} onZoomChange={handleZoomChange} />
+        <ZoomableImage
+          uri={item.uri}
+          onZoomChange={handleZoomChange}
+          isZoomedShared={isZoomedShared}
+        />
       </View>
     );
   };
@@ -245,16 +229,10 @@ export default function MediaViewerScreen({ navigation, route }) {
   return (
     <GestureHandlerRootView style={styles.root}>
       <StatusBar hidden />
-      <Animated.View style={[styles.container, { opacity: bgOpacity }]} />
+      <Animated.View style={[StyleSheet.absoluteFill, styles.bgOverlay, bgStyle]} />
 
-      <PanGestureHandler
-        ref={dismissPanRef}
-        onGestureEvent={onDismissPanEvent}
-        onHandlerStateChange={onDismissPanState}
-        activeOffsetY={[-10, 10]}
-        failOffsetX={[-20, 20]}
-      >
-        <Animated.View style={[styles.slider, { transform: [{ translateY }] }]}>
+      <GestureDetector gesture={dismissGesture}>
+        <Animated.View style={[styles.slider, sliderStyle]}>
           <FlatList
             ref={listRef}
             data={media}
@@ -270,7 +248,7 @@ export default function MediaViewerScreen({ navigation, route }) {
             onViewableItemsChanged={onViewableItemsChanged}
           />
         </Animated.View>
-      </PanGestureHandler>
+      </GestureDetector>
 
       {/* Top bar */}
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
@@ -310,10 +288,7 @@ export default function MediaViewerScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  container: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.88)',
-  },
+  bgOverlay: { backgroundColor: 'rgba(0,0,0,0.88)' },
   slider: { flex: 1 },
 
   page: {

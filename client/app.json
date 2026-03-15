@@ -52,11 +52,10 @@
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 0
     },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "1.1.0",
     "plugins": [
       "expo-updates",
+      "expo-splash-screen",
       [
         "expo-notifications",
         {
@@ -73,7 +72,9 @@
           "isAccessMediaLocationEnabled": true
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-localization",
+      "expo-secure-store"
     ],
     "extra": {
       "API_URL": "https://kuwaa-production.up.railway.app/api",

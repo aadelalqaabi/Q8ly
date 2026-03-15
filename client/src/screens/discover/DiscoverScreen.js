@@ -34,6 +34,7 @@ const SEARCH_TABS = [
 
 // ── Trending topic row ────────────────────────────────────────────────────────
 function TrendingRow({ topic, rank, onPress }) {
+  const { t } = useTranslation();
   const { colors: COLORS } = useTheme();
   const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
   const accent = topic.color || COLORS.accent;
@@ -66,7 +67,7 @@ function TrendingRow({ topic, rank, onPress }) {
         <Text style={styles.trendName} numberOfLines={1}>{displayName}</Text>
         {(topic.recentPosts || topic.postsCount) > 0 && (
           <Text style={styles.trendCount}>
-            {(topic.recentPosts || topic.postsCount).toLocaleString()} منشور{topic.recentPosts ? ' اليوم' : ''}
+            {(topic.recentPosts || topic.postsCount).toLocaleString()} {t('discover.posts')}{topic.recentPosts ? ` ${t('discover.today')}` : ''}
           </Text>
         )}
       </View>
@@ -107,6 +108,14 @@ export default function DiscoverScreen({ navigation }) {
   }, []);
 
   useEffect(() => { loadTrending(); }, []);
+
+  // Long-press on the Discover tab icon → open keyboard and focus search
+  useEffect(() => {
+    const unsub = navigation.addListener('tabLongPress', () => {
+      inputRef.current?.focus();
+    });
+    return unsub;
+  }, [navigation]);
 
   const doSearch = useCallback(async (q) => {
     if (!q.trim()) {
@@ -195,8 +204,8 @@ export default function DiscoverScreen({ navigation }) {
       return (
         <View style={styles.emptyTrend}>
           <Ionicons name="trending-up-outline" size={40} color={COLORS.textMuted} style={{ marginBottom: 12 }} />
-          <Text style={styles.emptyTrendTitle}>لا يوجد ترند حالياً</Text>
-          <Text style={styles.emptyTrendSub}>ارجع لاحقاً</Text>
+          <Text style={styles.emptyTrendTitle}>{t('discover.noTrendingTitle')}</Text>
+          <Text style={styles.emptyTrendSub}>{t('discover.noTrendingSub')}</Text>
         </View>
       );
     }
@@ -218,8 +227,8 @@ export default function DiscoverScreen({ navigation }) {
         }
         ListHeaderComponent={
           <View style={styles.trendHeader}>
-            <Text style={styles.trendHeaderTitle}>الترند في الكويت</Text>
-            <Text style={styles.trendHeaderSub}>الأكثر نقاشاً الآن</Text>
+            <Text style={styles.trendHeaderTitle}>{t('discover.trendingTitle')}</Text>
+            <Text style={styles.trendHeaderSub}>{t('discover.trendingSub')}</Text>
           </View>
         }
         ItemSeparatorComponent={() => <View style={styles.trendSep} />}
@@ -248,7 +257,12 @@ export default function DiscoverScreen({ navigation }) {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.searchBar}>
-          <Ionicons name="search" size={16} color={COLORS.textMuted} />
+          <TouchableOpacity
+            onPress={() => { inputRef.current?.focus(); if (query.trim()) doSearch(query); }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="search" size={16} color={COLORS.textMuted} />
+          </TouchableOpacity>
           <TextInput
             ref={inputRef}
             style={styles.searchInput}
@@ -257,6 +271,7 @@ export default function DiscoverScreen({ navigation }) {
             placeholder="Search accounts, posts, or circles…"
             placeholderTextColor={COLORS.textPlaceholder}
             returnKeyType="search"
+            onSubmitEditing={() => { if (query.trim()) doSearch(query); }}
             autoCorrect={false}
             autoCapitalize="none"
           />

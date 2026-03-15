@@ -267,9 +267,6 @@ export default function HachiRoomScreen({ navigation, route }) {
       title: activeRoom.title,
       headerRight: () => (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-          <TouchableOpacity onPress={handleShare} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="share-outline" size={22} color={COLORS.accent} />
-          </TouchableOpacity>
           {isCreator && activeRoom.isActive && (
             <TouchableOpacity onPress={() => setEndMenuVisible(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <Text style={{ fontSize: 15, color: COLORS.error }}>{t('hachi.endHachi')}</Text>

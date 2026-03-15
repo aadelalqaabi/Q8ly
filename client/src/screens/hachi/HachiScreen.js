@@ -58,7 +58,6 @@ function RoomCard({ room, onPress, archived, isJoined }) {
     >
       <View style={styles.cardMain}>
         <View style={styles.cardTitleRow}>
-          <Text style={styles.cardEmoji}>{catEmoji}</Text>
           <Text style={styles.cardTitle} numberOfLines={2}>
             {room.title}
           </Text>
@@ -83,7 +82,6 @@ function RoomCard({ room, onPress, archived, isJoined }) {
         )}
         {!archived && (
           <View style={styles.memberBadge}>
-            {!room.isPublic && <Ionicons name="lock-closed" size={10} color={COLORS.textMuted} />}
             <Ionicons name="person" size={11} color={COLORS.accent} />
             <Text style={styles.memberCount}>{room.memberCount || 1}</Text>
           </View>
@@ -178,7 +176,6 @@ export default function HachiScreen({ navigation }) {
   const [showLocked, setShowLocked] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newCategory, setNewCategory] = useState('general');
-  const [newIsPublic, setNewIsPublic] = useState(true);
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
@@ -237,15 +234,14 @@ export default function HachiScreen({ navigation }) {
     if (!newTitle.trim() || creating) return;
     setCreating(true);
     try {
-      const result = await dispatch(createRoom({ title: newTitle.trim(), category: newCategory, isPublic: newIsPublic })).unwrap();
+      const result = await dispatch(createRoom({ title: newTitle.trim(), category: newCategory, isPublic: true })).unwrap();
       setShowCreate(false);
       setNewTitle('');
       setNewCategory('general');
-      setNewIsPublic(true);
       navigation.navigate('HachiRoom', { roomId: result._id, title: result.title });
     } catch { /* silent */ }
     finally { setCreating(false); }
-  }, [newTitle, newCategory, newIsPublic, creating]);
+  }, [newTitle, newCategory, creating]);
 
   const handleAddPress = () => {
     if (canCreate) setShowCreate(true);
@@ -276,15 +272,7 @@ export default function HachiScreen({ navigation }) {
           onPress={handleAddPress}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          {canCreate
-            ? <Ionicons name="add" size={26} color={COLORS.accent} />
-            : (
-              <View style={styles.lockedBtnRow}>
-                <Ionicons name="lock-closed" size={15} color={COLORS.textMuted} />
-                <Text style={styles.lockedBtnPts}>{hachiPoints}/{HACHI_REQUIRED}</Text>
-              </View>
-            )
-          }
+          <Ionicons name="add" size={26} color={COLORS.accent} />
         </TouchableOpacity>
       </View>
 
@@ -323,7 +311,6 @@ export default function HachiScreen({ navigation }) {
               onPress={() => setActiveCategory(cat.key)}
               activeOpacity={0.7}
             >
-              <Text style={styles.chipEmoji}>{cat.emoji}</Text>
               <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>
                 {cat.label}
               </Text>
@@ -387,7 +374,7 @@ export default function HachiScreen({ navigation }) {
         >
           {/* Modal header */}
           <View style={[styles.modalHeader, { paddingTop: 16 }]}>
-            <TouchableOpacity onPress={() => { setShowCreate(false); setNewTitle(''); setNewCategory('general'); setNewIsPublic(true); }}>
+            <TouchableOpacity onPress={() => { setShowCreate(false); setNewTitle(''); setNewCategory('general'); }}>
               <Text style={styles.modalCancel}>{t('common.cancel')}</Text>
             </TouchableOpacity>
             <Text style={styles.modalTitle}>{t('hachi.newHachi')}</Text>
@@ -421,31 +408,6 @@ export default function HachiScreen({ navigation }) {
               <Text style={styles.charCount}>{newTitle.length}/80</Text>
             </View>
 
-            {/* Visibility toggle */}
-            <View style={styles.modalSection}>
-              <Text style={styles.modalLabel}>الوصول</Text>
-              <View style={styles.visibilityRow}>
-                <TouchableOpacity
-                  style={[styles.visBtn, newIsPublic && styles.visBtnActive]}
-                  onPress={() => setNewIsPublic(true)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="globe-outline" size={16} color={newIsPublic ? '#fff' : COLORS.textMuted} />
-                  <Text style={[styles.visBtnLabel, newIsPublic && styles.visBtnLabelActive]}>عام</Text>
-                  <Text style={[styles.visBtnSub, newIsPublic && { color: 'rgba(255,255,255,0.75)' }]}>أي شخص يدخل</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.visBtn, !newIsPublic && styles.visBtnActive]}
-                  onPress={() => setNewIsPublic(false)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="lock-closed-outline" size={16} color={!newIsPublic ? '#fff' : COLORS.textMuted} />
-                  <Text style={[styles.visBtnLabel, !newIsPublic && styles.visBtnLabelActive]}>خاص</Text>
-                  <Text style={[styles.visBtnSub, !newIsPublic && { color: 'rgba(255,255,255,0.75)' }]}>أنت تقبل الطلبات</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
             {/* Category picker */}
             <View style={styles.modalSection}>
               <Text style={styles.modalLabel}>{t('hachi.catSelectLabel')}</Text>
@@ -459,7 +421,6 @@ export default function HachiScreen({ navigation }) {
                       onPress={() => setNewCategory(cat.key)}
                       activeOpacity={0.7}
                     >
-                      <Text style={styles.catPillEmoji}>{cat.emoji}</Text>
                       <Text style={[styles.catPillLabel, selected && styles.catPillLabelSelected]}>
                         {cat.label}
                       </Text>

@@ -157,7 +157,13 @@
     "noResultsTitle": "لا يوجد مستخدمون",
     "noResultsSub": "جرّب اسماً أو اسم مستخدم آخر",
     "noSuggestionsTitle": "لا توجد اقتراحات بعد",
-    "noSuggestionsSub": "عد لاحقاً — سنجد مستخدمين مناسبين لك"
+    "noSuggestionsSub": "عد لاحقاً — سنجد مستخدمين مناسبين لك",
+    "trendingTitle": "الترند في الكويت",
+    "trendingSub": "الأكثر نقاشاً الآن",
+    "noTrendingTitle": "لا يوجد ترند حالياً",
+    "noTrendingSub": "ارجع لاحقاً",
+    "posts": "منشور",
+    "today": "اليوم"
   },
 
   "media": {
