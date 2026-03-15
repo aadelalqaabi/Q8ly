@@ -75,7 +75,9 @@
     "bioPlaceholder": "Tell people about yourself…",
     "nameRequired": "Name is required",
     "updateError": "Could not update profile",
-    "uploadError": "Failed to upload photo, please try again."
+    "uploadError": "Failed to upload photo, please try again.",
+    "msgRequestTitle": "Send a message request to {{name}}?",
+    "msgRequestSend": "Send Request"
   },
 
   "hachi": {

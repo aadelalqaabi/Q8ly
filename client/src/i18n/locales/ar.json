@@ -75,7 +75,9 @@
     "bioPlaceholder": "أخبر الناس عن نفسك...",
     "nameRequired": "الاسم مطلوب",
     "updateError": "تعذّر تحديث الملف الشخصي",
-    "uploadError": "تعذّر رفع الصورة. حاول مجدداً."
+    "uploadError": "تعذّر رفع الصورة. حاول مجدداً.",
+    "msgRequestTitle": "إرسال طلب مراسلة إلى {{name}}؟",
+    "msgRequestSend": "إرسال الطلب"
   },
 
   "hachi": {

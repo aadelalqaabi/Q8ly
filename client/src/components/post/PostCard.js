@@ -91,17 +91,31 @@ function SmartImage({ uri, onPress }) {
 }
 
 // ── VideoThumb — static thumbnail with play overlay, tappable ─────────────────
-function VideoThumb({ video, videoThumbnail, onPress, COLORS }) {
+function VideoThumb({ video, videoThumbnail, videoWidth, videoHeight, onPress, COLORS }) {
+  // Clamp: min 1 (square) → max 1.9 (wide) — keeps thumbnails compact in the feed
+  const clamp = (r) => Math.max(1, Math.min(1.9, r));
+  const initRatio = (videoWidth && videoHeight) ? clamp(videoWidth / videoHeight) : 16 / 9;
+  const [aspectRatio, setAspectRatio] = useState(initRatio);
+
+  useEffect(() => {
+    if (!videoThumbnail || (videoWidth && videoHeight)) return;
+    Image.getSize(
+      videoThumbnail,
+      (w, h) => { if (w && h) setAspectRatio(clamp(w / h)); },
+      () => {}
+    );
+  }, [videoThumbnail]);
+
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.88} style={{ borderRadius: 10, overflow: 'hidden' }}>
       {videoThumbnail ? (
         <Image
           source={{ uri: videoThumbnail }}
-          style={{ width: '100%', aspectRatio: 16 / 9 }}
+          style={{ width: '100%', aspectRatio }}
           resizeMode="cover"
         />
       ) : (
-        <View style={{ width: '100%', aspectRatio: 16 / 9, backgroundColor: '#111' }} />
+        <View style={{ width: '100%', aspectRatio, backgroundColor: '#111' }} />
       )}
       {/* Play overlay */}
       <View style={videoThumbStyles.overlay}>
@@ -492,6 +506,8 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
   const displayImages = isRepost ? (originalPost?.images || []) : (post.images || []);
   const displayVideo = isRepost ? (originalPost?.video || null) : (post.video || null);
   const displayVideoThumb = isRepost ? (originalPost?.videoThumbnail || null) : (post.videoThumbnail || null);
+  const displayVideoWidth = isRepost ? (originalPost?.videoWidth || 0) : (post.videoWidth || 0);
+  const displayVideoHeight = isRepost ? (originalPost?.videoHeight || 0) : (post.videoHeight || 0);
 
   return (
     <>
@@ -572,6 +588,8 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
                 <VideoThumb
                   video={displayVideo}
                   videoThumbnail={displayVideoThumb}
+                  videoWidth={displayVideoWidth}
+                  videoHeight={displayVideoHeight}
                   onPress={openVideo}
                   COLORS={COLORS}
                 />
@@ -647,7 +665,7 @@ const makeStyles = (C) => StyleSheet.create({
     paddingLeft: 50,
   },
   repostBannerText: { fontSize: 12, color: C.textMuted, fontWeight: '500' },
-  row: { flexDirection: 'row', gap: 10 },
+  row: { flexDirection: 'row', gap: 10, direction: 'ltr' },
   avatarWrap: { width: 40, flexShrink: 0 },
   avatar: {
     width: 40, height: 40, borderRadius: 20,

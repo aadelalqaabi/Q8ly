@@ -1,21 +1,83 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput,
-  TouchableOpacity, ActivityIndicator,
+  TouchableOpacity, ActivityIndicator, RefreshControl, Keyboard, TouchableWithoutFeedback,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { usersAPI, postsAPI, hachiAPI } from '../../services/api';
+import { usersAPI, postsAPI, hachiAPI, topicsAPI } from '../../services/api';
 import UserCard from '../../components/profile/UserCard';
 import PostCard from '../../components/post/PostCard';
 import { useTheme } from '../../context/ThemeContext';
 
-const TABS = [
-  { key: 'accounts', label: 'Accounts' },
+const CATEGORY_ICONS = {
+  politics: 'megaphone-outline',
+  society: 'people-outline',
+  traffic: 'car-outline',
+  jobs: 'briefcase-outline',
+  realestate: 'home-outline',
+  sports: 'football-outline',
+  events: 'calendar-outline',
+  offers: 'pricetag-outline',
+  technology: 'hardware-chip-outline',
+  health: 'medkit-outline',
+  entertainment: 'film-outline',
+  other: 'ellipsis-horizontal-outline',
+};
+
+const SEARCH_TABS = [
   { key: 'posts',    label: 'Posts'    },
+  { key: 'accounts', label: 'Accounts' },
   { key: 'circles',  label: 'Circles'  },
 ];
+
+// ── Trending topic row ────────────────────────────────────────────────────────
+function TrendingRow({ topic, rank, onPress }) {
+  const { colors: COLORS } = useTheme();
+  const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
+  const accent = topic.color || COLORS.accent;
+  const displayName = topic.nameAr || topic.name;
+  const iconName = CATEGORY_ICONS[topic.category] || 'ellipsis-horizontal-outline';
+
+  return (
+    <TouchableOpacity
+      style={styles.trendRow}
+      onPress={() => onPress(topic)}
+      activeOpacity={0.72}
+    >
+      {/* Left color bar */}
+      <View style={[styles.trendAccent, { backgroundColor: accent }]} />
+
+      {/* Rank */}
+      <Text style={[styles.trendRank, { color: accent }]}>{rank}</Text>
+
+      {/* Body */}
+      <View style={styles.trendBody}>
+        <View style={styles.trendCatRow}>
+          <Ionicons name={iconName} size={11} color={COLORS.textMuted} />
+          <Text style={styles.trendCat}>{topic.category}</Text>
+          {topic.isOfficial && (
+            <View style={[styles.officialBadge, { backgroundColor: accent + '20' }]}>
+              <Text style={[styles.officialText, { color: accent }]}>رسمي</Text>
+            </View>
+          )}
+        </View>
+        <Text style={styles.trendName} numberOfLines={1}>{displayName}</Text>
+        {(topic.recentPosts || topic.postsCount) > 0 && (
+          <Text style={styles.trendCount}>
+            {(topic.recentPosts || topic.postsCount).toLocaleString()} منشور{topic.recentPosts ? ' اليوم' : ''}
+          </Text>
+        )}
+      </View>
+
+      {/* Right icon */}
+      <View style={[styles.trendIconWrap, { backgroundColor: accent + '12' }]}>
+        <Ionicons name="trending-up" size={16} color={accent} />
+      </View>
+    </TouchableOpacity>
+  );
+}
 
 export default function DiscoverScreen({ navigation }) {
   const { t } = useTranslation();
@@ -25,11 +87,26 @@ export default function DiscoverScreen({ navigation }) {
   const inputRef = useRef(null);
 
   const [query, setQuery] = useState('');
-  const [tab, setTab] = useState('accounts');
+  const [tab, setTab] = useState('posts');
   const [accountResults, setAccountResults] = useState([]);
   const [postResults, setPostResults] = useState([]);
   const [circleResults, setCircleResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+
+  // Trending state
+  const [trendingTopics, setTrendingTopics] = useState([]);
+  const [trendingLoading, setTrendingLoading] = useState(true);
+
+  const loadTrending = useCallback(async () => {
+    setTrendingLoading(true);
+    try {
+      const topicsRes = await topicsAPI.getTrending({ limit: 15 });
+      setTrendingTopics(topicsRes.topics || []);
+    } catch { /* silent */ }
+    finally { setTrendingLoading(false); }
+  }, []);
+
+  useEffect(() => { loadTrending(); }, []);
 
   const doSearch = useCallback(async (q) => {
     if (!q.trim()) {
@@ -66,15 +143,19 @@ export default function DiscoverScreen({ navigation }) {
 
   const displayData = useMemo(() => {
     if (!isSearchMode) return [];
-    if (tab === 'accounts') return accountResults;
     if (tab === 'posts') return postResults;
+    if (tab === 'accounts') return accountResults;
     return circleResults;
-  }, [isSearchMode, tab, accountResults, postResults, circleResults]);
+  }, [isSearchMode, tab, postResults, accountResults, circleResults]);
 
   const countFor = (key) => {
-    if (key === 'accounts') return accountResults.length;
     if (key === 'posts') return postResults.length;
+    if (key === 'accounts') return accountResults.length;
     return circleResults.length;
+  };
+
+  const handleTopicPress = (topic) => {
+    setQuery(topic.nameAr || topic.name);
   };
 
   const renderCircleCard = (room) => (
@@ -106,6 +187,46 @@ export default function DiscoverScreen({ navigation }) {
     return <UserCard user={item} navigation={navigation} />;
   };
 
+  const renderTrending = () => {
+    if (trendingLoading) {
+      return <ActivityIndicator size="small" color={COLORS.accent} style={{ marginTop: 40 }} />;
+    }
+    if (!trendingTopics.length) {
+      return (
+        <View style={styles.emptyTrend}>
+          <Ionicons name="trending-up-outline" size={40} color={COLORS.textMuted} style={{ marginBottom: 12 }} />
+          <Text style={styles.emptyTrendTitle}>لا يوجد ترند حالياً</Text>
+          <Text style={styles.emptyTrendSub}>ارجع لاحقاً</Text>
+        </View>
+      );
+    }
+    return (
+      <FlatList
+        data={trendingTopics}
+        keyExtractor={(item) => item._id}
+        renderItem={({ item, index }) => (
+          <TrendingRow
+            topic={item}
+            rank={index + 1}
+            onPress={handleTopicPress}
+          />
+        )}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
+        refreshControl={
+          <RefreshControl refreshing={trendingLoading} onRefresh={loadTrending} tintColor={COLORS.accent} />
+        }
+        ListHeaderComponent={
+          <View style={styles.trendHeader}>
+            <Text style={styles.trendHeaderTitle}>الترند في الكويت</Text>
+            <Text style={styles.trendHeaderSub}>الأكثر نقاشاً الآن</Text>
+          </View>
+        }
+        ItemSeparatorComponent={() => <View style={styles.trendSep} />}
+      />
+    );
+  };
+
   const renderEmpty = () => {
     if (isSearching) return null;
     if (isSearchMode) {
@@ -122,18 +243,10 @@ export default function DiscoverScreen({ navigation }) {
   };
 
   return (
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.titleRow}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="chevron-back" size={24} color={COLORS.text} />
-          </TouchableOpacity>
-          <Text style={styles.title}>Search</Text>
-        </View>
         <View style={styles.searchBar}>
           <Ionicons name="search" size={16} color={COLORS.textMuted} />
           <TextInput
@@ -158,7 +271,7 @@ export default function DiscoverScreen({ navigation }) {
       {/* Tabs — only visible in search mode */}
       {isSearchMode && (
         <View style={styles.tabRow}>
-          {TABS.map((tb) => {
+          {SEARCH_TABS.map((tb) => {
             const active = tab === tb.key;
             const count = countFor(tb.key);
             return (
@@ -178,7 +291,10 @@ export default function DiscoverScreen({ navigation }) {
         </View>
       )}
 
-      {isSearching ? (
+      {/* Content */}
+      {!isSearchMode ? (
+        renderTrending()
+      ) : isSearching ? (
         <ActivityIndicator size="large" color={COLORS.accent} style={styles.loader} />
       ) : (
         <FlatList
@@ -193,17 +309,16 @@ export default function DiscoverScreen({ navigation }) {
         />
       )}
     </View>
+    </TouchableWithoutFeedback>
   );
 }
 
 const makeStyles = (C) => StyleSheet.create({
   container: { flex: 1, backgroundColor: C.white },
   header: {
-    paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12,
+    paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.separator,
   },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  title: { fontSize: 17, fontWeight: '700', color: C.text },
   searchBar: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: C.fill, borderRadius: 10, height: 38, paddingHorizontal: 10, gap: 6,
@@ -222,7 +337,104 @@ const makeStyles = (C) => StyleSheet.create({
   tabDot: { width: 24, height: 2, borderRadius: 1, backgroundColor: 'transparent' },
   tabDotActive: { backgroundColor: C.accent },
 
-  // Circle card
+  // ── Trending header ─────────────────────────────────────────────────────────
+  trendHeader: {
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    paddingBottom: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: C.separator,
+  },
+  trendHeaderTitle: {
+    fontSize: 22, fontWeight: '800', color: C.text,
+    letterSpacing: -0.3,
+  },
+  trendHeaderSub: {
+    fontSize: 13, color: C.textMuted, marginTop: 2,
+  },
+
+  // ── Trending row ────────────────────────────────────────────────────────────
+  trendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingRight: 16,
+    backgroundColor: C.white,
+  },
+  trendAccent: {
+    width: 3,
+    alignSelf: 'stretch',
+    borderRadius: 2,
+    marginRight: 12,
+  },
+  trendRank: {
+    fontSize: 28,
+    fontWeight: '900',
+    width: 38,
+    textAlign: 'center',
+    letterSpacing: -1,
+    opacity: 0.85,
+  },
+  trendBody: {
+    flex: 1,
+    marginLeft: 8,
+    gap: 3,
+  },
+  trendCatRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  trendCat: {
+    fontSize: 11,
+    color: C.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    fontWeight: '500',
+  },
+  officialBadge: {
+    borderRadius: 6,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    marginLeft: 4,
+  },
+  officialText: {
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  trendName: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: C.text,
+    letterSpacing: -0.2,
+  },
+  trendCount: {
+    fontSize: 12,
+    color: C.textMuted,
+    fontWeight: '500',
+  },
+  trendIconWrap: {
+    width: 34, height: 34, borderRadius: 17,
+    justifyContent: 'center', alignItems: 'center',
+    marginLeft: 10,
+  },
+  trendSep: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: C.separator,
+    marginLeft: 71, // aligns with trendBody: 3 (bar) + 12 + 38 (rank) + 8 = 61 + 16 padding
+  },
+
+  // ── Empty trending ──────────────────────────────────────────────────────────
+  emptyTrend: {
+    alignItems: 'center',
+    paddingTop: 80,
+    paddingHorizontal: 40,
+  },
+  emptyTrendTitle: { fontSize: 18, fontWeight: '700', color: C.text, marginBottom: 6 },
+  emptyTrendSub: { fontSize: 14, color: C.textMuted },
+
+  // ── Circle card ─────────────────────────────────────────────────────────────
   circleCard: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingHorizontal: 16, paddingVertical: 14,

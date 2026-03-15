@@ -55,6 +55,7 @@ const dmSlice = createSlice({
     loading: false,
     sending: false,
     error: null,
+    typingUserId: null, // userId of whoever is typing in the active conversation
   },
   reducers: {
     addRealtimeMessage(state, action) {
@@ -64,6 +65,7 @@ const dmSlice = createSlice({
       if (isActiveConv) {
         // User is currently viewing this conversation — just append, no unread increment
         state.activeConversation.conversation.messages.push(message);
+        state.typingUserId = null; // clear typing when message arrives
         return;
       }
 
@@ -87,6 +89,7 @@ const dmSlice = createSlice({
     },
     clearActiveConversation(state) {
       state.activeConversation = null;
+      state.typingUserId = null;
     },
     markConversationSeen(state) {
       if (state.activeConversation?.conversation?.messages) {
@@ -94,6 +97,20 @@ const dmSlice = createSlice({
           m.isRead = true;
         });
       }
+    },
+    setTypingUser(state, action) {
+      // { userId: fromUserId, isTyping }
+      state.typingUserId = action.payload.isTyping ? action.payload.userId : null;
+    },
+    updateConversationAccepted(state, action) {
+      const convId = action.payload;
+      // Update active conversation if open
+      if (state.activeConversation?.conversation?._id?.toString() === convId) {
+        state.activeConversation.conversation.status = 'accepted';
+      }
+      // Move from pending to accepted in the list
+      const convInList = state.conversations.find((c) => c._id?.toString() === convId);
+      if (convInList) convInList.status = 'accepted';
     },
   },
   extraReducers: (builder) => {
@@ -149,5 +166,5 @@ const dmSlice = createSlice({
   },
 });
 
-export const { addRealtimeMessage, setDmUnreadCount, clearActiveConversation, clearNeedsRefresh, markConversationSeen } = dmSlice.actions;
+export const { addRealtimeMessage, setDmUnreadCount, clearActiveConversation, clearNeedsRefresh, markConversationSeen, updateConversationAccepted, setTypingUser } = dmSlice.actions;
 export default dmSlice.reducer;

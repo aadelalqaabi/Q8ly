@@ -415,6 +415,48 @@ const initSocket = (server) => {
       }
     });
 
+    // ── DM: typing indicator ──────────────────────────────────────
+    socket.on('dmTyping', ({ otherUserId, isTyping }) => {
+      if (!socket.user) return;
+      const otherIdStr = String(otherUserId || '');
+      if (!isValidObjectId(otherIdStr)) return;
+      console.log(`[dmTyping] ${socket.user.username} → user:${otherIdStr} isTyping=${isTyping}`);
+      io.to(`user:${otherIdStr}`).emit('dmTyping', {
+        fromUserId: socket.user._id.toString(),
+        isTyping: !!isTyping,
+      });
+    });
+
+    // ── DM: mark conversation as seen ────────────────────────────
+    socket.on('dmMarkSeen', async ({ conversationId }) => {
+      if (!socket.user || !isValidObjectId(conversationId)) return;
+      try {
+        const Conversation = require('../models/Conversation');
+        const conv = await Conversation.findById(conversationId);
+        if (!conv) return;
+        const userIdStr = socket.user._id.toString();
+        if (!conv.participants.some((p) => p.toString() === userIdStr)) return;
+
+        let dirty = false;
+        conv.messages.forEach((m) => {
+          if (m.sender.toString() !== userIdStr && !m.isRead) {
+            m.isRead = true;
+            dirty = true;
+          }
+        });
+        if (dirty) {
+          conv.unreadCounts.set(userIdStr, 0);
+          await conv.save();
+          const otherId = conv.participants.find((p) => p.toString() !== userIdStr)?.toString();
+          if (otherId) {
+            io.to(`user:${otherId}`).emit('dmSeen', { conversationId });
+          }
+        }
+      } catch (err) {
+        console.error('dmMarkSeen error:', err.message);
+      }
+    });
+
     // ── Now Bar: live situation updates (admin broadcast) ─────────
     socket.on('broadcastNowBar', (data) => {
       io.emit('nowBarUpdate', data);

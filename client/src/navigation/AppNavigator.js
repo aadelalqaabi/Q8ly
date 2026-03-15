@@ -3,13 +3,13 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useDispatch, useSelector } from 'react-redux';
-import { View, Text, ActivityIndicator, StyleSheet, Platform } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, Platform, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { restoreSession } from '../store/slices/authSlice';
 import { addNotificationRealtime } from '../store/slices/notificationsSlice';
-import { addRealtimeMessage } from '../store/slices/dmSlice';
+import { addRealtimeMessage, updateConversationAccepted } from '../store/slices/dmSlice';
 import { getSocket } from '../services/socket';
 import { useTheme } from '../context/ThemeContext';
 import { registerForPushNotifications } from '../services/notificationService';
@@ -39,6 +39,7 @@ function MainTabs() {
   const insets = useSafeAreaInsets();
   const { colors: COLORS } = useTheme();
   const dmUnreadCount = useSelector((s) => s.dm?.dmUnreadCount || 0);
+  const { user } = useSelector((s) => s.auth);
   return (
     <Tab.Navigator
       screenOptions={{
@@ -62,6 +63,15 @@ function MainTabs() {
         options={{
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'flame' : 'flame-outline'} size={26} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Discover"
+        component={DiscoverScreen}
+        options={{
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'search' : 'search-outline'} size={24} color={color} />
           ),
         }}
       />
@@ -102,8 +112,15 @@ function MainTabs() {
         name="Profile"
         component={ProfileScreen}
         options={{
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'person-circle' : 'person-circle-outline'} size={28} color={color} />
+          tabBarIcon: ({ focused }) => (
+            user?.profilePic ? (
+              <Image
+                source={{ uri: user.profilePic }}
+                style={{ width: 28, height: 28, borderRadius: 14, borderWidth: focused ? 2 : 0, borderColor: COLORS.accent }}
+              />
+            ) : (
+              <Ionicons name={focused ? 'person-circle' : 'person-circle-outline'} size={28} color={focused ? COLORS.accent : COLORS.textMuted} />
+            )
           ),
         }}
       />
@@ -166,7 +183,12 @@ export default function AppNavigator() {
     if (!socket) return;
     socket.on('notification', (n) => dispatch(addNotificationRealtime(n)));
     socket.on('dmMessage', (data) => dispatch(addRealtimeMessage(data)));
-    return () => { socket.off('notification'); socket.off('dmMessage'); };
+    socket.on('dmRequestAccepted', (data) => dispatch(updateConversationAccepted(data.conversationId)));
+    return () => {
+      socket.off('notification');
+      socket.off('dmMessage');
+      socket.off('dmRequestAccepted');
+    };
   }, [isAuthenticated]);
 
   // Register for Expo push notifications once authenticated

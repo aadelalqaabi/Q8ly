@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput,
   KeyboardAvoidingView, Platform, Image, ActivityIndicator,
@@ -7,7 +7,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { format } from 'date-fns';
-import { fetchConversation, sendDmMessage, addRealtimeMessage, clearActiveConversation } from '../../store/slices/dmSlice';
+import { useFocusEffect } from '@react-navigation/native';
+import { fetchConversation, sendDmMessage, clearActiveConversation, markConversationSeen } from '../../store/slices/dmSlice';
 import { getSocket } from '../../services/socket';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -28,10 +29,36 @@ export default function DMConversationScreen({ navigation, route }) {
   const { user } = useSelector((s) => s.auth);
   const { activeConversation, loading, sending } = useSelector((s) => s.dm);
   const [text, setText] = useState('');
+  const [otherTyping, setOtherTyping] = useState(false);
   const flatListRef = useRef(null);
+  const conversationIdRef = useRef(null);
+  const userIdRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
 
   const messages = activeConversation?.conversation?.messages || [];
   const other = activeConversation?.other;
+  const conversation = activeConversation?.conversation;
+
+  // Keep refs up-to-date to avoid stale closures in socket handlers
+  conversationIdRef.current = conversation?._id ?? null;
+  userIdRef.current = user?._id ?? null;
+
+  // Am I the one who initiated this pending request?
+  const isPendingInitiator = useMemo(() => {
+    if (!conversation || conversation.status !== 'pending') return false;
+    const initiatorId = conversation.initiator?._id?.toString() || conversation.initiator?.toString();
+    return initiatorId === user?._id?.toString();
+  }, [conversation, user]);
+
+  // Index of the last message I sent that the other person has read
+  const lastSeenIdx = useMemo(() => {
+    let idx = -1;
+    messages.forEach((m, i) => {
+      const isMe = m.sender?._id?.toString() === user?._id?.toString() || m.sender?.toString() === user?._id?.toString();
+      if (isMe && m.isRead) idx = i;
+    });
+    return idx;
+  }, [messages, user]);
 
   useEffect(() => {
     dispatch(fetchConversation(userId));
@@ -39,18 +66,56 @@ export default function DMConversationScreen({ navigation, route }) {
   }, [userId]);
 
   // Real-time DM via socket
+  // NOTE: addRealtimeMessage is dispatched globally by AppNavigator — don't dispatch it here too
+  // Handlers use refs so they always read the latest conversationId without stale closures
   useEffect(() => {
     const socket = getSocket();
     if (!socket) return;
-    const handler = (data) => {
-      if (data.conversationId === activeConversation?.conversation?._id) {
-        dispatch(addRealtimeMessage(data));
-        setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+
+    const onMessage = (data) => {
+      if (!conversationIdRef.current || data.conversationId?.toString() !== conversationIdRef.current?.toString()) return;
+      const senderId = data.message?.sender?._id?.toString() || data.message?.sender?.toString();
+      if (senderId !== userIdRef.current) {
+        socket.emit('dmMarkSeen', { conversationId: data.conversationId });
       }
     };
-    socket.on('dmMessage', handler);
-    return () => socket.off('dmMessage', handler);
-  }, [activeConversation?.conversation?._id]);
+
+    const onSeen = (data) => {
+      if (!conversationIdRef.current || data.conversationId?.toString() !== conversationIdRef.current?.toString()) return;
+      dispatch(markConversationSeen());
+    };
+
+    socket.on('dmMessage', onMessage);
+    socket.on('dmSeen', onSeen);
+    return () => {
+      socket.off('dmMessage', onMessage);
+      socket.off('dmSeen', onSeen);
+    };
+  }, []); // empty deps — registered once, always reads latest via refs
+
+  // Typing indicator — registered on focus, cleaned up on blur
+  useFocusEffect(
+    useCallback(() => {
+      const socket = getSocket();
+      if (!socket) return;
+      const onTyping = (data) => {
+        setOtherTyping(!!data.isTyping);
+      };
+      socket.on('dmTyping', onTyping);
+      return () => {
+        socket.off('dmTyping', onTyping);
+        setOtherTyping(false);
+      };
+    }, [])
+  );
+
+  // Clear typing timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      getSocket()?.emit('dmTyping', { otherUserId: userId, isTyping: false });
+    };
+  }, []);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -58,17 +123,41 @@ export default function DMConversationScreen({ navigation, route }) {
     }
   }, [messages.length]);
 
+  const emitTyping = (isTyping) => {
+    const socket = getSocket();
+    if (!socket) { console.warn('[dmTyping] no socket'); return; }
+    console.log('[dmTyping emit]', { otherUserId: userId, isTyping });
+    socket.emit('dmTyping', { otherUserId: userId, isTyping });
+  };
+
+  const handleTextChange = (val) => {
+    setText(val);
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    if (val.length > 0) {
+      emitTyping(true);
+      typingTimeoutRef.current = setTimeout(() => emitTyping(false), 3000);
+    } else {
+      emitTyping(false);
+    }
+  };
+
   const handleSend = async () => {
     const trimmed = text.trim();
     if (!trimmed || sending) return;
     setText('');
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    emitTyping(false);
     await dispatch(sendDmMessage({ userId, text: trimmed }));
+    if (!conversation || conversation.status === 'pending') {
+      await dispatch(fetchConversation(userId));
+    }
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
   };
 
   const renderMessage = ({ item, index }) => {
     const isMe = item.sender?._id?.toString() === user?._id?.toString() || item.sender?.toString() === user?._id?.toString();
     const showTime = index === 0 || (index > 0 && new Date(item.createdAt) - new Date(messages[index - 1]?.createdAt) > 5 * 60 * 1000);
+    const showSeen = isMe && index === lastSeenIdx;
 
     return (
       <View>
@@ -91,6 +180,9 @@ export default function DMConversationScreen({ navigation, route }) {
             <Text style={[styles.bubbleText, isMe && styles.bubbleTextMe]}>{item.text}</Text>
           </View>
         </View>
+        {showSeen && (
+          <Text style={styles.seenLabel}>Seen</Text>
+        )}
       </View>
     );
   };
@@ -106,7 +198,11 @@ export default function DMConversationScreen({ navigation, route }) {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="chevron-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
-        <View style={styles.headerUser}>
+        <TouchableOpacity
+          style={styles.headerUser}
+          onPress={() => navigation.navigate('ProfileDetail', { userId, username })}
+          activeOpacity={0.7}
+        >
           {other?.profilePic ? (
             <Image source={{ uri: other.profilePic }} style={styles.headerAvatar} />
           ) : (
@@ -115,9 +211,17 @@ export default function DMConversationScreen({ navigation, route }) {
             </View>
           )}
           <Text style={styles.headerName}>{other?.name || otherName}</Text>
-        </View>
+        </TouchableOpacity>
         <View style={{ width: 32 }} />
       </View>
+
+      {/* Pending request banner */}
+      {isPendingInitiator && (
+        <View style={styles.pendingBanner}>
+          <Ionicons name="time-outline" size={14} color="#666" />
+          <Text style={styles.pendingText}>Message request sent — waiting for them to accept</Text>
+        </View>
+      )}
 
       {/* Messages */}
       {loading && messages.length === 0 ? (
@@ -138,12 +242,24 @@ export default function DMConversationScreen({ navigation, route }) {
         />
       )}
 
+      {/* Typing indicator */}
+      {otherTyping && (
+        <View style={styles.typingRow}>
+          <Text style={styles.typingText}>{other?.name || otherName} is typing</Text>
+          <View style={styles.typingDots}>
+            <View style={[styles.dot, styles.dot1]} />
+            <View style={[styles.dot, styles.dot2]} />
+            <View style={[styles.dot, styles.dot3]} />
+          </View>
+        </View>
+      )}
+
       {/* Input */}
       <View style={[styles.inputBar, { paddingBottom: insets.bottom + 8 }]}>
         <TextInput
           style={[styles.input, { backgroundColor: COLORS.fill, color: COLORS.text }]}
           value={text}
-          onChangeText={setText}
+          onChangeText={handleTextChange}
           placeholder="Message..."
           placeholderTextColor={COLORS.textMuted}
           multiline
@@ -178,7 +294,19 @@ const makeStyles = (C) => StyleSheet.create({
   headerUser: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   headerAvatar: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
   headerName: { fontSize: 16, fontWeight: '600', color: C.text },
+  pendingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#F2F2F7',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: C.separator,
+  },
+  pendingText: { fontSize: 13, color: '#666', flex: 1 },
   timeLabel: { textAlign: 'center', fontSize: 11, color: C.textMuted, marginVertical: 8 },
+  seenLabel: { fontSize: 11, color: C.textMuted, textAlign: 'right', marginRight: 4, marginTop: 2 },
   bubbleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginVertical: 2 },
   bubbleRowMe: { flexDirection: 'row-reverse' },
   bubbleAvatar: { width: 24, height: 24, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
@@ -216,4 +344,15 @@ const makeStyles = (C) => StyleSheet.create({
     width: 36, height: 36, borderRadius: 18,
     justifyContent: 'center', alignItems: 'center',
   },
+  typingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    gap: 6,
+  },
+  typingText: { fontSize: 12, color: C.textMuted },
+  typingDots: { flexDirection: 'row', gap: 3, alignItems: 'center' },
+  dot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: C.textMuted },
+  dot1: {}, dot2: {}, dot3: {},
 });

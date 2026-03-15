@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, Image,
   ActivityIndicator, Alert,
@@ -37,6 +37,7 @@ export default function DMListScreen({ navigation }) {
   const { colors: COLORS } = useTheme();
   const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
   const { conversations, requests, loading, needsRefresh } = useSelector((s) => s.dm);
+  const [actionLoading, setActionLoading] = useState(null); // convId being accepted/denied
 
   useFocusEffect(
     React.useCallback(() => {
@@ -56,14 +57,22 @@ export default function DMListScreen({ navigation }) {
   };
 
   const handleAccept = async (item) => {
+    setActionLoading(item._id);
     await dispatch(acceptDmRequest(item._id));
+    setActionLoading(null);
     goToConversation(item.other);
   };
 
   const handleDeny = (convId) => {
     Alert.alert('Decline request?', 'This will delete the conversation.', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Decline', style: 'destructive', onPress: () => dispatch(denyDmRequest(convId)) },
+      {
+        text: 'Decline', style: 'destructive', onPress: async () => {
+          setActionLoading(convId);
+          await dispatch(denyDmRequest(convId));
+          setActionLoading(null);
+        },
+      },
     ]);
   };
 
@@ -119,20 +128,26 @@ export default function DMListScreen({ navigation }) {
           <Text style={styles.requestPreview} numberOfLines={1}>{item.lastMessage || 'Wants to message you'}</Text>
         </View>
         <View style={styles.requestActions}>
-          <TouchableOpacity
-            style={[styles.requestBtn, { backgroundColor: COLORS.accent }]}
-            onPress={(e) => { e.stopPropagation?.(); handleAccept(item); }}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.requestBtnAcceptText}>Accept</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.requestBtn, { backgroundColor: COLORS.fill }]}
-            onPress={(e) => { e.stopPropagation?.(); handleDeny(item._id); }}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.requestBtnText, { color: COLORS.textMuted }]}>Decline</Text>
-          </TouchableOpacity>
+          {actionLoading === item._id ? (
+            <ActivityIndicator size="small" color={COLORS.accent} style={{ paddingHorizontal: 12 }} />
+          ) : (
+            <>
+              <TouchableOpacity
+                style={[styles.requestBtn, { backgroundColor: COLORS.accent }]}
+                onPress={(e) => { e.stopPropagation?.(); handleAccept(item); }}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.requestBtnAcceptText}>Accept</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.requestBtn, { backgroundColor: COLORS.fill }]}
+                onPress={(e) => { e.stopPropagation?.(); handleDeny(item._id); }}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.requestBtnText, { color: COLORS.textMuted }]}>Decline</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       </TouchableOpacity>
     );

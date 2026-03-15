@@ -1,7 +1,7 @@
 import React, { useEffect, useCallback, useState, useRef, useMemo } from 'react';
 import {
   View, Text, FlatList, ScrollView, StyleSheet, RefreshControl,
-  TouchableOpacity, ActivityIndicator, Animated, Image,
+  TouchableOpacity, ActivityIndicator, Animated, Image, PanResponder, Dimensions,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
@@ -105,6 +105,63 @@ export default function HomeScreen({ navigation }) {
   const [selectedBadge, setSelectedBadge] = useState(null);
   const [feedAds, setFeedAds] = useState([]);
   const flatRef = useRef(null);
+  const filterScrollRef = useRef(null);
+  const SW = Dimensions.get('window').width;
+
+  // Slide animation for feed content
+  const slideX = useRef(new Animated.Value(0)).current;
+  const slideOpacity = useRef(new Animated.Value(1)).current;
+  const prevBadgeIdxRef = useRef(0);
+
+  const animateToCategory = useCallback((newKey) => {
+    const prevIdx = prevBadgeIdxRef.current;
+    const nextIdx = BADGE_FILTERS.findIndex((f) => f.key === newKey);
+    if (nextIdx === prevIdx) return;
+    prevBadgeIdxRef.current = nextIdx;
+    const dir = nextIdx > prevIdx ? -1 : 1; // next→slide left, prev→slide right
+
+    // Scroll filter chips to show active tab
+    filterScrollRef.current?.scrollTo({ x: Math.max(0, nextIdx * 90 - 40), animated: true });
+
+    // Slide + fade out
+    Animated.parallel([
+      Animated.timing(slideOpacity, { toValue: 0, duration: 100, useNativeDriver: true }),
+      Animated.timing(slideX, { toValue: dir * SW * 0.25, duration: 100, useNativeDriver: true }),
+    ]).start(() => {
+      setSelectedBadge(newKey);
+      flatRef.current?.scrollToOffset({ offset: 0, animated: false });
+      slideX.setValue(-dir * SW * 0.25);
+      // Slide + fade in
+      Animated.parallel([
+        Animated.timing(slideOpacity, { toValue: 1, duration: 180, useNativeDriver: true }),
+        Animated.spring(slideX, { toValue: 0, damping: 18, stiffness: 220, useNativeDriver: true }),
+      ]).start();
+    });
+  }, [BADGE_FILTERS, slideX, slideOpacity, SW]);
+
+  // PanResponder for swipe gesture
+  const swipeHandlerRef = useRef(null);
+  swipeHandlerRef.current = (dx) => {
+    const currentIdx = BADGE_FILTERS.findIndex((f) => f.key === selectedBadge);
+    if (dx < 0) {
+      const next = BADGE_FILTERS[Math.min(currentIdx + 1, BADGE_FILTERS.length - 1)];
+      if (next.key !== selectedBadge) animateToCategory(next.key);
+    } else {
+      const prev = BADGE_FILTERS[Math.max(currentIdx - 1, 0)];
+      if (prev.key !== selectedBadge) animateToCategory(prev.key);
+    }
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) =>
+        Math.abs(g.dx) > 12 && Math.abs(g.dx) > Math.abs(g.dy) * 2,
+      onPanResponderRelease: (_, g) => {
+        if (Math.abs(g.dx) < 50) return;
+        swipeHandlerRef.current(g.dx);
+      },
+    })
+  ).current;
 
   const loadFeed = useCallback(
     (p = 1) => dispatch(fetchFeed({ tab: 'for_you', page: p })),
@@ -164,7 +221,9 @@ export default function HomeScreen({ navigation }) {
     handleRefresh();
   };
 
-  const renderItem = ({ item }) => {
+  const keyExtractor = useCallback((item, i) => `${item._id}_${item._type}_${i}`, []);
+
+  const renderItem = useCallback(({ item }) => {
     if (item._type === 'ad') return <AdCard ad={item} />;
     return (
       <View>
@@ -172,7 +231,7 @@ export default function HomeScreen({ navigation }) {
         <PostCard post={item} navigation={navigation} />
       </View>
     );
-  };
+  }, [navigation]);
 
   const renderEmpty = () => {
     if (isLoading) return null;
@@ -224,18 +283,26 @@ export default function HomeScreen({ navigation }) {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.wordmark}>KUWAI</Text>
-        <TouchableOpacity
-          onPress={() => navigation.navigate('Discover')}
-          style={styles.headerBtn}
-          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
-        >
-          <Ionicons name="search-outline" size={24} color={COLORS.text} />
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Notifications')}
+            style={styles.headerBtn}
+            hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+          >
+            <Ionicons name={unreadCount > 0 ? 'notifications' : 'notifications-outline'} size={24} color={COLORS.text} />
+            {unreadCount > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Badge filter tabs */}
       <View style={styles.filterTabsWrap}>
         <ScrollView
+          ref={filterScrollRef}
           horizontal
           showsHorizontalScrollIndicator={false}
           bounces={false}
@@ -247,7 +314,7 @@ export default function HomeScreen({ navigation }) {
               <TouchableOpacity
                 key={String(f.key)}
                 style={styles.filterTab}
-                onPress={() => setSelectedBadge(f.key)}
+                onPress={() => animateToCategory(f.key)}
                 activeOpacity={0.7}
               >
                 <Text style={[styles.filterTabLabel, active && styles.filterTabLabelActive]}>
@@ -263,6 +330,8 @@ export default function HomeScreen({ navigation }) {
       {/* New posts banner — slides down from header */}
       <NewPostsBanner count={newPostCount} onPress={scrollToTop} label={t('home.newPosts', { count: newPostCount })} />
 
+      <View style={{ flex: 1 }} {...panResponder.panHandlers}>
+      <Animated.View style={{ flex: 1, opacity: slideOpacity, transform: [{ translateX: slideX }] }}>
       {isLoading && forYouPosts.length === 0 ? (
         <View style={styles.loader}>
           <ActivityIndicator size="large" color={COLORS.accent} />
@@ -271,7 +340,7 @@ export default function HomeScreen({ navigation }) {
         <FlatList
           ref={flatRef}
           data={displayData}
-          keyExtractor={(item, i) => `${item._id}_${item._type}_${i}`}
+          keyExtractor={keyExtractor}
           renderItem={renderItem}
           ListEmptyComponent={renderEmpty}
           ListFooterComponent={
@@ -295,6 +364,8 @@ export default function HomeScreen({ navigation }) {
           showsVerticalScrollIndicator={false}
         />
       )}
+      </Animated.View>
+      </View>
 
       {/* Compose FAB */}
       <TouchableOpacity

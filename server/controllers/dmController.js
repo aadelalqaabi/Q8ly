@@ -51,7 +51,7 @@ exports.getConversations = async (req, res) => {
   }
 };
 
-// GET /api/dm/:userId — get or create conversation with a user + fetch messages
+// GET /api/dm/:userId — fetch existing conversation (does NOT create one)
 exports.getOrCreateConversation = async (req, res) => {
   try {
     const otherId = req.params.userId;
@@ -71,40 +71,39 @@ exports.getOrCreateConversation = async (req, res) => {
     const meBlocked = (otherUser.blockedUsers || []).some((id) => id.toString() === req.user._id.toString());
     if (meBlocked) return res.status(403).json({ success: false, message: 'Cannot message this user' });
 
-    let conversation = await Conversation.findOne({
+    const senderIdStr = req.user._id.toString();
+
+    const conversation = await Conversation.findOne({
       participants: { $all: [req.user._id, otherId], $size: 2 },
     }).populate('messages.sender', 'username name profilePic');
 
-    if (!conversation) {
-      conversation = await Conversation.create({
-        participants: [req.user._id, otherId],
-        messages: [],
-        unreadCounts: {},
-        status: 'pending',
-        initiator: req.user._id,
-      });
-      conversation = await conversation.populate('messages.sender', 'username name profilePic');
-    } else if (conversation.status === 'pending' && conversation.initiator?.toString() !== req.user._id.toString()) {
-      // Recipient opened the conversation — auto-accept
-      conversation.status = 'accepted';
-      await conversation.save();
-    }
-
-    // Mark all messages to me as read
-    const userIdStr = req.user._id.toString();
-    let dirty = false;
-    conversation.messages.forEach((m) => {
-      if (m.sender._id?.toString() !== userIdStr && !m.isRead) {
-        m.isRead = true;
-        dirty = true;
+    if (conversation) {
+      // Recipient opens a pending conversation → auto-accept
+      if (conversation.status === 'pending' && conversation.initiator?.toString() !== senderIdStr) {
+        conversation.status = 'accepted';
+        await conversation.save();
       }
-    });
-    if (dirty) {
-      conversation.unreadCounts.set(userIdStr, 0);
-      await conversation.save();
+
+      // Mark messages sent to me as read
+      let dirty = false;
+      conversation.messages.forEach((m) => {
+        const senderId = m.sender?._id?.toString() || m.sender?.toString();
+        if (senderId !== senderIdStr && !m.isRead) {
+          m.isRead = true;
+          dirty = true;
+        }
+      });
+      if (dirty) {
+        conversation.unreadCounts.set(senderIdStr, 0);
+        await conversation.save();
+        const io = req.app.get('io');
+        if (io) {
+          io.to(`user:${otherId}`).emit('dmSeen', { conversationId: conversation._id.toString() });
+        }
+      }
     }
 
-    res.json({ success: true, conversation, other: otherUser });
+    res.json({ success: true, conversation: conversation || null, other: otherUser });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -123,7 +122,7 @@ exports.sendMessage = async (req, res) => {
     if (text.trim().length > 1000) return res.status(400).json({ success: false, message: 'Message too long' });
 
     // Check if other user blocked me
-    const otherUser = await User.findById(otherId).select('blockedUsers');
+    const otherUser = await User.findById(otherId).select('blockedUsers following');
     if (!otherUser) return res.status(404).json({ success: false, message: 'User not found' });
     const meBlocked = (otherUser.blockedUsers || []).some((id) => id.toString() === req.user._id.toString());
     if (meBlocked) return res.status(403).json({ success: false, message: 'Cannot message this user' });
@@ -132,6 +131,10 @@ exports.sendMessage = async (req, res) => {
     const me = await User.findById(req.user._id).select('blockedUsers');
     const iBlocked = (me.blockedUsers || []).some((id) => id.toString() === otherId);
     if (iBlocked) return res.status(403).json({ success: false, message: 'Unblock this user to message them' });
+
+    const senderIdStr = req.user._id.toString();
+    // Recipient follows sender → direct message; otherwise → request
+    const recipientFollowsSender = (otherUser.following || []).some((id) => id.toString() === senderIdStr);
 
     let conversation = await Conversation.findOne({
       participants: { $all: [req.user._id, otherId], $size: 2 },
@@ -142,7 +145,7 @@ exports.sendMessage = async (req, res) => {
         participants: [req.user._id, otherId],
         messages: [],
         unreadCounts: {},
-        status: 'pending',
+        status: recipientFollowsSender ? 'accepted' : 'pending',
         initiator: req.user._id,
       });
     } else if (conversation.status === 'pending' && conversation.initiator?.toString() !== req.user._id.toString()) {
@@ -187,6 +190,15 @@ exports.acceptRequest = async (req, res) => {
     }
     conv.status = 'accepted';
     await conv.save();
+
+    // Notify the initiator in real-time
+    const io = req.app.get('io');
+    if (io && conv.initiator) {
+      io.to(`user:${conv.initiator.toString()}`).emit('dmRequestAccepted', {
+        conversationId: conv._id.toString(),
+      });
+    }
+
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

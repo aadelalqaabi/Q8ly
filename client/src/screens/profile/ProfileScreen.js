@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { usersAPI, hachiAPI } from '../../services/api';
 import PostCard from '../../components/post/PostCard';
+import BottomMenu from '../../components/ui/BottomMenu';
 import { useTheme } from '../../context/ThemeContext';
 
 const BADGE_COLORS = {
@@ -86,6 +87,7 @@ export default function ProfileScreen({ navigation, route }) {
   const isOwnProfile = username === currentUser?.username;
   const isPushed = !!route.params?.username;
 
+  const [msgConfirmVisible, setMsgConfirmVisible] = useState(false);
   const [profile, setProfile] = useState(isOwnProfile ? currentUser : null);
   const [posts, setPosts] = useState([]);
   const [bookmarks, setBookmarks] = useState([]);
@@ -203,7 +205,7 @@ export default function ProfileScreen({ navigation, route }) {
   };
 
   const handleMessage = () => {
-    navigation.navigate('DMConversation', { userId: profile._id, username: profile.username, name: profile.name });
+    setMsgConfirmVisible(true);
   };
 
   const handleBlock = () => {
@@ -239,16 +241,7 @@ export default function ProfileScreen({ navigation, route }) {
             <Ionicons name="chevron-back" size={22} color={COLORS.text} />
           </TouchableOpacity>
         ) : isOwnProfile ? (
-          <TouchableOpacity style={styles.navBtn} onPress={() => navigation.navigate('Notifications')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <View style={{ position: 'relative' }}>
-              <Ionicons name="notifications-outline" size={22} color={COLORS.text} />
-              {unreadCount > 0 && (
-                <View style={styles.notifBadge}>
-                  <Text style={styles.notifBadgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
-                </View>
-              )}
-            </View>
-          </TouchableOpacity>
+          <View style={styles.navBtn} />
         ) : (
           <View style={styles.navBtn} />
         )}
@@ -413,7 +406,11 @@ export default function ProfileScreen({ navigation, route }) {
         <Ionicons name="trash-outline" size={18} color="#FF3B30" />
       </TouchableOpacity>
     </View>
-  ), [circles, COLORS]);
+  ), [COLORS, navigation]);
+
+  const renderPostItem = useCallback(({ item }) => (
+    <PostCard post={item} navigation={navigation} />
+  ), [navigation]);
 
   if (isLoading) {
     return (
@@ -428,7 +425,7 @@ export default function ProfileScreen({ navigation, route }) {
       <FlatList
         data={listData}
         keyExtractor={(item) => item._id}
-        renderItem={activeTab === 'circles' ? renderCircleItem : ({ item }) => <PostCard post={item} navigation={navigation} />}
+        renderItem={activeTab === 'circles' ? renderCircleItem : renderPostItem}
         ListHeaderComponent={renderHeader}
         ListFooterComponent={
           postsLoading
@@ -456,6 +453,17 @@ export default function ProfileScreen({ navigation, route }) {
         }}
       />
 
+      <BottomMenu
+        visible={msgConfirmVisible}
+        onClose={() => setMsgConfirmVisible(false)}
+        title={t('profile.msgRequestTitle', { name: profile?.name || profile?.username })}
+        options={[
+          {
+            label: t('profile.msgRequestSend'),
+            onPress: () => navigation.navigate('DMConversation', { userId: profile._id, username: profile.username, name: profile.name }),
+          },
+        ]}
+      />
     </View>
   );
 }
