@@ -31,7 +31,7 @@ function dominantReaction(reactions) {
 }
 
 // ── RoomCard ───────────────────────────────────────────────────────────────────
-function RoomCard({ room, onPress, archived }) {
+function RoomCard({ room, onPress, archived, isJoined }) {
   const { t } = useTranslation();
   const { colors: COLORS } = useTheme();
   const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
@@ -58,6 +58,11 @@ function RoomCard({ room, onPress, archived }) {
           <Text style={styles.cardBy}>
             {room.creator?.name || t('hachi.someoneDefault')} · {created}
           </Text>
+          {isJoined && (
+            <View style={styles.joinedPill}>
+              <Text style={styles.joinedPillText}>Joined</Text>
+            </View>
+          )}
         </View>
       </View>
       <View style={styles.cardRight}>
@@ -193,7 +198,13 @@ export default function HachiScreen({ navigation }) {
       .sort((a, b) => b[1] - a[1]);
   }, [rooms]);
 
-  // Active + archived merged: active first, archived appended
+  const myId = currentUser?._id?.toString();
+
+  const isRoomJoined = useCallback((room) =>
+    myId && room.members?.some((m) => m?.toString() === myId),
+  [myId]);
+
+  // Active + archived merged: joined rooms first, then the rest, archived at end
   const filteredRooms = useMemo(() => {
     const applyFilters = (list) => {
       if (!searchQuery.trim()) return list;
@@ -204,8 +215,13 @@ export default function HachiScreen({ navigation }) {
         (r.category && r.category.toLowerCase().includes(q))
       );
     };
-    return [...applyFilters(rooms), ...applyFilters(archivedRooms)];
-  }, [rooms, archivedRooms, searchQuery]);
+    const activeFiltered = applyFilters(rooms);
+    const sortedActive = [
+      ...activeFiltered.filter((r) => isRoomJoined(r)),
+      ...activeFiltered.filter((r) => !isRoomJoined(r)),
+    ];
+    return [...sortedActive, ...applyFilters(archivedRooms)];
+  }, [rooms, archivedRooms, searchQuery, isRoomJoined]);
 
   const handleCreate = useCallback(async () => {
     if (!newTitle.trim() || creating) return;
@@ -262,31 +278,6 @@ export default function HachiScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* Trending strip — only when ≥1 trending category */}
-      {trending.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.trendingRow}
-          style={styles.trendingScroll}
-        >
-          <Text style={styles.trendingLabel}>🔥</Text>
-          {trending.map(([cat, count]) => (
-            <TouchableOpacity
-              key={cat}
-              style={[styles.trendingChip, activeCategory === cat && styles.trendingChipActive]}
-              onPress={() => setActiveCategory(cat)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.trendingEmoji}>{CATEGORY_EMOJIS[cat]}</Text>
-              <Text style={[styles.trendingText, activeCategory === cat && styles.trendingTextActive]}>
-                {count}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
-
       {/* Search bar */}
       <View style={styles.searchBar}>
         <Ionicons name="search-outline" size={16} color={COLORS.textMuted} />
@@ -331,7 +322,7 @@ export default function HachiScreen({ navigation }) {
         })}
       </ScrollView>
 
-      {/* Room list */}
+      {/* Room list — joined rooms float to top */}
       {isLoading ? (
         <ActivityIndicator size="large" color={COLORS.accent} style={styles.loader} />
       ) : (
@@ -342,6 +333,7 @@ export default function HachiScreen({ navigation }) {
             <RoomCard
               room={item}
               archived={!item.isActive}
+              isJoined={isRoomJoined(item)}
               onPress={() => navigation.navigate('HachiRoom', { roomId: item._id, title: item.title })}
             />
           )}
@@ -592,6 +584,13 @@ const makeStyles = (C) => StyleSheet.create({
   cardTitle: { flex: 1, fontSize: 16, fontWeight: '600', color: C.text, lineHeight: 22 },
   cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   cardBy: { fontSize: 13, color: C.textMuted },
+  joinedPill: {
+    backgroundColor: '#EEF2FA',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  joinedPillText: { fontSize: 11, fontWeight: '600', color: C.accent },
   cardRight: { alignItems: 'flex-end', gap: 4, flexShrink: 0 },
   memberBadge: {
     flexDirection: 'row',

@@ -10,6 +10,15 @@ export const fetchRooms = createAsyncThunk('hachi/fetchRooms', async (category, 
   }
 });
 
+export const fetchJoinedRooms = createAsyncThunk('hachi/fetchJoinedRooms', async (_, { rejectWithValue }) => {
+  try {
+    const res = await hachiAPI.getJoinedRooms();
+    return res.rooms;
+  } catch (e) {
+    return rejectWithValue(e.message);
+  }
+});
+
 export const fetchArchivedRooms = createAsyncThunk('hachi/fetchArchivedRooms', async (category, { rejectWithValue }) => {
   try {
     const res = await hachiAPI.getArchivedRooms(category);
@@ -51,6 +60,8 @@ const hachiSlice = createSlice({
   initialState: {
     rooms: [],
     archivedRooms: [],
+    joinedRooms: [],
+    joinedLoading: false,
     activeRoom: null,
     isLoading: false,
     archivedLoading: false,
@@ -149,6 +160,10 @@ const hachiSlice = createSlice({
       .addCase(fetchRooms.pending, (state) => { state.isLoading = true; state.error = null; })
       .addCase(fetchRooms.fulfilled, (state, { payload }) => { state.isLoading = false; state.rooms = payload; })
       .addCase(fetchRooms.rejected, (state, { payload }) => { state.isLoading = false; state.error = payload; })
+
+      .addCase(fetchJoinedRooms.pending, (state) => { state.joinedLoading = true; })
+      .addCase(fetchJoinedRooms.fulfilled, (state, { payload }) => { state.joinedLoading = false; state.joinedRooms = payload; })
+      .addCase(fetchJoinedRooms.rejected, (state) => { state.joinedLoading = false; })
 
       .addCase(fetchArchivedRooms.pending, (state) => { state.archivedLoading = true; })
       .addCase(fetchArchivedRooms.fulfilled, (state, { payload }) => {

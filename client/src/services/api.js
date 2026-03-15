@@ -150,6 +150,7 @@ export const hachiAPI = {
   react: (id, type) => api.post(`/hachi/${id}/react`, { type }),
   closeRoom: (id) => api.delete(`/hachi/${id}`),
   getMyCircles: () => api.get('/hachi/my'),
+  getJoinedRooms: () => api.get('/hachi/joined'),
   deleteRoom: (id) => api.delete(`/hachi/${id}/delete`),
 };
 

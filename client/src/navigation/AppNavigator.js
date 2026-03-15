@@ -90,7 +90,7 @@ function MainTabs() {
         options={{
           tabBarIcon: ({ color, focused }) => (
             <View style={{ position: 'relative' }}>
-              <Ionicons name={focused ? 'paper-plane' : 'paper-plane-outline'} size={24} color={color} />
+              <Ionicons name={focused ? 'mail' : 'mail-outline'} size={24} color={color} />
               {dmUnreadCount > 0 && (
                 <View style={{
                   position: 'absolute', top: -4, right: -6,

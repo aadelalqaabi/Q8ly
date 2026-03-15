@@ -1,6 +1,6 @@
 const Hachi = require('../models/Hachi');
 
-// GET /api/hachi — list active rooms (optional ?category=food&creator=userId)
+// GET /api/hachi — list active rooms (optional ?category=food&creator=userId&tag=x)
 exports.getRooms = async (req, res) => {
   try {
     const query = { isActive: true };
@@ -157,6 +157,24 @@ exports.closeRoom = async (req, res) => {
     io.emit('hachiRoomRemoved', { roomId: room._id });
 
     res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// GET /api/hachi/joined — rooms the current user is a member of (active + recently closed)
+exports.getJoinedRooms = async (req, res) => {
+  try {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const rooms = await Hachi.find({
+      members: req.user._id,
+      $or: [{ isActive: true }, { isActive: false, updatedAt: { $gte: sevenDaysAgo } }],
+    })
+      .populate('creator', 'name username profilePic')
+      .select('-messages')
+      .sort({ isActive: -1, updatedAt: -1 })
+      .limit(100);
+    res.json({ success: true, rooms });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

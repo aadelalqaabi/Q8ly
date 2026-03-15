@@ -38,12 +38,19 @@ export default function DMListScreen({ navigation }) {
   const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
   const { conversations, requests, loading, needsRefresh } = useSelector((s) => s.dm);
   const [actionLoading, setActionLoading] = useState(null); // convId being accepted/denied
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
       dispatch(fetchConversations());
     }, [dispatch])
   );
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await dispatch(fetchConversations());
+    setIsRefreshing(false);
+  };
 
   useEffect(() => {
     if (needsRefresh) {
@@ -204,8 +211,8 @@ export default function DMListScreen({ navigation }) {
               )}
             </>
           }
-          refreshing={loading}
-          onRefresh={() => dispatch(fetchConversations())}
+          refreshing={isRefreshing}
+          onRefresh={handleRefresh}
           showsVerticalScrollIndicator={false}
         />
       )}

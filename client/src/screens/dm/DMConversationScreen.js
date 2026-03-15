@@ -65,6 +65,13 @@ export default function DMConversationScreen({ navigation, route }) {
     return () => { dispatch(clearActiveConversation()); };
   }, [userId]);
 
+  // Mark conversation as seen on the server when it loads
+  useEffect(() => {
+    if (!conversation?._id) return;
+    const socket = getSocket();
+    if (socket) socket.emit('dmMarkSeen', { conversationId: conversation._id });
+  }, [conversation?._id]);
+
   // Real-time DM via socket
   // NOTE: addRealtimeMessage is dispatched globally by AppNavigator — don't dispatch it here too
   // Handlers use refs so they always read the latest conversationId without stale closures
