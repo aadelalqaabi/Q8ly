@@ -237,7 +237,8 @@
     "nameSub": "كيف ستظهر للآخرين",
     "nameHint": "استخدم اسمك الحقيقي",
     "namePlaceholder": "اسمك الكامل",
-    "join": "انضم لـ KUWAI"
+    "join": "انضم لـ KUWAI",
+    "browseAsGuest": "تصفح بدون حساب"
   },
 
   "badge": {
