@@ -27,7 +27,8 @@ const createIndexes = async () => {
 
     // Users
     await db.collection('users').createIndex({ username: 1 }, { unique: true });
-    await db.collection('users').createIndex({ email: 1 }, { unique: true });
+    await db.collection('users').createIndex({ email: 1 }, { unique: true, sparse: true });
+    await db.collection('users').createIndex({ phone: 1 }, { unique: true, sparse: true });
 
     // Posts
     await db.collection('posts').createIndex({ createdAt: -1, topicTags: 1 });

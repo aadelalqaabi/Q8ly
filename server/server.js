@@ -29,6 +29,9 @@ const adRoutes = require('./routes/ads');
 const app = express();
 const server = http.createServer(app);
 
+// Railway (and most PaaS) sit behind a reverse proxy — trust the first hop
+app.set('trust proxy', 1);
+
 // Connect to MongoDB
 connectDB();
 
