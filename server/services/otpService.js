@@ -30,9 +30,13 @@ if (!TEST_MODE) {
   const twilio = require('twilio');
   const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
   verifyService = client.verify.v2.services(process.env.TWILIO_VERIFY_SID);
-  console.log('[OTP] Production mode — Twilio Verify enabled');
+  const sid = process.env.TWILIO_ACCOUNT_SID;
+  const vsid = process.env.TWILIO_VERIFY_SID;
+  console.log(`[OTP] Production mode — SID: ${sid?.slice(0,6)}...${sid?.slice(-4)}  VSID: ${vsid?.slice(0,6)}...${vsid?.slice(-4)}`);
 } else {
-  console.log('[OTP] Test mode — SMS will NOT be sent, code is always 123456');
+  const missing = ['TWILIO_ACCOUNT_SID','TWILIO_AUTH_TOKEN','TWILIO_VERIFY_SID'].filter(k => !process.env[k]);
+  if (missing.length) console.warn('[OTP] Test mode — missing Railway vars:', missing.join(', '));
+  else console.log('[OTP] Test mode — OTP_TEST_MODE=true');
 }
 
 /**
