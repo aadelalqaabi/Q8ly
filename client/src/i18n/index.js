@@ -14,14 +14,15 @@
 
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import { I18nManager, NativeModules, Platform } from 'react-native';
+import { I18nManager, NativeModules } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ar as arLocale, enUS } from 'date-fns/locale';
 
 import ar from './locales/ar.json';
 import en from './locales/en.json';
 
-export const LANG_KEY = '@kn_lang';
+export const LANG_KEY = '@kn_lang';          // legacy key (no longer written)
+const LANG_EXPLICIT_KEY = '@kn_lang_explicit'; // written only when user picks in Settings
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 // Resources are bundled — no network needed, works offline.
@@ -43,37 +44,37 @@ export default i18n;
 /** Detect the device's system language — 'ar' if Arabic, 'en' otherwise. */
 function getDeviceLang() {
   try {
-    // iOS: read device locale from NativeModules
-    const iosLocale =
-      NativeModules.SettingsManager?.settings?.AppleLocale ||
-      NativeModules.SettingsManager?.settings?.AppleLanguages?.[0] ||
-      '';
-    if (iosLocale) return iosLocale.startsWith('ar') ? 'ar' : 'en';
+    // 1. Intl API — most reliable in Hermes (SDK 47+)
+    const intlLocale = Intl.DateTimeFormat().resolvedOptions().locale || '';
+    if (intlLocale) return intlLocale.startsWith('ar') ? 'ar' : 'en';
+  } catch {}
 
-    // Android: read from I18nManager / NativeModules
+  try {
+    // 2. iOS: AppleLanguages list (user's preferred language order)
+    const langs = NativeModules.SettingsManager?.settings?.AppleLanguages || [];
+    if (langs.length > 0) return langs[0].startsWith('ar') ? 'ar' : 'en';
+
+    // 3. iOS: AppleLocale (region locale, less reliable for language)
+    const appleLocale = NativeModules.SettingsManager?.settings?.AppleLocale || '';
+    if (appleLocale) return appleLocale.startsWith('ar') ? 'ar' : 'en';
+
+    // 4. Android
     const androidLocale = NativeModules.I18nManager?.localeIdentifier || '';
     if (androidLocale) return androidLocale.startsWith('ar') ? 'ar' : 'en';
+  } catch {}
 
-    // Fallback: Intl API (works in Hermes SDK 47+)
-    const intlLocale = Intl.DateTimeFormat().resolvedOptions().locale || '';
-    return intlLocale.startsWith('ar') ? 'ar' : 'en';
-  } catch {
-    return I18nManager.isRTL ? 'ar' : 'en';
-  }
+  // 5. Last resort: check if system is already RTL
+  return I18nManager.isRTL ? 'ar' : 'en';
 }
 
 /** Call once in App.js before rendering to apply stored preference. */
 export async function initLanguage() {
-  const stored = await AsyncStorage.getItem(LANG_KEY).catch(() => null);
-  const isFirstLaunch = stored === null;
+  // Only respect language the user EXPLICITLY chose in Settings.
+  // Ignore old @kn_lang (may have been wrongly auto-saved as 'en').
+  const explicit = await AsyncStorage.getItem(LANG_EXPLICIT_KEY).catch(() => null);
 
-  // Use stored preference if explicitly set; otherwise follow device language
-  const lang = (stored === 'ar' || stored === 'en') ? stored : getDeviceLang();
-
-  // Persist detected language on first launch so future opens skip detection
-  if (isFirstLaunch) {
-    await AsyncStorage.setItem(LANG_KEY, lang).catch(() => null);
-  }
+  // If user hasn't explicitly picked, always follow device language.
+  const lang = (explicit === 'ar' || explicit === 'en') ? explicit : getDeviceLang();
 
   const needsRTLChange = (lang === 'ar') !== I18nManager.isRTL;
   I18nManager.forceRTL(lang === 'ar');
@@ -99,7 +100,7 @@ export async function changeAppLanguage(newLang, i18nInstance, restartApp) {
   if (newLang === current) return;
 
   await i18nInstance.changeLanguage(newLang);
-  await AsyncStorage.setItem(LANG_KEY, newLang);
+  await AsyncStorage.setItem(LANG_EXPLICIT_KEY, newLang);
   I18nManager.forceRTL(newLang === 'ar');
 
   // Remount the navigation tree — direction applies immediately, no manual restart
