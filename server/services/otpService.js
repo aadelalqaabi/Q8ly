@@ -73,6 +73,7 @@ async function sendOtp(phone) {
   try {
     await verifyService.verifications.create({ to: normalized, channel: 'sms' });
   } catch (err) {
+    console.error('[Twilio] sendOtp error:', err.code, err.status, err.message);
     // Twilio error codes: 20003 = auth failure, 60200 = invalid param, 60203 = max attempts
     const code = err.code || err.status;
     if (code === 20003) {
