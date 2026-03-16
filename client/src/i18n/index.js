@@ -73,7 +73,8 @@ export async function initLanguage() {
   // Ignore old @kn_lang (may have been wrongly auto-saved as 'en').
   const explicit = await AsyncStorage.getItem(LANG_EXPLICIT_KEY).catch(() => null);
 
-  // If user hasn't explicitly picked, always follow device language.
+  // If user hasn't explicitly picked yet, use device language as a temp default
+  // (LanguageSelectScreen will ask on first launch and override this).
   const lang = (explicit === 'ar' || explicit === 'en') ? explicit : getDeviceLang();
 
   const needsRTLChange = (lang === 'ar') !== I18nManager.isRTL;

@@ -16,6 +16,7 @@ import { useTheme } from '../context/ThemeContext';
 import { registerForPushNotifications } from '../services/notificationService';
 import * as Notifications from 'expo-notifications';
 
+import LanguageSelectScreen from '../screens/auth/LanguageSelectScreen';
 import PhoneScreen from '../screens/auth/PhoneScreen';
 import OtpScreen from '../screens/auth/OtpScreen';
 import NameScreen from '../screens/auth/NameScreen';
@@ -150,6 +151,7 @@ function MainTabs() {
 function AuthStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="LanguageSelect" component={LanguageSelectScreen} />
       <Stack.Screen name="Phone" component={PhoneScreen} />
       <Stack.Screen name="OtpVerify" component={OtpScreen} />
       <Stack.Screen name="Terms" component={TermsScreen} options={{ presentation: 'modal' }} />
