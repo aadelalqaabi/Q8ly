@@ -30,6 +30,9 @@ if (!TEST_MODE) {
   const twilio = require('twilio');
   const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
   verifyService = client.verify.v2.services(process.env.TWILIO_VERIFY_SID);
+  console.log('[OTP] Production mode — Twilio Verify enabled');
+} else {
+  console.log('[OTP] Test mode — SMS will NOT be sent, code is always 123456');
 }
 
 /**
@@ -67,7 +70,31 @@ async function sendOtp(phone) {
     return { testMode: true };
   }
 
-  await verifyService.verifications.create({ to: normalized, channel: 'sms' });
+  try {
+    await verifyService.verifications.create({ to: normalized, channel: 'sms' });
+  } catch (err) {
+    // Twilio error codes: 20003 = auth failure, 60200 = invalid param, 60203 = max attempts
+    const code = err.code || err.status;
+    if (code === 20003) {
+      const e = new Error('SMS service configuration error. Please try again later.');
+      e.statusCode = 503;
+      throw e;
+    }
+    if (code === 60200 || err.message?.toLowerCase().includes('invalid')) {
+      const e = new Error('Invalid phone number');
+      e.statusCode = 400;
+      throw e;
+    }
+    if (code === 60203) {
+      const e = new Error('Too many OTP requests. Please wait before requesting another code.');
+      e.statusCode = 429;
+      throw e;
+    }
+    // Generic fallback
+    const e = new Error('Could not send verification code. Please try again.');
+    e.statusCode = 502;
+    throw e;
+  }
   return { testMode: false };
 }
 
@@ -97,8 +124,23 @@ async function verifyOtp(phone, code) {
     return { valid: true };
   }
 
-  const result = await verifyService.verificationChecks.create({ to: normalized, code: String(code) });
-  return { valid: result.status === 'approved' };
+  try {
+    const result = await verifyService.verificationChecks.create({ to: normalized, code: String(code) });
+    return { valid: result.status === 'approved' };
+  } catch (err) {
+    const code2 = err.code || err.status;
+    if (code2 === 20003) {
+      const e = new Error('SMS service configuration error. Please try again later.');
+      e.statusCode = 503;
+      throw e;
+    }
+    if (code2 === 60200) {
+      return { valid: false, reason: 'Incorrect code' };
+    }
+    const e = new Error('Could not verify code. Please try again.');
+    e.statusCode = 502;
+    throw e;
+  }
 }
 
 module.exports = { sendOtp, verifyOtp, normalizePhone };

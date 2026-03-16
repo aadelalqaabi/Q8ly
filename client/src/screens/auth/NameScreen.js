@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ActivityIndicator, I18nManager,
@@ -7,43 +7,25 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { updateProfile } from '../../store/slices/authSlice';
-import { COLORS } from '../../constants';
-
-function StepBar({ step, total }) {
-  return (
-    <View style={sb.row}>
-      {Array.from({ length: total }).map((_, i) => (
-        <View
-          key={i}
-          style={[sb.seg, i < step ? sb.active : sb.inactive, i < total - 1 && sb.gap]}
-        />
-      ))}
-    </View>
-  );
-}
-const sb = StyleSheet.create({
-  row: { flexDirection: 'row', marginBottom: 40 },
-  seg: { flex: 1, height: 3, borderRadius: 2 },
-  gap: { marginRight: 4 },
-  active: { backgroundColor: COLORS.accent },
-  inactive: { backgroundColor: '#E5E5EA' },
-});
+import { useTheme } from '../../context/ThemeContext';
 
 export default function NameScreen() {
   const dispatch = useDispatch();
   const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
+  const { colors: C } = useTheme();
   const { isLoading } = useSelector((s) => s.auth);
   const [name, setName] = useState('');
   const inputRef = useRef(null);
+
+  const styles = useMemo(() => makeStyles(C), [C]);
 
   const isValid = name.trim().length >= 2;
 
   const handleJoin = async () => {
     if (!isValid || isLoading) return;
     await dispatch(updateProfile({ name: name.trim() }));
-    // needsName → false in authSlice, AppNavigator auto-routes to AppStack
   };
 
   return (
@@ -54,7 +36,14 @@ export default function NameScreen() {
       <View style={[styles.inner, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 32 }]}>
 
         {/* Step bar */}
-        <StepBar step={3} total={3} />
+        <View style={styles.stepRow}>
+          {[0, 1, 2].map((i) => (
+            <View
+              key={i}
+              style={[styles.stepSeg, styles.stepSegActive, i < 2 && styles.stepGap]}
+            />
+          ))}
+        </View>
 
         {/* Header */}
         <Text style={[styles.title, { textAlign: isRTL ? 'right' : 'left' }]}>{t('auth.nameTitle')}</Text>
@@ -72,7 +61,7 @@ export default function NameScreen() {
             value={name}
             onChangeText={setName}
             placeholder={t('auth.namePlaceholder')}
-            placeholderTextColor={COLORS.textPlaceholder}
+            placeholderTextColor={C.textPlaceholder}
             autoCapitalize="words"
             autoCorrect={false}
             autoFocus
@@ -106,29 +95,26 @@ export default function NameScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.white },
+const makeStyles = (C) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: C.white },
   inner: { flex: 1, paddingHorizontal: 24 },
 
-  title: {
-    fontSize: 32, fontWeight: '700', color: COLORS.text,
-    letterSpacing: -0.8, marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 15, color: COLORS.textMuted, lineHeight: 22, marginBottom: 36,
-  },
+  stepRow: { flexDirection: 'row', marginBottom: 40 },
+  stepSeg: { flex: 1, height: 3, borderRadius: 2 },
+  stepSegActive: { backgroundColor: C.accent },
+  stepGap: { marginRight: 4 },
+
+  title: { fontSize: 32, fontWeight: '700', color: C.text, letterSpacing: -0.8, marginBottom: 10 },
+  subtitle: { fontSize: 15, color: C.textMuted, lineHeight: 22, marginBottom: 36 },
 
   inputCard: {
-    backgroundColor: COLORS.fill, borderRadius: 14,
+    backgroundColor: C.fill, borderRadius: 14,
     paddingHorizontal: 18, height: 60, justifyContent: 'center', marginBottom: 10,
   },
-  input: {
-    fontSize: 20, fontWeight: '500', color: COLORS.text,
-  },
-  hint: { fontSize: 13, color: COLORS.textMuted },
+  input: { fontSize: 20, fontWeight: '500', color: C.text },
 
   btn: {
-    backgroundColor: COLORS.accent, borderRadius: 14,
+    backgroundColor: C.accent, borderRadius: 14,
     height: 56, justifyContent: 'center', alignItems: 'center',
   },
   btnDisabled: { opacity: 0.4 },

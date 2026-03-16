@@ -1,23 +1,26 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ActivityIndicator, I18nManager, Image,
+  KeyboardAvoidingView, Platform, ActivityIndicator, I18nManager,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { sendOtp, clearError } from '../../store/slices/authSlice';
-import { COLORS } from '../../constants';
+import { useTheme } from '../../context/ThemeContext';
 
 export default function PhoneScreen({ navigation }) {
   const dispatch = useDispatch();
   const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
+  const { colors: C, isDark } = useTheme();
   const { isLoading, error } = useSelector((s) => s.auth);
   const [phone, setPhone] = useState('');
   const inputRef = useRef(null);
+
+  const styles = useMemo(() => makeStyles(C, isDark), [C, isDark]);
 
   const formatDisplay = (raw) => {
     const digits = raw.replace(/\D/g, '').slice(0, 8);
@@ -46,6 +49,12 @@ export default function PhoneScreen({ navigation }) {
     }
   };
 
+  const TRUST_ITEMS = [
+    { icon: 'lock-closed-outline', key: 'trustSecure' },
+    { icon: 'shield-checkmark-outline', key: 'trustKuwait' },
+    { icon: 'key-outline', key: 'trustNoPassword' },
+  ];
+
   return (
     <KeyboardAvoidingView
       style={styles.root}
@@ -57,6 +66,16 @@ export default function PhoneScreen({ navigation }) {
         <View style={styles.logoWrap}>
           <Text style={styles.wordmark}>KUWAI</Text>
           <Text style={styles.tagline}>{t('auth.tagline')}</Text>
+        </View>
+
+        {/* Trust pills */}
+        <View style={styles.trustRow}>
+          {TRUST_ITEMS.map(({ icon, key }) => (
+            <View key={key} style={styles.trustPill}>
+              <Ionicons name={icon} size={12} color={C.accent} />
+              <Text style={styles.trustText}>{t(`auth.${key}`)}</Text>
+            </View>
+          ))}
         </View>
 
         {/* Step progress */}
@@ -76,7 +95,7 @@ export default function PhoneScreen({ navigation }) {
         {/* Error */}
         {!!error && (
           <View style={styles.errorBox}>
-            <Ionicons name="alert-circle" size={15} color={COLORS.error} />
+            <Ionicons name="alert-circle" size={15} color={C.error} />
             <Text style={styles.errorText}>{error}</Text>
           </View>
         )}
@@ -99,14 +118,14 @@ export default function PhoneScreen({ navigation }) {
             onChangeText={handleChangeText}
             keyboardType="phone-pad"
             placeholder="0000 0000"
-            placeholderTextColor={COLORS.textPlaceholder}
+            placeholderTextColor={C.textPlaceholder}
             maxLength={9}
             autoFocus
             returnKeyType="done"
             onSubmitEditing={handleContinue}
           />
           {isValid && (
-            <Ionicons name="checkmark-circle" size={22} color={COLORS.accent} />
+            <Ionicons name="checkmark-circle" size={22} color={C.accent} />
           )}
         </TouchableOpacity>
 
@@ -147,50 +166,62 @@ export default function PhoneScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.white },
+const makeStyles = (C, isDark) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: C.white },
   inner: { flex: 1, paddingHorizontal: 24 },
 
-  logoWrap: { alignItems: 'center', marginBottom: 44 },
-  wordmark: { fontSize: 44, letterSpacing: -2, marginBottom: 6, fontWeight: '800', color: COLORS.text },
-  tagline: { fontSize: 14, color: COLORS.textMuted, letterSpacing: 0.3 },
+  logoWrap: { alignItems: 'center', marginBottom: 20 },
+  wordmark: { fontSize: 44, letterSpacing: -2, marginBottom: 6, fontWeight: '800', color: C.text },
+  tagline: { fontSize: 14, color: C.textMuted, letterSpacing: 0.3 },
+
+  trustRow: {
+    flexDirection: 'row', justifyContent: 'center',
+    gap: 8, marginBottom: 36,
+  },
+  trustPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: isDark ? 'rgba(0,51,160,0.2)' : '#EEF2FA',
+    borderRadius: 20, paddingHorizontal: 10, paddingVertical: 6,
+  },
+  trustText: { fontSize: 11, fontWeight: '600', color: C.accent },
 
   stepRow: { flexDirection: 'row', marginBottom: 40 },
-  stepSeg: { flex: 1, height: 3, borderRadius: 2, backgroundColor: '#E5E5EA' },
-  stepSegActive: { backgroundColor: COLORS.accent },
+  stepSeg: { flex: 1, height: 3, borderRadius: 2, backgroundColor: C.separator },
+  stepSegActive: { backgroundColor: C.accent },
   stepGap: { marginRight: 4 },
 
-  title: { fontSize: 30, fontWeight: '700', color: COLORS.text, letterSpacing: -0.5, marginBottom: 8 },
-  subtitle: { fontSize: 15, color: COLORS.textMuted, marginBottom: 28 },
+  title: { fontSize: 30, fontWeight: '700', color: C.text, letterSpacing: -0.5, marginBottom: 8 },
+  subtitle: { fontSize: 15, color: C.textMuted, lineHeight: 22, marginBottom: 28 },
 
   errorBox: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#FFF2F2', borderRadius: 10,
-    paddingHorizontal: 12, paddingVertical: 10, marginBottom: 16,
+    backgroundColor: isDark ? 'rgba(255,59,48,0.15)' : '#FFF2F2',
+    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 16,
   },
-  errorText: { fontSize: 14, color: COLORS.error, flex: 1 },
+  errorText: { fontSize: 14, color: C.error, flex: 1 },
 
   inputCard: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: COLORS.fill, borderRadius: 14,
+    backgroundColor: C.fill, borderRadius: 14,
     paddingHorizontal: 16, height: 60, marginBottom: 10,
     borderWidth: 1.5, borderColor: 'transparent',
   },
-  inputCardActive: { borderColor: COLORS.accent, backgroundColor: '#EEF2FA' },
+  inputCardActive: {
+    borderColor: C.accent,
+    backgroundColor: isDark ? 'rgba(0,51,160,0.15)' : '#EEF2FA',
+  },
   prefix: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   prefixFlag: { fontSize: 20 },
-  prefixCode: { fontSize: 17, fontWeight: '600', color: COLORS.text },
+  prefixCode: { fontSize: 17, fontWeight: '600', color: C.text },
   divider: {
     width: StyleSheet.hairlineWidth, height: 22,
-    backgroundColor: COLORS.separator, marginHorizontal: 14,
+    backgroundColor: C.separator, marginHorizontal: 14,
   },
-  phoneInput: {
-    flex: 1, fontSize: 22, fontWeight: '500', color: COLORS.text, letterSpacing: 2,
-  },
-  hint: { fontSize: 12, color: COLORS.textMuted },
+  phoneInput: { flex: 1, fontSize: 22, fontWeight: '500', color: C.text, letterSpacing: 2 },
+  hint: { fontSize: 12, color: C.textMuted },
 
   btn: {
-    backgroundColor: COLORS.accent, borderRadius: 14,
+    backgroundColor: C.accent, borderRadius: 14,
     height: 56, justifyContent: 'center', alignItems: 'center', marginBottom: 16,
   },
   btnDisabled: { opacity: 0.4 },
@@ -198,6 +229,6 @@ const styles = StyleSheet.create({
   btnText: { color: '#fff', fontSize: 17, fontWeight: '700' },
   btnArrow: { color: '#fff', fontSize: 18 },
 
-  legal: { fontSize: 12, color: COLORS.textMuted, textAlign: 'center', lineHeight: 18 },
-  legalLink: { color: COLORS.accent, fontWeight: '500' },
+  legal: { fontSize: 12, color: C.textMuted, textAlign: 'center', lineHeight: 18 },
+  legalLink: { color: C.accent, fontWeight: '500' },
 });

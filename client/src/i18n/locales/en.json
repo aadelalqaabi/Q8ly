@@ -216,9 +216,12 @@
 
   "auth": {
     "tagline": "KUWAIt speaks here",
-    "phoneTitle": "What's your number?",
-    "phoneSub": "We'll send you a one-time code",
-    "phoneHint": "+965 numbers only",
+    "phoneTitle": "Your number, your identity",
+    "phoneSub": "In Kuwait, your +965 number is who you are. No passwords — just you, verified.",
+    "phoneHint": "+965 Kuwait numbers only",
+    "trustSecure": "Secured OTP",
+    "trustKuwait": "+965 Only",
+    "trustNoPassword": "No Password",
     "continue": "Continue",
     "termsPrefix": "By continuing you agree to our",
     "terms": "Terms",
