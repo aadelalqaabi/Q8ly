@@ -65,11 +65,27 @@ function getDeviceLang() {
 /** Call once in App.js before rendering to apply stored preference. */
 export async function initLanguage() {
   const stored = await AsyncStorage.getItem(LANG_KEY).catch(() => null);
+  const isFirstLaunch = stored === null;
+
   // Use stored preference if explicitly set; otherwise follow device language
   const lang = (stored === 'ar' || stored === 'en') ? stored : getDeviceLang();
 
+  // Persist detected language on first launch so future opens skip detection
+  if (isFirstLaunch) {
+    await AsyncStorage.setItem(LANG_KEY, lang).catch(() => null);
+  }
+
+  const needsRTLChange = (lang === 'ar') !== I18nManager.isRTL;
   I18nManager.forceRTL(lang === 'ar');
   await i18n.changeLanguage(lang);
+
+  // RTL direction only takes effect after a full JS reload — trigger once
+  if (needsRTLChange) {
+    const { reloadAsync } = require('expo-updates');
+    await reloadAsync();
+    // execution stops here — app reloads cleanly with correct RTL/LTR
+  }
+
   return lang;
 }
 
