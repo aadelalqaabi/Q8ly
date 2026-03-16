@@ -49,8 +49,8 @@ function VerifiedBadge({ badge }) {
 import BottomMenu from '../ui/BottomMenu';
 
 const SW = Dimensions.get('window').width;
-// Content column width = screen - 16 (left pad) - 40 (avatar) - 10 (gap) - 16 (right pad)
-const CONTENT_W = SW - 82;
+// Content column width = screen - 16 (left pad) - 44 (avatar) - 12 (gap) - 16 (right pad)
+const CONTENT_W = SW - 88;
 
 const PALETTE = ['#0033A0', '#007A3D', '#FF6B35', '#2196F3', '#9C27B0', '#00BCD4', '#FF9800'];
 function avatarBg(name) {
@@ -604,7 +604,7 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
             <View style={styles.actions}>
               {/* Comments */}
               <TouchableOpacity style={styles.action} onPress={toPost} hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}>
-                <Ionicons name="chatbubble-outline" size={17} color={COLORS.textMuted} />
+                <Ionicons name="chatbubble-outline" size={19} color={COLORS.textMuted} />
                 {(post.commentsCount || 0) > 0 && (
                   <Text style={styles.actionCount}>{post.commentsCount}</Text>
                 )}
@@ -619,7 +619,7 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
               >
                 <Ionicons
                   name={liked ? 'heart' : 'heart-outline'}
-                  size={17}
+                  size={19}
                   color={liked ? COLORS.accent : COLORS.textMuted}
                   style={isOwnPost ? { opacity: 0.3 } : undefined}
                 />
@@ -634,7 +634,7 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
               <TouchableOpacity style={styles.action} onPress={handleBookmark} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
                 <Ionicons
                   name={bookmarked ? 'bookmark' : 'bookmark-outline'}
-                  size={17}
+                  size={19}
                   color={bookmarked ? COLORS.accent : COLORS.textMuted}
                 />
               </TouchableOpacity>
@@ -659,7 +659,7 @@ const makeStyles = (C) => StyleSheet.create({
     backgroundColor: C.white,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: C.separator,
-    paddingTop: 14,
+    paddingTop: 12,
     paddingHorizontal: 16,
   },
   repostBanner: {
@@ -667,26 +667,26 @@ const makeStyles = (C) => StyleSheet.create({
     alignItems: 'center',
     gap: 5,
     paddingBottom: 6,
-    paddingLeft: 50,
+    paddingLeft: 56,
   },
-  repostBannerText: { fontSize: 12, color: C.textMuted, fontWeight: '500' },
-  row: { flexDirection: 'row', gap: 10, direction: 'ltr' },
-  avatarWrap: { width: 40, flexShrink: 0 },
+  repostBannerText: { fontSize: 13, color: C.textMuted, fontWeight: '500' },
+  row: { flexDirection: 'row', gap: 12, direction: 'ltr' },
+  avatarWrap: { width: 44, flexShrink: 0 },
   avatar: {
-    width: 40, height: 40, borderRadius: 20,
+    width: 44, height: 44, borderRadius: 22,
     justifyContent: 'center', alignItems: 'center',
   },
-  avatarInitial: { fontSize: 16, fontWeight: '700', color: '#fff' },
+  avatarInitial: { fontSize: 18, fontWeight: '700', color: '#fff' },
   content: { flex: 1, paddingBottom: 12 },
-  headerRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 },
+  headerRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 2 },
   authorBlock: { flex: 1 },
-  authorName: { fontSize: 15, fontWeight: '600', color: C.text, lineHeight: 20 },
+  authorName: { fontSize: 15, fontWeight: '700', color: C.text, lineHeight: 20 },
   moreBtn: { width: 32, height: 24, justifyContent: 'center', alignItems: 'flex-end', marginTop: -2 },
-  body: { fontSize: 15, color: C.text, lineHeight: 22, marginBottom: 10, writingDirection: 'auto' },
-  actionsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4 },
-  actions: { flexDirection: 'row', gap: 20 },
-  action: { flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 32 },
-  actionCount: { fontSize: 13, color: C.textMuted },
+  body: { fontSize: 16, color: C.text, lineHeight: 23, marginBottom: 10, writingDirection: 'auto' },
+  actionsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 2 },
+  actions: { flexDirection: 'row', gap: 22 },
+  action: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 36 },
+  actionCount: { fontSize: 14, color: C.textMuted },
   actionCountLiked: { color: C.accent },
-  timestamp: { fontSize: 11, color: C.textMuted, paddingBottom: 4 },
+  timestamp: { fontSize: 12, color: C.textMuted, paddingBottom: 4 },
 });

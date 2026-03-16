@@ -112,7 +112,8 @@ export default function DiscoverScreen({ navigation }) {
   // Long-press on the Discover tab icon → open keyboard and focus search
   useEffect(() => {
     const unsub = navigation.addListener('tabLongPress', () => {
-      inputRef.current?.focus();
+      // Delay so tab transition finishes before keyboard opens
+      setTimeout(() => inputRef.current?.focus(), 150);
     });
     return unsub;
   }, [navigation]);

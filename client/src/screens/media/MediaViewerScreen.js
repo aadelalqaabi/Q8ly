@@ -125,31 +125,18 @@ function ZoomableImage({ uri, onZoomChange, isZoomedShared }) {
 
 // ── Video page ─────────────────────────────────────────────────────────────────
 function VideoPage({ uri }) {
-  const [videoSize, setVideoSize] = useState({ width: SW, height: SW * 0.5625 });
-
   const player = useVideoPlayer({ uri }, (p) => {
     p.loop = true;
     p.play();
   });
 
-  const onVideoSizeChange = ({ width, height }) => {
-    if (!width || !height) return;
-    const ratio = width / height;
-    if (ratio >= SW / SH) {
-      setVideoSize({ width: SW, height: SW / ratio });
-    } else {
-      setVideoSize({ width: SH * ratio, height: SH });
-    }
-  };
-
   return (
     <View style={styles.page}>
       <VideoView
         player={player}
-        style={{ width: videoSize.width, height: videoSize.height }}
+        style={{ width: SW, height: SH }}
         contentFit="contain"
         nativeControls
-        onVideoSizeChange={onVideoSizeChange}
       />
     </View>
   );
