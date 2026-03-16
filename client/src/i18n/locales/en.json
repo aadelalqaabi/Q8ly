@@ -237,8 +237,7 @@
     "nameSub": "How you'll appear to others",
     "nameHint": "Use your real name",
     "namePlaceholder": "Your full name",
-    "join": "Join KUWAI",
-    "browseAsGuest": "Browse without an account"
+    "join": "Join KUWAI"
   },
 
   "badge": {
@@ -253,8 +252,7 @@
   "guest": {
     "title": "Join the Conversation",
     "subtitle": "Kuwait is talking — be part of the conversation.",
-    "createAccount": "Create Account",
-    "logIn": "Log In",
-    "notNow": "Not now"
+    "join": "Join KUWAI",
+    "browseAsGuest": "Browse as guest"
   }
 }

@@ -87,19 +87,11 @@ export function GuestGateProvider({ children, navigationRef }) {
             onPress={handleSignUp}
             activeOpacity={0.85}
           >
-            <Text style={styles.primaryBtnText}>{t('guest.createAccount')}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.secondaryBtn, { borderColor: COLORS.separator }]}
-            onPress={handleSignUp}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.secondaryBtnText, { color: COLORS.text }]}>{t('guest.logIn')}</Text>
+            <Text style={styles.primaryBtnText}>{t('guest.join')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity onPress={hide} activeOpacity={0.6} style={styles.notNow}>
-            <Text style={[styles.notNowText, { color: COLORS.textMuted }]}>{t('guest.notNow')}</Text>
+            <Text style={[styles.notNowText, { color: COLORS.textMuted }]}>{t('guest.browseAsGuest')}</Text>
           </TouchableOpacity>
         </Animated.View>
       </Modal>
@@ -174,19 +166,6 @@ const makeStyles = (C) => StyleSheet.create({
     color: '#fff',
     fontSize: 17,
     fontWeight: '700',
-  },
-  secondaryBtn: {
-    width: '100%',
-    height: 54,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    marginBottom: 16,
-  },
-  secondaryBtnText: {
-    fontSize: 17,
-    fontWeight: '600',
   },
   notNow: {
     paddingVertical: 8,

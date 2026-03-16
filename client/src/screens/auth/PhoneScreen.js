@@ -7,7 +7,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { sendOtp, clearError, enterGuestMode } from '../../store/slices/authSlice';
+import { sendOtp, clearError } from '../../store/slices/authSlice';
 import { useTheme } from '../../context/ThemeContext';
 
 export default function PhoneScreen({ navigation }) {
@@ -17,7 +17,6 @@ export default function PhoneScreen({ navigation }) {
   const isRTL = i18n.language === 'ar';
   const { colors: C, isDark } = useTheme();
   const { isLoading, error } = useSelector((s) => s.auth);
-  const handleGuest = () => dispatch(enterGuestMode());
   const [phone, setPhone] = useState('');
   const inputRef = useRef(null);
 
@@ -145,16 +144,11 @@ export default function PhoneScreen({ navigation }) {
             ? <ActivityIndicator color="#fff" />
             : (
               <View style={styles.btnInner}>
-                <Text style={styles.btnText}>{t('auth.join')}</Text>
+                <Text style={styles.btnText}>{t('auth.continue')}</Text>
                 <Text style={styles.btnArrow}>{I18nManager.isRTL ? '←' : '→'}</Text>
               </View>
             )
           }
-        </TouchableOpacity>
-
-        {/* Guest skip */}
-        <TouchableOpacity onPress={handleGuest} activeOpacity={0.6} style={styles.guestBtn}>
-          <Text style={styles.guestText}>{t('auth.browseAsGuest')}</Text>
         </TouchableOpacity>
 
         <Text style={styles.legal}>
@@ -234,9 +228,6 @@ const makeStyles = (C, isDark) => StyleSheet.create({
   btnInner: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   btnText: { color: '#fff', fontSize: 17, fontWeight: '700' },
   btnArrow: { color: '#fff', fontSize: 18 },
-
-  guestBtn: { alignItems: 'center', paddingVertical: 12, marginBottom: 4 },
-  guestText: { fontSize: 15, color: C.textMuted },
 
   legal: { fontSize: 12, color: C.textMuted, textAlign: 'center', lineHeight: 18 },
   legalLink: { color: C.accent, fontWeight: '500' },

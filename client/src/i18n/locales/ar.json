@@ -237,8 +237,7 @@
     "nameSub": "كيف ستظهر للآخرين",
     "nameHint": "استخدم اسمك الحقيقي",
     "namePlaceholder": "اسمك الكامل",
-    "join": "انضم لـ KUWAI",
-    "browseAsGuest": "تصفح بدون حساب"
+    "join": "انضم لـ KUWAI"
   },
 
   "badge": {
@@ -253,8 +252,7 @@
   "guest": {
     "title": "انضم للنقاش",
     "subtitle": "الكويت تتكلم — كن جزءاً من الحدث.",
-    "createAccount": "إنشاء حساب",
-    "logIn": "تسجيل الدخول",
-    "notNow": "ليس الآن"
+    "join": "انضم لـ KUWAI",
+    "browseAsGuest": "تصفح كزائر"
   }
 }
