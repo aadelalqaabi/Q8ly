@@ -75,10 +75,14 @@ const userSchema = new mongoose.Schema(
     // Verification badge
     verifiedBadge: {
       type: String,
-      enum: ['none', 'government', 'media', 'influencer', 'business'],
+      enum: ['none', 'government', 'media', 'influencer', 'business', 'founder'],
       default: 'none',
     },
     isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    isFounder: {
       type: Boolean,
       default: false,
     },
@@ -186,6 +190,7 @@ userSchema.methods.toPublicProfile = function () {
     accountType: this.accountType,
     verifiedBadge: this.verifiedBadge,
     isVerified: this.isVerified,
+    isFounder: this.isFounder,
     followersCount: this.followersCount,
     followingCount: this.followingCount,
     postsCount: this.postsCount,

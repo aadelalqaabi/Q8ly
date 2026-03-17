@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -6,6 +6,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { View, Text, ActivityIndicator, StyleSheet, Platform, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { restoreSession } from '../store/slices/authSlice';
 import { GuestGateProvider, useGuestGate } from '../context/GuestGateContext';
@@ -66,7 +67,7 @@ function MainTabs() {
         component={HomeScreen}
         options={{
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'flame' : 'flame-outline'} size={26} color={color} />
+            <Ionicons name={focused ? 'flame' : 'flame-outline'} size={29} color={color} />
           ),
         }}
       />
@@ -75,7 +76,7 @@ function MainTabs() {
         component={HachiScreen}
         options={{
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'chatbubbles' : 'chatbubbles-outline'} size={26} color={color} />
+            <Ionicons name={focused ? 'chatbubbles' : 'chatbubbles-outline'} size={29} color={color} />
           ),
         }}
       />
@@ -84,7 +85,7 @@ function MainTabs() {
         component={DiscoverScreen}
         options={{
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'search' : 'search-outline'} size={24} color={color} />
+            <Ionicons name={focused ? 'search' : 'search-outline'} size={27} color={color} />
           ),
         }}
       />
@@ -102,7 +103,7 @@ function MainTabs() {
         options={{
           tabBarIcon: ({ color, focused }) => (
             <View style={{ position: 'relative' }}>
-              <Ionicons name={focused ? 'mail' : 'mail-outline'} size={24} color={color} />
+              <Ionicons name={focused ? 'mail' : 'mail-outline'} size={27} color={color} />
               {dmUnreadCount > 0 && (
                 <View style={{
                   position: 'absolute', top: -4, right: -6,
@@ -136,10 +137,10 @@ function MainTabs() {
             user?.profilePic ? (
               <Image
                 source={{ uri: user.profilePic }}
-                style={{ width: 28, height: 28, borderRadius: 14, borderWidth: focused ? 2 : 0, borderColor: COLORS.accent }}
+                style={{ width: 31, height: 31, borderRadius: 15.5, borderWidth: focused ? 2 : 0, borderColor: COLORS.accent }}
               />
             ) : (
-              <Ionicons name={focused ? 'person-circle' : 'person-circle-outline'} size={28} color={focused ? COLORS.accent : COLORS.textMuted} />
+              <Ionicons name={focused ? 'person-circle' : 'person-circle-outline'} size={31} color={focused ? COLORS.accent : COLORS.textMuted} />
             )
           ),
         }}
@@ -151,7 +152,6 @@ function MainTabs() {
 function AuthStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="LanguageSelect" component={LanguageSelectScreen} />
       <Stack.Screen name="Phone" component={PhoneScreen} />
       <Stack.Screen name="OtpVerify" component={OtpScreen} />
       <Stack.Screen name="Terms" component={TermsScreen} options={{ presentation: 'modal' }} />
@@ -202,13 +202,21 @@ const linking = {
   },
 };
 
+const LANG_KEY = '@kn_lang_explicit';
+
 export default function AppNavigator() {
   const dispatch = useDispatch();
   const { isAuthenticated, isSessionRestored, needsName, isGuest } = useSelector((s) => s.auth);
   const { colors: COLORS } = useTheme();
   const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
+  const [langChosen, setLangChosen] = useState(null); // null = still checking
 
-  useEffect(() => { dispatch(restoreSession()); }, []);
+  useEffect(() => {
+    dispatch(restoreSession());
+    AsyncStorage.getItem(LANG_KEY)
+      .then((val) => { setLangChosen(val === 'ar' || val === 'en'); })
+      .catch(() => { setLangChosen(false); });
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -238,11 +246,22 @@ export default function AppNavigator() {
     return () => sub.remove();
   }, []);
 
-  if (!isSessionRestored) {
+  if (!isSessionRestored || langChosen === null) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator size="large" color={COLORS.accent} />
       </View>
+    );
+  }
+
+  // Language not yet chosen → show language picker before anything else
+  if (!langChosen) {
+    return (
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="LanguageSelect" component={LanguageSelectScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
     );
   }
 

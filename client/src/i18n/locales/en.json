@@ -6,7 +6,8 @@
     "back": "Back",
     "delete": "Delete",
     "ok": "OK",
-    "error": "Error"
+    "error": "Error",
+    "somethingWrong": "Something went wrong"
   },
 
   "home": {
@@ -46,7 +47,24 @@
     "permRequired": "Permission Required",
     "photoPermission": "Please allow access to your photos.",
     "postError": "Failed to post, please try again.",
-    "reportError": "Failed to submit report, please try again."
+    "reportError": "Failed to submit report, please try again.",
+    "uploadingPhotos": "Uploading photos…",
+    "uploadingVideo": "Uploading video…",
+    "publishing": "Publishing…",
+    "pollQuestion": "Ask a question…",
+    "pollChoice": "Choice {{n}}",
+    "pollChoiceOptional": "Choice {{n}} (optional)",
+    "addChoice": "Add choice",
+    "duration": "Duration",
+    "durationDay": "1 day",
+    "durationDays": "{{n}} days",
+    "notifLoopTitle": "Stay in the loop 🔔",
+    "notifLoopMsg": "Turn on notifications to know when people like or comment on your posts.",
+    "notifNotNow": "Not now",
+    "notifEnable": "Enable",
+    "votes_one": "{{count}} vote",
+    "votes_other": "{{count}} votes",
+    "pollEnded": "Ended"
   },
 
   "comment": {
@@ -77,7 +95,20 @@
     "updateError": "Could not update profile",
     "uploadError": "Failed to upload photo, please try again.",
     "msgRequestTitle": "Send a message request to {{name}}?",
-    "msgRequestSend": "Send Request"
+    "msgRequestSend": "Send Request",
+    "noCirclesYet": "No circles yet",
+    "noBookmarksYet": "No bookmarks yet",
+    "unfollowTitle": "Unfollow @{{username}}?",
+    "unfollow": "Unfollow",
+    "block": "Block",
+    "unblock": "Unblock",
+    "blockTitle": "{{action}} @{{username}}?",
+    "blockMsg": "They will not be able to message or interact with you.",
+    "deleteCircle": "Delete Circle?",
+    "deleteCircleMsg": "This will permanently delete the circle and all its messages.",
+    "membersLabel": "members",
+    "uploading": "Uploading…",
+    "changePhoto": "Change Photo"
   },
 
   "hachi": {
@@ -133,7 +164,23 @@
     "kickTitle": "Remove from circle",
     "kickMsg": "Remove {{name}}?",
     "kickOnly": "Remove only",
-    "kickAndDelete": "Remove + delete messages"
+    "kickAndDelete": "Remove + delete messages",
+    "joined": "Joined",
+    "membersLabel": "members",
+    "noAccess": "Can't Enter",
+    "noAccessMsg": "You were removed from this circle or it doesn't exist.",
+    "waitingApproval": "Awaiting Approval",
+    "waitingApprovalMsg": "Your request was sent. Wait for the creator to accept you.",
+    "readOnly": "Read only",
+    "noMessages": "No messages",
+    "private": "Private",
+    "joinReqTitle": "Join Requests",
+    "joinReqCount": "{{count}} request",
+    "noJoinRequests": "No requests",
+    "pinned": "Pinned",
+    "pinMessage": "Pin message",
+    "unpinMessage": "Unpin",
+    "removedReadOnly": "You were removed · Read only"
   },
 
   "notif": {
@@ -163,7 +210,14 @@
     "noTrendingTitle": "No trends yet",
     "noTrendingSub": "Check back later",
     "posts": "posts",
-    "today": "today"
+    "today": "today",
+    "searchPlaceholder": "Search accounts, posts, or circles…",
+    "tabPosts": "Posts",
+    "tabAccounts": "Accounts",
+    "tabCircles": "Circles",
+    "listening": "listening",
+    "noSearchResults": "No results found",
+    "noSearchResultsSub": "Try a different search term"
   },
 
   "media": {
@@ -244,10 +298,29 @@
     "official":   "Official",
     "media":      "Media",
     "business":   "Business",
-    "influencer": "Public Figure"
+    "influencer": "Public Figure",
+    "founder":    "Founder"
   },
   "dm": {
-    "isTyping": "{{name}} is typing"
+    "isTyping": "{{name}} is typing",
+    "title": "Messages",
+    "messageRequests": "Message Requests",
+    "messages": "Messages",
+    "pending": "Pending",
+    "startConversation": "Start a conversation",
+    "wantsToMessage": "Wants to message you",
+    "accept": "Accept",
+    "decline": "Decline",
+    "declineTitle": "Decline request?",
+    "declineMsg": "This will delete the conversation.",
+    "noMessages": "No messages yet",
+    "seen": "Seen",
+    "pendingRequest": "Message request sent — waiting for them to accept",
+    "sayHi": "Say hi 👋",
+    "messagePlaceholder": "Message…"
+  },
+  "ad": {
+    "sponsored": "Sponsored"
   },
   "guest": {
     "title": "Join the Conversation",

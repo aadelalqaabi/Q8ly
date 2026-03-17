@@ -18,12 +18,14 @@ const BADGE_COLORS = {
   media:      '#D97706',
   business:   '#16A34A',
   influencer: '#7C3AED',
+  founder:    '#0033A0',
 };
 const BADGE_KEYS = {
   government: 'badge.official',
   media:      'badge.media',
   business:   'badge.business',
   influencer: 'badge.influencer',
+  founder:    'badge.founder',
 };
 
 function VerifiedBadge({ badge }) {
@@ -32,6 +34,7 @@ function VerifiedBadge({ badge }) {
   const color = BADGE_COLORS[badge];
   const key = BADGE_KEYS[badge];
   if (!color || !key) return null;
+  const isFounder = badge === 'founder';
   return (
     <View style={{
       alignSelf: 'center',
@@ -46,13 +49,17 @@ function VerifiedBadge({ badge }) {
       borderWidth: 1,
       borderColor: color + '45',
     }}>
-      <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: color }} />
+      {isFounder
+        ? <Text style={{ color: '#FFD700', fontSize: 11, lineHeight: 13 }}>★</Text>
+        : <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: color }} />
+      }
       <Text style={{ color, fontSize: 12, fontWeight: '700', letterSpacing: 0.7 }}>
         {t(key).toUpperCase()}
       </Text>
     </View>
   );
 }
+
 
 const PALETTE = ['#0033A0', '#007A3D', '#FF6B35', '#2196F3', '#9C27B0', '#00BCD4', '#FF9800'];
 function avatarBg(name) {
@@ -80,7 +87,8 @@ export default function ProfileScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
   const { user: currentUser } = useSelector((s) => s.auth);
   const unreadCount = useSelector((s) => s.notifications?.unreadCount || 0);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language === 'ar';
   const { colors: COLORS } = useTheme();
   const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
   const { guestGate } = useGuestGate();
@@ -197,8 +205,8 @@ export default function ProfileScreen({ navigation, route }) {
   const handleFollow = () => {
     if (followLoading) return;
     if (isFollowing) {
-      Alert.alert(`Unfollow @${profile?.username}?`, undefined,
-        [{ text: 'Cancel', style: 'cancel' }, { text: 'Unfollow', style: 'destructive', onPress: doFollow }],
+      Alert.alert(t('profile.unfollowTitle', { username: profile?.username }), undefined,
+        [{ text: t('common.cancel'), style: 'cancel' }, { text: t('profile.unfollow'), style: 'destructive', onPress: doFollow }],
         { cancelable: true }
       );
     } else {
@@ -211,12 +219,13 @@ export default function ProfileScreen({ navigation, route }) {
   };
 
   const handleBlock = () => {
-    const action = isBlocked ? 'Unblock' : 'Block';
+    const actionKey = isBlocked ? 'profile.unblock' : 'profile.block';
+    const action = t(actionKey);
     Alert.alert(
-      `${action} @${profile?.username}?`,
-      isBlocked ? undefined : 'They will not be able to message or interact with you.',
+      t('profile.blockTitle', { action, username: profile?.username }),
+      isBlocked ? undefined : t('profile.blockMsg'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
           text: action,
           style: isBlocked ? 'default' : 'destructive',
@@ -226,7 +235,7 @@ export default function ProfileScreen({ navigation, route }) {
               setIsBlocked(res.blocked);
               if (res.blocked) setIsFollowing(false);
             } catch (e) {
-              Alert.alert('Error', e.message || 'Something went wrong');
+              Alert.alert(t('common.error'), e.message || t('common.somethingWrong'));
             }
           },
         },
@@ -240,7 +249,7 @@ export default function ProfileScreen({ navigation, route }) {
       <View style={[styles.navRow, { paddingTop: insets.top + 6 }]}>
         {isPushed ? (
           <TouchableOpacity style={styles.navBtn} onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Ionicons name="chevron-back" size={22} color={COLORS.text} />
+            <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={26} color={COLORS.text} />
           </TouchableOpacity>
         ) : isOwnProfile ? (
           <View style={styles.navBtn} />
@@ -249,12 +258,12 @@ export default function ProfileScreen({ navigation, route }) {
         )}
         {isOwnProfile && (
           <TouchableOpacity style={styles.navBtn} onPress={() => navigation.navigate('Settings')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Ionicons name="settings-outline" size={20} color={COLORS.textMuted} />
+            <Ionicons name="settings-outline" size={24} color={COLORS.textMuted} />
           </TouchableOpacity>
         )}
         {isPushed && !isOwnProfile && (
           <TouchableOpacity style={styles.navBtn} onPress={handleBlock} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Ionicons name={isBlocked ? 'ban' : 'ellipsis-horizontal'} size={20} color={COLORS.textMuted} />
+            <Ionicons name={isBlocked ? 'ban' : 'ellipsis-horizontal'} size={24} color={COLORS.textMuted} />
           </TouchableOpacity>
         )}
       </View>
@@ -326,7 +335,7 @@ export default function ProfileScreen({ navigation, route }) {
             )}
             {!isBlocked && (
               <TouchableOpacity style={styles.messageBtn} onPress={() => guestGate(handleMessage)} activeOpacity={0.7}>
-                <Ionicons name="chatbubble-outline" size={18} color={COLORS.text} />
+                <Ionicons name="chatbubble-outline" size={22} color={COLORS.text} />
               </TouchableOpacity>
             )}
             {!isBlocked && (
@@ -369,14 +378,14 @@ export default function ProfileScreen({ navigation, route }) {
         <View style={[styles.circleDot, { backgroundColor: room.isActive ? '#34C759' : COLORS.separator }]} />
         <View style={styles.circleInfo}>
           <Text style={styles.circleTitle} numberOfLines={1}>{room.title}</Text>
-          <Text style={styles.circleMeta}>{room.memberCount || 1} members · {room.category}</Text>
+          <Text style={styles.circleMeta}>{room.memberCount || 1} {t('profile.membersLabel')} · {room.category}</Text>
         </View>
         {room.isActive ? (
           <View style={[styles.circleLiveBadge, { backgroundColor: '#34C75918' }]}>
-            <Text style={styles.circleLiveText}>Live</Text>
+            <Text style={styles.circleLiveText}>{t('hachi.liveBadge')}</Text>
           </View>
         ) : (
-          <Text style={styles.circleEndedText}>Ended</Text>
+          <Text style={styles.circleEndedText}>{t('hachi.endedBadge')}</Text>
         )}
       </TouchableOpacity>
       <TouchableOpacity
@@ -384,19 +393,19 @@ export default function ProfileScreen({ navigation, route }) {
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         onPress={() => {
           Alert.alert(
-            'Delete Circle?',
-            'This will permanently delete the circle and all its messages.',
+            t('profile.deleteCircle'),
+            t('profile.deleteCircleMsg'),
             [
-              { text: 'Cancel', style: 'cancel' },
+              { text: t('common.cancel'), style: 'cancel' },
               {
-                text: 'Delete',
+                text: t('common.delete'),
                 style: 'destructive',
                 onPress: async () => {
                   try {
                     await hachiAPI.deleteRoom(room._id);
                     setCircles((prev) => prev.filter((r) => r._id !== room._id));
                   } catch (e) {
-                    Alert.alert('Error', e.message || 'Failed to delete');
+                    Alert.alert(t('common.error'), e.message || t('common.somethingWrong'));
                   }
                 },
               },
@@ -405,7 +414,7 @@ export default function ProfileScreen({ navigation, route }) {
         }}
         activeOpacity={0.7}
       >
-        <Ionicons name="trash-outline" size={18} color="#FF3B30" />
+        <Ionicons name="trash-outline" size={20} color="#FF3B30" />
       </TouchableOpacity>
     </View>
   ), [COLORS, navigation]);
@@ -438,7 +447,7 @@ export default function ProfileScreen({ navigation, route }) {
           !postsLoading ? (
             <View style={styles.empty}>
               <Text style={styles.emptyText}>
-                {activeTab === 'circles' ? 'No circles yet' : activeTab === 'bookmarks' ? 'No bookmarks yet' : t('profile.noPostsYet')}
+                {activeTab === 'circles' ? t('profile.noCirclesYet') : activeTab === 'bookmarks' ? t('profile.noBookmarksYet') : t('profile.noPostsYet')}
               </Text>
             </View>
           ) : null
@@ -485,7 +494,7 @@ const makeStyles = (C) => StyleSheet.create({
   avatarInitial: { fontSize: 38, fontWeight: '700', color: '#fff' },
 
   identity: { alignItems: 'center', paddingHorizontal: 32, paddingBottom: 20, gap: 4 },
-  name: { fontSize: 22, fontWeight: '800', color: C.text, textAlign: 'center', letterSpacing: -0.3 },
+  name: { fontSize: 24, fontWeight: '800', color: C.text, textAlign: 'center', letterSpacing: -0.5 },
   bio: { fontSize: 14, color: C.text, lineHeight: 20, textAlign: 'center', marginTop: 6 },
   location: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 4 },
   locationText: { fontSize: 12, color: C.textMuted },
@@ -523,7 +532,7 @@ const makeStyles = (C) => StyleSheet.create({
   circleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingRight: 16,
+    paddingEnd: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: C.separator,
   },
@@ -531,7 +540,7 @@ const makeStyles = (C) => StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: 16,
+    paddingStart: 16,
     paddingVertical: 14,
     gap: 12,
   },
@@ -542,5 +551,5 @@ const makeStyles = (C) => StyleSheet.create({
   circleLiveBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10 },
   circleLiveText: { fontSize: 12, fontWeight: '700', color: '#34C759' },
   circleEndedText: { fontSize: 12, color: C.textMuted },
-  circleDeleteBtn: { paddingLeft: 12, paddingVertical: 14 },
+  circleDeleteBtn: { paddingStart: 12, paddingVertical: 14 },
 });

@@ -47,11 +47,12 @@ function buildFeed(posts, hotPosts, seed) {
 
 // ── Hot label pill ─────────────────────────────────────────────────────────────
 function HotLabel() {
+  const { t } = useTranslation();
   const { colors: COLORS } = useTheme();
   const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
   return (
     <View style={styles.hotLabel}>
-      <Text style={styles.hotLabelText}>🔥 حالياً في الكويت</Text>
+      <Text style={styles.hotLabelText}>{t('home.trending')}</Text>
     </View>
   );
 }
@@ -84,10 +85,11 @@ function NewPostsBanner({ count, onPress, label }) {
 // ── HomeScreen ────────────────────────────────────────────────────────────────
 export default function HomeScreen({ navigation }) {
   const dispatch = useDispatch();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language === 'ar';
   const insets = useSafeAreaInsets();
   const { colors: COLORS } = useTheme();
-  const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
+  const styles = useMemo(() => makeStyles(COLORS, isRTL), [COLORS, isRTL]);
   const { guestGate } = useGuestGate();
   const { forYouPosts, hotPosts, isLoading, isLoadingMore, forYouHasMore, forYouPage, error } =
     useSelector((s) => s.posts);
@@ -291,7 +293,7 @@ export default function HomeScreen({ navigation }) {
             style={styles.headerBtn}
             hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
           >
-            <Ionicons name={unreadCount > 0 ? 'notifications' : 'notifications-outline'} size={24} color={COLORS.text} />
+            <Ionicons name={unreadCount > 0 ? 'notifications' : 'notifications-outline'} size={27} color={COLORS.text} />
             {unreadCount > 0 && (
               <View style={styles.badge}>
                 <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
@@ -381,11 +383,11 @@ export default function HomeScreen({ navigation }) {
   );
 }
 
-const makeStyles = (C) => StyleSheet.create({
+const makeStyles = (C, isRTL) => StyleSheet.create({
   container: { flex: 1, backgroundColor: C.white },
 
   header: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -394,11 +396,11 @@ const makeStyles = (C) => StyleSheet.create({
     backgroundColor: C.white,
     zIndex: 10,
   },
-  wordmark: { flex: 1, fontSize: 22, letterSpacing: -0.8, fontWeight: '800', color: C.text },
+  wordmark: { flex: 1, fontSize: 28, letterSpacing: -1, fontWeight: '800', color: C.text, textAlign: isRTL ? 'right' : 'left' },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   headerBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   badge: {
-    position: 'absolute', top: 0, right: 0,
+    position: 'absolute', top: 0, end: 0,
     minWidth: 16, height: 16, borderRadius: 8,
     backgroundColor: C.accent, borderWidth: 1.5, borderColor: C.white,
     justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3,
@@ -518,16 +520,16 @@ const makeStyles = (C) => StyleSheet.create({
   },
   filterTabsContent: {
     paddingHorizontal: 8,
-    paddingTop: 10,
-    paddingBottom: 8,
+    paddingTop: 11,
+    paddingBottom: 9,
   },
   filterTab: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     alignItems: 'center',
-    gap: 6,
+    gap: 7,
   },
   filterTabLabel: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '500',
     color: C.textMuted,
   },
@@ -536,9 +538,9 @@ const makeStyles = (C) => StyleSheet.create({
     fontWeight: '700',
   },
   filterTabDot: {
-    width: 20,
-    height: 2,
-    borderRadius: 1,
+    width: 22,
+    height: 2.5,
+    borderRadius: 1.5,
     backgroundColor: 'transparent',
   },
   filterTabDotActive: {
@@ -557,7 +559,7 @@ const makeStyles = (C) => StyleSheet.create({
   emptyBtnText: { fontSize: 15, fontWeight: '600', color: '#fff' },
 
   fab: {
-    position: 'absolute', right: 20,
+    position: 'absolute', end: 20,
     width: 62, height: 62, borderRadius: 31,
     backgroundColor: C.accent, justifyContent: 'center', alignItems: 'center',
     ...SHADOWS.heavy,

@@ -58,7 +58,7 @@ export default function CommentItem({ comment, onLike, onReply, navigation }) {
           >
             <Ionicons
               name={comment.isLiked ? 'heart' : 'heart-outline'}
-              size={13}
+              size={15}
               color={comment.isLiked ? COLORS.accent : COLORS.textMuted}
             />
             {comment.likesCount > 0 && (
@@ -85,28 +85,28 @@ const makeStyles = (C) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     backgroundColor: C.white,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: C.separator,
-    gap: 10,
+    gap: 12,
   },
-  avatarWrap: { width: 34, flexShrink: 0 },
+  avatarWrap: { width: 40, flexShrink: 0 },
   avatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  avatarInitial: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  avatarInitial: { fontSize: 16, fontWeight: '700', color: '#fff' },
   body: { flex: 1 },
-  authorLine: { lineHeight: 19, marginBottom: 3 },
-  authorName: { fontSize: 14, fontWeight: '600', color: C.text },
-  authorMeta: { fontSize: 13, fontWeight: '400', color: C.textMuted },
-  content: { fontSize: 14, color: C.text, lineHeight: 20, marginBottom: 6, writingDirection: 'auto' },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  authorLine: { lineHeight: 21, marginBottom: 3 },
+  authorName: { fontSize: 15, fontWeight: '600', color: C.text },
+  authorMeta: { fontSize: 14, fontWeight: '400', color: C.textMuted },
+  content: { fontSize: 15, color: C.text, lineHeight: 22, marginBottom: 6 },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: 18 },
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  actionCount: { fontSize: 12, color: C.textMuted },
-  replyText: { fontSize: 12, fontWeight: '500', color: C.textMuted },
+  actionCount: { fontSize: 13, color: C.textMuted },
+  replyText: { fontSize: 13, fontWeight: '500', color: C.textMuted },
 });

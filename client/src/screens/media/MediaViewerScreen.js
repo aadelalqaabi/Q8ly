@@ -24,7 +24,7 @@ const { width: SW, height: SH } = Dimensions.get('window');
 const MAX_SCALE = 5;
 
 // ── Zoomable image ─────────────────────────────────────────────────────────────
-function ZoomableImage({ uri, onZoomChange, isZoomedShared }) {
+function ZoomableImage({ uri, onZoomChange, isZoomedShared, dismissGestureRef }) {
   const [imgH, setImgH] = useState(SW * 0.75);
 
   const scale      = useSharedValue(1);
@@ -67,6 +67,7 @@ function ZoomableImage({ uri, onZoomChange, isZoomedShared }) {
   const panGesture = Gesture.Pan()
     .minPointers(1)
     .maxPointers(1)
+    .simultaneousWithExternalGesture(dismissGestureRef)
     .onUpdate((e) => {
       if (!isZoomedShared.value) return;
       translateX.value = savedX.value + e.translationX;
@@ -159,6 +160,7 @@ export default function MediaViewerScreen({ navigation, route }) {
   }, [isZoomedShared]);
 
   // Swipe-to-dismiss
+  const dismissGestureRef = useRef(null);
   const dismissY = useSharedValue(0);
 
   const bgStyle = useAnimatedStyle(() => ({
@@ -177,8 +179,9 @@ export default function MediaViewerScreen({ navigation, route }) {
   const goBack = useCallback(() => navigation.goBack(), [navigation]);
 
   const dismissGesture = Gesture.Pan()
+    .withRef(dismissGestureRef)
     .activeOffsetY([-10, 10])
-    .failOffsetX([-20, 20])
+    .failOffsetX([-30, 30])
     .onUpdate((e) => {
       if (isZoomedShared.value) return;
       dismissY.value = e.translationY;
@@ -208,6 +211,7 @@ export default function MediaViewerScreen({ navigation, route }) {
           uri={item.uri}
           onZoomChange={handleZoomChange}
           isZoomedShared={isZoomedShared}
+          dismissGestureRef={dismissGestureRef}
         />
       </View>
     );

@@ -23,11 +23,12 @@ function avatarBg(name) {
 
 export default function DMConversationScreen({ navigation, route }) {
   const { userId, username, name: otherName } = route.params;
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language === 'ar';
   const dispatch = useDispatch();
   const insets = useSafeAreaInsets();
   const { colors: COLORS } = useTheme();
-  const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
+  const styles = useMemo(() => makeStyles(COLORS, isRTL), [COLORS, isRTL]);
   const { user } = useSelector((s) => s.auth);
   const { activeConversation, loading, sending } = useSelector((s) => s.dm);
   const [text, setText] = useState('');
@@ -216,7 +217,7 @@ export default function DMConversationScreen({ navigation, route }) {
           </View>
         </View>
         {showSeen && (
-          <Text style={styles.seenLabel}>Seen</Text>
+          <Text style={styles.seenLabel}>{t('dm.seen')}</Text>
         )}
       </View>
     );
@@ -231,7 +232,7 @@ export default function DMConversationScreen({ navigation, route }) {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Ionicons name="chevron-back" size={24} color={COLORS.text} />
+          <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={24} color={COLORS.text} />
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.headerUser}
@@ -254,7 +255,7 @@ export default function DMConversationScreen({ navigation, route }) {
       {isPendingInitiator && (
         <View style={styles.pendingBanner}>
           <Ionicons name="time-outline" size={14} color="#666" />
-          <Text style={styles.pendingText}>Message request sent — waiting for them to accept</Text>
+          <Text style={styles.pendingText}>{t('dm.pendingRequest')}</Text>
         </View>
       )}
 
@@ -273,7 +274,7 @@ export default function DMConversationScreen({ navigation, route }) {
           onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Text style={styles.emptyText}>Say hi 👋</Text>
+              <Text style={styles.emptyText}>{t('dm.sayHi')}</Text>
             </View>
           }
         />
@@ -301,7 +302,7 @@ export default function DMConversationScreen({ navigation, route }) {
           style={[styles.input, { backgroundColor: COLORS.fill, color: COLORS.text }]}
           value={text}
           onChangeText={handleTextChange}
-          placeholder="Message..."
+          placeholder={t('dm.messagePlaceholder')}
           placeholderTextColor={COLORS.textMuted}
           multiline
           maxLength={1000}
@@ -321,7 +322,7 @@ export default function DMConversationScreen({ navigation, route }) {
   );
 }
 
-const makeStyles = (C) => StyleSheet.create({
+const makeStyles = (C, isRTL) => StyleSheet.create({
   container: { flex: 1, backgroundColor: C.white },
   header: {
     flexDirection: 'row',
@@ -347,7 +348,7 @@ const makeStyles = (C) => StyleSheet.create({
   },
   pendingText: { fontSize: 13, color: '#666', flex: 1 },
   timeLabel: { textAlign: 'center', fontSize: 11, color: C.textMuted, marginVertical: 8 },
-  seenLabel: { fontSize: 11, color: C.textMuted, textAlign: 'right', marginRight: 4, marginTop: 2 },
+  seenLabel: { fontSize: 11, color: C.textMuted, textAlign: 'right', marginEnd: 4, marginTop: 2 },
   bubbleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginVertical: 2 },
   bubbleRowMe: { flexDirection: 'row-reverse' },
   bubbleAvatar: { width: 24, height: 24, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
@@ -380,6 +381,7 @@ const makeStyles = (C) => StyleSheet.create({
     paddingVertical: 9,
     fontSize: 15,
     maxHeight: 120,
+    textAlign: isRTL ? 'right' : 'left',
   },
   sendBtn: {
     width: 36, height: 36, borderRadius: 18,

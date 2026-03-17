@@ -17,12 +17,14 @@ const BADGE_COLORS = {
   media:      '#D97706',
   business:   '#16A34A',
   influencer: '#7C3AED',
+  founder:    '#0033A0',
 };
 const BADGE_KEYS = {
   government: 'badge.official',
   media:      'badge.media',
   business:   'badge.business',
   influencer: 'badge.influencer',
+  founder:    'badge.founder',
 };
 
 function VerifiedBadge({ badge }) {
@@ -31,15 +33,20 @@ function VerifiedBadge({ badge }) {
   const color = BADGE_COLORS[badge];
   const key = BADGE_KEYS[badge];
   if (!color || !key) return null;
+  const isFounder = badge === 'founder';
   return (
     <View style={{
       backgroundColor: color,
       borderRadius: 4,
-      paddingHorizontal: 5,
+      paddingHorizontal: isFounder ? 6 : 5,
       paddingVertical: 2,
-      marginLeft: 5,
+      marginStart: 5,
       alignSelf: 'center',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: isFounder ? 3 : 0,
     }}>
+      {isFounder && <Text style={{ color: '#FFD700', fontSize: 8, lineHeight: 10 }}>★</Text>}
       <Text style={{ color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 }}>
         {t(key).toUpperCase()}
       </Text>
@@ -145,7 +152,7 @@ const videoThumbStyles = StyleSheet.create({
     paddingLeft: 4,
   },
   badge: {
-    position: 'absolute', bottom: 8, left: 10,
+    position: 'absolute', bottom: 8, start: 10,
     flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: 'rgba(0,0,0,0.55)',
     borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3,
@@ -219,6 +226,7 @@ function ImageGrid({ images, onPressImage }) {
 function PollView({ post }) {
   const { user } = useSelector((s) => s.auth);
   const { colors: COLORS } = useTheme();
+  const { t } = useTranslation();
 
   const userIdStr = user?._id?.toString();
   const myVoteIndex = post.poll?.options?.findIndex(
@@ -344,8 +352,8 @@ function PollView({ post }) {
 
       {/* Footer */}
       <Text style={[pollStyles.meta, { color: COLORS.textMuted }]}>
-        {localTotal} {localTotal === 1 ? 'vote' : 'votes'}
-        {isExpired ? ' · Ended' : ''}
+        {t('post.votes', { count: localTotal })}
+        {isExpired ? ` · ${t('post.pollEnded')}` : ''}
       </Text>
     </View>
   );
@@ -385,7 +393,7 @@ const pollStyles = StyleSheet.create({
   },
   resultFill: {
     position: 'absolute',
-    left: 0, top: 0, bottom: 0,
+    start: 0, top: 0, bottom: 0,
     borderRadius: 10,
   },
   resultContent: {
@@ -557,7 +565,7 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 style={styles.moreBtn}
               >
-                <Ionicons name="ellipsis-horizontal" size={16} color={COLORS.textMuted} />
+                <Ionicons name="ellipsis-horizontal" size={18} color={COLORS.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -604,7 +612,7 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
             <View style={styles.actions}>
               {/* Comments */}
               <TouchableOpacity style={styles.action} onPress={toPost} hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}>
-                <Ionicons name="chatbubble-outline" size={19} color={COLORS.textMuted} />
+                <Ionicons name="chatbubble-outline" size={20} color={COLORS.textMuted} />
                 {(post.commentsCount || 0) > 0 && (
                   <Text style={styles.actionCount}>{post.commentsCount}</Text>
                 )}
@@ -619,7 +627,7 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
               >
                 <Ionicons
                   name={liked ? 'heart' : 'heart-outline'}
-                  size={19}
+                  size={20}
                   color={liked ? COLORS.accent : COLORS.textMuted}
                   style={isOwnPost ? { opacity: 0.3 } : undefined}
                 />
@@ -634,7 +642,7 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
               <TouchableOpacity style={styles.action} onPress={handleBookmark} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
                 <Ionicons
                   name={bookmarked ? 'bookmark' : 'bookmark-outline'}
-                  size={19}
+                  size={20}
                   color={bookmarked ? COLORS.accent : COLORS.textMuted}
                 />
               </TouchableOpacity>
@@ -659,7 +667,7 @@ const makeStyles = (C) => StyleSheet.create({
     backgroundColor: C.white,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: C.separator,
-    paddingTop: 12,
+    paddingTop: 14,
     paddingHorizontal: 16,
   },
   repostBanner: {
@@ -667,26 +675,26 @@ const makeStyles = (C) => StyleSheet.create({
     alignItems: 'center',
     gap: 5,
     paddingBottom: 6,
-    paddingLeft: 56,
+    paddingStart: 62,
   },
-  repostBannerText: { fontSize: 13, color: C.textMuted, fontWeight: '500' },
-  row: { flexDirection: 'row', gap: 12, direction: 'ltr' },
-  avatarWrap: { width: 44, flexShrink: 0 },
+  repostBannerText: { fontSize: 14, color: C.textMuted, fontWeight: '500' },
+  row: { flexDirection: 'row', gap: 12 },
+  avatarWrap: { width: 48, flexShrink: 0 },
   avatar: {
-    width: 44, height: 44, borderRadius: 22,
+    width: 48, height: 48, borderRadius: 24,
     justifyContent: 'center', alignItems: 'center',
   },
-  avatarInitial: { fontSize: 18, fontWeight: '700', color: '#fff' },
+  avatarInitial: { fontSize: 20, fontWeight: '700', color: '#fff' },
   content: { flex: 1, paddingBottom: 12 },
-  headerRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 2 },
+  headerRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 3 },
   authorBlock: { flex: 1 },
-  authorName: { fontSize: 15, fontWeight: '700', color: C.text, lineHeight: 20 },
+  authorName: { fontSize: 16, fontWeight: '700', color: C.text, lineHeight: 21 },
   moreBtn: { width: 32, height: 24, justifyContent: 'center', alignItems: 'flex-end', marginTop: -2 },
-  body: { fontSize: 16, color: C.text, lineHeight: 23, marginBottom: 10, writingDirection: 'auto' },
+  body: { fontSize: 17, color: C.text, lineHeight: 25, marginBottom: 10 },
   actionsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 2 },
-  actions: { flexDirection: 'row', gap: 22 },
-  action: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 36 },
-  actionCount: { fontSize: 14, color: C.textMuted },
+  actions: { flexDirection: 'row', gap: 24 },
+  action: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 38 },
+  actionCount: { fontSize: 15, color: C.textMuted },
   actionCountLiked: { color: C.accent },
-  timestamp: { fontSize: 12, color: C.textMuted, paddingBottom: 4 },
+  timestamp: { fontSize: 13, color: C.textMuted, paddingBottom: 4 },
 });

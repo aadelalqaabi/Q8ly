@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, Linking } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import { adsAPI } from '../../services/api';
 
 export default function AdCard({ ad }) {
+  const { t } = useTranslation();
   const { colors: COLORS } = useTheme();
   const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
 
@@ -31,7 +33,7 @@ export default function AdCard({ ad }) {
           )}
           <View>
             <Text style={styles.sponsorName}>{ad.sponsor}</Text>
-            <Text style={styles.adLabel}>إعلان مموّل</Text>
+            <Text style={styles.adLabel}>{t('ad.sponsored')}</Text>
           </View>
         </View>
       </View>

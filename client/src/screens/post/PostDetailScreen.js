@@ -17,9 +17,10 @@ export default function PostDetailScreen({ navigation, route }) {
   const { postId } = route.params;
   const { user } = useSelector((s) => s.auth);
   const insets = useSafeAreaInsets();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language === 'ar';
   const { colors: COLORS } = useTheme();
-  const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
+  const styles = useMemo(() => makeStyles(COLORS, isRTL), [COLORS, isRTL]);
 
   const [post, setPost] = useState(null);
   const [comments, setComments] = useState([]);
@@ -167,7 +168,7 @@ export default function PostDetailScreen({ navigation, route }) {
               onPress={() => setReplyTo(null)}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Ionicons name="close" size={15} color={COLORS.textMuted} />
+              <Ionicons name="close" size={18} color={COLORS.textMuted} />
             </TouchableOpacity>
           </View>
         )}
@@ -188,7 +189,7 @@ export default function PostDetailScreen({ navigation, route }) {
           >
             {isSubmitting
               ? <ActivityIndicator size="small" color="#fff" />
-              : <Ionicons name="arrow-up" size={18} color="#fff" />
+              : <Ionicons name="arrow-up" size={20} color="#fff" />
             }
           </TouchableOpacity>
         </View>
@@ -197,7 +198,7 @@ export default function PostDetailScreen({ navigation, route }) {
   );
 }
 
-const makeStyles = (C) => StyleSheet.create({
+const makeStyles = (C, isRTL) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: C.white,
@@ -217,6 +218,7 @@ const makeStyles = (C) => StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: C.text,
+    textAlign: isRTL ? 'right' : 'left',
   },
 
   empty: {
@@ -260,6 +262,7 @@ const makeStyles = (C) => StyleSheet.create({
     fontSize: 15,
     color: C.text,
     maxHeight: 100,
+    textAlign: isRTL ? 'right' : 'left',
   },
   sendBtn: {
     width: 40,

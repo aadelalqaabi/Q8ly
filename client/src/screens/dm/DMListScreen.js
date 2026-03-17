@@ -7,6 +7,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { fetchConversations, acceptDmRequest, denyDmRequest, clearNeedsRefresh } from '../../store/slices/dmSlice';
 import { useTheme } from '../../context/ThemeContext';
@@ -34,8 +35,10 @@ function Avatar({ user, size = 48 }) {
 export default function DMListScreen({ navigation }) {
   const dispatch = useDispatch();
   const insets = useSafeAreaInsets();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language === 'ar';
   const { colors: COLORS } = useTheme();
-  const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
+  const styles = useMemo(() => makeStyles(COLORS, isRTL), [COLORS, isRTL]);
   const { conversations, requests, loading, needsRefresh } = useSelector((s) => s.dm);
   const [actionLoading, setActionLoading] = useState(null); // convId being accepted/denied
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -71,10 +74,10 @@ export default function DMListScreen({ navigation }) {
   };
 
   const handleDeny = (convId) => {
-    Alert.alert('Decline request?', 'This will delete the conversation.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('dm.declineTitle'), t('dm.declineMsg'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Decline', style: 'destructive', onPress: async () => {
+        text: t('dm.decline'), style: 'destructive', onPress: async () => {
           setActionLoading(convId);
           await dispatch(denyDmRequest(convId));
           setActionLoading(null);
@@ -107,13 +110,13 @@ export default function DMListScreen({ navigation }) {
               {other.name}
             </Text>
             {isPending ? (
-              <Text style={[styles.time, { color: COLORS.accent }]}>Pending</Text>
+              <Text style={[styles.time, { color: COLORS.accent }]}>{t('dm.pending')}</Text>
             ) : (
               <Text style={styles.time}>{timeAgo}</Text>
             )}
           </View>
           <Text style={[styles.preview, item.unread > 0 && styles.previewBold]} numberOfLines={1}>
-            {item.lastMessage || 'Start a conversation'}
+            {item.lastMessage || t('dm.startConversation')}
           </Text>
         </View>
       </TouchableOpacity>
@@ -132,7 +135,7 @@ export default function DMListScreen({ navigation }) {
         <Avatar user={other} size={44} />
         <View style={styles.requestInfo}>
           <Text style={styles.requestName} numberOfLines={1}>{other.name}</Text>
-          <Text style={styles.requestPreview} numberOfLines={1}>{item.lastMessage || 'Wants to message you'}</Text>
+          <Text style={styles.requestPreview} numberOfLines={1}>{item.lastMessage || t('dm.wantsToMessage')}</Text>
         </View>
         <View style={styles.requestActions}>
           {actionLoading === item._id ? (
@@ -144,14 +147,14 @@ export default function DMListScreen({ navigation }) {
                 onPress={(e) => { e.stopPropagation?.(); handleAccept(item); }}
                 activeOpacity={0.8}
               >
-                <Text style={styles.requestBtnAcceptText}>Accept</Text>
+                <Text style={styles.requestBtnAcceptText}>{t('dm.accept')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.requestBtn, { backgroundColor: COLORS.fill }]}
                 onPress={(e) => { e.stopPropagation?.(); handleDeny(item._id); }}
                 activeOpacity={0.8}
               >
-                <Text style={[styles.requestBtnText, { color: COLORS.textMuted }]}>Decline</Text>
+                <Text style={[styles.requestBtnText, { color: COLORS.textMuted }]}>{t('dm.decline')}</Text>
               </TouchableOpacity>
             </>
           )}
@@ -166,7 +169,7 @@ export default function DMListScreen({ navigation }) {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Messages</Text>
+        <Text style={styles.headerTitle}>{t('dm.title')}</Text>
       </View>
 
       {loading && isEmpty ? (
@@ -181,7 +184,7 @@ export default function DMListScreen({ navigation }) {
               {requests.length > 0 && (
                 <View>
                   <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>Message Requests</Text>
+                    <Text style={styles.sectionTitle}>{t('dm.messageRequests')}</Text>
                     <View style={[styles.badge, { backgroundColor: COLORS.accent }]}>
                       <Text style={styles.badgeText}>{requests.length}</Text>
                     </View>
@@ -196,7 +199,7 @@ export default function DMListScreen({ navigation }) {
                 <View>
                   {requests.length > 0 && (
                     <View style={styles.sectionHeader}>
-                      <Text style={styles.sectionTitle}>Messages</Text>
+                      <Text style={styles.sectionTitle}>{t('dm.messages')}</Text>
                     </View>
                   )}
                   {conversations.map((item) => renderConvRow(item))}
@@ -206,7 +209,7 @@ export default function DMListScreen({ navigation }) {
               {isEmpty && (
                 <View style={styles.empty}>
                   <Ionicons name="chatbubble-ellipses-outline" size={48} color={COLORS.separator} />
-                  <Text style={styles.emptyText}>No messages yet</Text>
+                  <Text style={styles.emptyText}>{t('dm.noMessages')}</Text>
                 </View>
               )}
             </>
@@ -220,13 +223,13 @@ export default function DMListScreen({ navigation }) {
   );
 }
 
-const makeStyles = (C) => StyleSheet.create({
+const makeStyles = (C, isRTL) => StyleSheet.create({
   container: { flex: 1, backgroundColor: C.white },
   header: {
     paddingHorizontal: 16, paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.separator,
   },
-  headerTitle: { fontSize: 22, fontWeight: '800', color: C.text },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: C.text, textAlign: isRTL ? 'right' : 'left', width: '100%' },
 
   sectionHeader: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
@@ -245,14 +248,14 @@ const makeStyles = (C) => StyleSheet.create({
   },
   avatarWrap: { position: 'relative' },
   unreadDot: {
-    position: 'absolute', bottom: 0, right: 0,
+    position: 'absolute', bottom: 0, end: 0,
     width: 12, height: 12, borderRadius: 6, borderWidth: 2, borderColor: C.white,
   },
   info: { flex: 1 },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 },
   name: { fontSize: 15, fontWeight: '500', color: C.text, flex: 1 },
   nameBold: { fontWeight: '700' },
-  time: { fontSize: 12, color: C.textMuted, marginLeft: 8 },
+  time: { fontSize: 12, color: C.textMuted, marginStart: 8 },
   preview: { fontSize: 13, color: C.textMuted },
   previewBold: { color: C.text, fontWeight: '600' },
 

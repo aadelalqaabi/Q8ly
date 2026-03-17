@@ -25,17 +25,19 @@ function fmtDuration(secs) {
 export default function MediaPickerSheet({ visible, onClose, onSelect, maxItems = 4 }) {
   const insets = useSafeAreaInsets();
   const { colors: COLORS } = useTheme();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language === 'ar';
 
   const FILTERS = [
     { key: 'all',   label: t('media.all') },
     { key: 'photo', label: t('media.photos') },
     { key: 'video', label: t('media.videos') },
   ];
-  const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
+  const styles = useMemo(() => makeStyles(COLORS, isRTL), [COLORS, isRTL]);
 
   const [permission, setPermission] = useState(null);
   const [assets, setAssets] = useState([]);
+  const [uriCache, setUriCache] = useState({}); // assetId → localUri
   const [selected, setSelected] = useState([]);
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(false);
@@ -50,6 +52,7 @@ export default function MediaPickerSheet({ visible, onClose, onSelect, maxItems 
     if (visible) {
       setSelected([]);
       setFilter('all');
+      setUriCache({});
       Animated.parallel([
         Animated.spring(slideAnim, { toValue: 1, useNativeDriver: true, tension: 60, friction: 12 }),
         Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
@@ -89,9 +92,32 @@ export default function MediaPickerSheet({ visible, onClose, onSelect, maxItems 
     setLoading(false);
   }, []);
 
+  // Resolve ph:// → file:// localUri for each loaded asset so Image can render them
+  useEffect(() => {
+    if (assets.length === 0) return;
+    const unresolved = assets.filter((a) => !uriCache[a.id]);
+    if (unresolved.length === 0) return;
+    Promise.all(
+      unresolved.map(async (a) => {
+        try {
+          const info = await MediaLibrary.getAssetInfoAsync(a, { shouldDownloadFromNetwork: false });
+          return [a.id, info.localUri || a.uri];
+        } catch {
+          return [a.id, a.uri];
+        }
+      })
+    ).then((entries) => {
+      setUriCache((prev) => {
+        const next = { ...prev };
+        entries.forEach(([id, uri]) => { next[id] = uri; });
+        return next;
+      });
+    });
+  }, [assets]);
+
   // Reload when permission granted or filter changes
   useEffect(() => {
-    if (permission === 'granted' && visible) {
+    if ((permission === 'granted' || permission === 'limited') && visible) {
       setAssets([]);
       setEndCursor(null);
       loadAssets(filter);
@@ -137,6 +163,7 @@ export default function MediaPickerSheet({ visible, onClose, onSelect, maxItems 
     const selIdx = selected.findIndex((a) => a.id === item.id);
     const isSelected = selIdx >= 0;
     const isMaxed = !isSelected && selected.length >= maxItems;
+    const thumbUri = uriCache[item.id] || null;
 
     return (
       <TouchableOpacity
@@ -144,7 +171,10 @@ export default function MediaPickerSheet({ visible, onClose, onSelect, maxItems 
         onPress={() => !isMaxed && toggleSelect(item)}
         activeOpacity={0.75}
       >
-        <Image source={{ uri: item.uri }} style={styles.thumbImg} />
+        {thumbUri
+          ? <Image source={{ uri: thumbUri }} style={styles.thumbImg} />
+          : <View style={[styles.thumbImg, { backgroundColor: COLORS.fill }]} />
+        }
 
         {item.mediaType === 'video' && (
           <View style={styles.vidBadge}>
@@ -222,7 +252,7 @@ export default function MediaPickerSheet({ visible, onClose, onSelect, maxItems 
         </View>
 
         {/* Permission denied */}
-        {permission !== 'granted' ? (
+        {permission !== 'granted' && permission !== 'limited' ? (
           <View style={styles.permView}>
             <Ionicons name="images-outline" size={44} color={COLORS.textMuted} />
             <Text style={styles.permMsg}>{t('media.permMsg')}</Text>
@@ -264,7 +294,7 @@ export default function MediaPickerSheet({ visible, onClose, onSelect, maxItems 
   );
 }
 
-const makeStyles = (C) => StyleSheet.create({
+const makeStyles = (C, isRTL) => StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#000',
@@ -291,7 +321,7 @@ const makeStyles = (C) => StyleSheet.create({
   },
   cancelText: { fontSize: 16, color: C.accent, minWidth: 64 },
   title: { flex: 1, fontSize: 16, fontWeight: '600', color: C.text, textAlign: 'center' },
-  addText: { fontSize: 16, fontWeight: '600', color: C.accent, textAlign: 'right', minWidth: 64 },
+  addText: { fontSize: 16, fontWeight: '600', color: C.accent, textAlign: isRTL ? 'left' : 'right', minWidth: 64 },
   addTextOff: { opacity: 0.3 },
 
   filterRow: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
@@ -309,7 +339,7 @@ const makeStyles = (C) => StyleSheet.create({
   thumbImg: { width: '100%', height: '100%' },
 
   vidBadge: {
-    position: 'absolute', bottom: 5, left: 5,
+    position: 'absolute', bottom: 5, start: 5,
     flexDirection: 'row', alignItems: 'center', gap: 3,
     backgroundColor: 'rgba(0,0,0,0.55)',
     borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2,

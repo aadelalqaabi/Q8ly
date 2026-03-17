@@ -6,7 +6,8 @@
     "back": "رجوع",
     "delete": "حذف",
     "ok": "حسناً",
-    "error": "خطأ"
+    "error": "خطأ",
+    "somethingWrong": "حدث خطأ ما"
   },
 
   "home": {
@@ -46,7 +47,24 @@
     "permRequired": "إذن مطلوب",
     "photoPermission": "يرجى السماح بالوصول إلى الصور.",
     "postError": "تعذّر النشر، يرجى المحاولة مجدداً",
-    "reportError": "تعذّر إرسال البلاغ. حاول مجدداً."
+    "reportError": "تعذّر إرسال البلاغ. حاول مجدداً.",
+    "uploadingPhotos": "جارٍ رفع الصور...",
+    "uploadingVideo": "جارٍ رفع الفيديو...",
+    "publishing": "جارٍ النشر...",
+    "pollQuestion": "اطرح سؤالاً...",
+    "pollChoice": "خيار {{n}}",
+    "pollChoiceOptional": "خيار {{n}} (اختياري)",
+    "addChoice": "إضافة خيار",
+    "duration": "المدة",
+    "durationDay": "يوم واحد",
+    "durationDays": "{{n}} أيام",
+    "notifLoopTitle": "ابقَ على اطلاع 🔔",
+    "notifLoopMsg": "فعّل الإشعارات لتعلم متى يعجب الناس بمنشوراتك أو يعلقون عليها.",
+    "notifNotNow": "ليس الآن",
+    "notifEnable": "تفعيل",
+    "votes_one": "صوت واحد",
+    "votes_other": "{{count}} صوت",
+    "pollEnded": "انتهى"
   },
 
   "comment": {
@@ -77,7 +95,20 @@
     "updateError": "تعذّر تحديث الملف الشخصي",
     "uploadError": "تعذّر رفع الصورة. حاول مجدداً.",
     "msgRequestTitle": "إرسال طلب مراسلة إلى {{name}}؟",
-    "msgRequestSend": "إرسال الطلب"
+    "msgRequestSend": "إرسال الطلب",
+    "noCirclesYet": "لا توجد دوائر بعد",
+    "noBookmarksYet": "لا توجد محفوظات بعد",
+    "unfollowTitle": "إلغاء متابعة @{{username}}؟",
+    "unfollow": "إلغاء المتابعة",
+    "block": "حظر",
+    "unblock": "إلغاء الحظر",
+    "blockTitle": "{{action}} @{{username}}؟",
+    "blockMsg": "لن يتمكن من مراسلتك أو التفاعل معك.",
+    "deleteCircle": "حذف الدائرة؟",
+    "deleteCircleMsg": "سيتم حذف الدائرة وجميع رسائلها نهائياً.",
+    "membersLabel": "عضو",
+    "uploading": "جارٍ الرفع...",
+    "changePhoto": "تغيير الصورة"
   },
 
   "hachi": {
@@ -133,7 +164,23 @@
     "kickTitle": "إزالة من النقاش",
     "kickMsg": "هل تريد إزالة {{name}}؟",
     "kickOnly": "إزالة فقط",
-    "kickAndDelete": "إزالة + حذف رسائله"
+    "kickAndDelete": "إزالة + حذف رسائله",
+    "joined": "انضممت",
+    "membersLabel": "عضو",
+    "noAccess": "لا يمكنك الدخول",
+    "noAccessMsg": "تم إزالتك من هذه الدائرة أو أنها غير موجودة.",
+    "waitingApproval": "في انتظار الموافقة",
+    "waitingApprovalMsg": "أُرسل طلبك. انتظر حتى يقبلك منشئ الدائرة.",
+    "readOnly": "للقراءة فقط",
+    "noMessages": "لا توجد رسائل",
+    "private": "خاص",
+    "joinReqTitle": "طلبات الانضمام",
+    "joinReqCount": "{{count}} طلب",
+    "noJoinRequests": "لا توجد طلبات",
+    "pinned": "مثبّت",
+    "pinMessage": "تثبيت الرسالة",
+    "unpinMessage": "إلغاء التثبيت",
+    "removedReadOnly": "تمت إزالتك · للقراءة فقط"
   },
 
   "notif": {
@@ -163,7 +210,14 @@
     "noTrendingTitle": "لا يوجد ترند حالياً",
     "noTrendingSub": "ارجع لاحقاً",
     "posts": "منشور",
-    "today": "اليوم"
+    "today": "اليوم",
+    "searchPlaceholder": "ابحث عن حسابات أو منشورات أو دوائر...",
+    "tabPosts": "منشورات",
+    "tabAccounts": "حسابات",
+    "tabCircles": "دوائر",
+    "listening": "يستمع",
+    "noSearchResults": "لا توجد نتائج",
+    "noSearchResultsSub": "جرّب مصطلحاً آخر"
   },
 
   "media": {
@@ -244,10 +298,29 @@
     "official":   "رسمي",
     "media":      "إعلام",
     "business":   "تجاري",
-    "influencer": "شخصية عامة"
+    "influencer": "شخصية عامة",
+    "founder":    "مؤسس"
   },
   "dm": {
-    "isTyping": "{{name}} يكتب..."
+    "isTyping": "{{name}} يكتب...",
+    "title": "الرسائل",
+    "messageRequests": "طلبات الرسائل",
+    "messages": "الرسائل",
+    "pending": "معلّق",
+    "startConversation": "ابدأ محادثة",
+    "wantsToMessage": "يريد مراسلتك",
+    "accept": "قبول",
+    "decline": "رفض",
+    "declineTitle": "رفض الطلب؟",
+    "declineMsg": "سيتم حذف المحادثة.",
+    "noMessages": "لا توجد رسائل بعد",
+    "seen": "تمّت القراءة",
+    "pendingRequest": "تم إرسال طلب المراسلة — في انتظار قبوله",
+    "sayHi": "قل مرحبا 👋",
+    "messagePlaceholder": "رسالة..."
+  },
+  "ad": {
+    "sponsored": "إعلان مموّل"
   },
   "guest": {
     "title": "انضم للنقاش",

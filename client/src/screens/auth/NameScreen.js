@@ -1,7 +1,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ActivityIndicator, I18nManager,
+  KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,7 +19,7 @@ export default function NameScreen() {
   const [name, setName] = useState('');
   const inputRef = useRef(null);
 
-  const styles = useMemo(() => makeStyles(C), [C]);
+  const styles = useMemo(() => makeStyles(C, isRTL), [C, isRTL]);
 
   const isValid = name.trim().length >= 2;
 
@@ -85,7 +85,7 @@ export default function NameScreen() {
             : (
               <View style={styles.btnInner}>
                 <Text style={styles.btnText}>{t('auth.join')}</Text>
-                <Text style={styles.btnArrow}>{I18nManager.isRTL ? '←' : '→'}</Text>
+                <Text style={styles.btnArrow}>{isRTL ? '←' : '→'}</Text>
               </View>
             )
           }
@@ -95,14 +95,14 @@ export default function NameScreen() {
   );
 }
 
-const makeStyles = (C) => StyleSheet.create({
+const makeStyles = (C, isRTL) => StyleSheet.create({
   root: { flex: 1, backgroundColor: C.white },
   inner: { flex: 1, paddingHorizontal: 24 },
 
   stepRow: { flexDirection: 'row', marginBottom: 40 },
   stepSeg: { flex: 1, height: 3, borderRadius: 2 },
   stepSegActive: { backgroundColor: C.accent },
-  stepGap: { marginRight: 4 },
+  stepGap: { marginEnd: 4 },
 
   title: { fontSize: 32, fontWeight: '700', color: C.text, letterSpacing: -0.8, marginBottom: 10 },
   subtitle: { fontSize: 15, color: C.textMuted, lineHeight: 22, marginBottom: 36 },
@@ -111,7 +111,7 @@ const makeStyles = (C) => StyleSheet.create({
     backgroundColor: C.fill, borderRadius: 14,
     paddingHorizontal: 18, height: 60, justifyContent: 'center', marginBottom: 10,
   },
-  input: { fontSize: 20, fontWeight: '500', color: C.text },
+  input: { fontSize: 20, fontWeight: '500', color: C.text, textAlign: isRTL ? 'right' : 'left' },
 
   btn: {
     backgroundColor: C.accent, borderRadius: 14,

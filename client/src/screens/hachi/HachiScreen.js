@@ -68,7 +68,7 @@ function RoomCard({ room, onPress, archived, isJoined }) {
           </Text>
           {isJoined && (
             <View style={styles.joinedPill}>
-              <Text style={styles.joinedPillText}>Joined</Text>
+              <Text style={styles.joinedPillText}>{t('hachi.joined')}</Text>
             </View>
           )}
         </View>
@@ -82,7 +82,7 @@ function RoomCard({ room, onPress, archived, isJoined }) {
         )}
         {!archived && (
           <View style={styles.memberBadge}>
-            <Ionicons name="person" size={11} color={COLORS.accent} />
+            <Ionicons name="person" size={13} color={COLORS.accent} />
             <Text style={styles.memberCount}>{room.memberCount || 1}</Text>
           </View>
         )}
@@ -93,7 +93,7 @@ function RoomCard({ room, onPress, archived, isJoined }) {
         )}
         {archived && room.summary?.messageCount > 0 && (
           <View style={styles.archiveMsgCount}>
-            <Ionicons name="chatbubble-outline" size={11} color={COLORS.textMuted} />
+            <Ionicons name="chatbubble-outline" size={13} color={COLORS.textMuted} />
             <Text style={styles.archiveMsgCountText}>{room.summary.messageCount}</Text>
           </View>
         )}
@@ -153,11 +153,12 @@ function LockedOverlay({ points }) {
 export default function HachiScreen({ navigation }) {
   const dispatch = useDispatch();
   const insets = useSafeAreaInsets();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language === 'ar';
   const { rooms, archivedRooms = [], isLoading, archivedLoading } = useSelector((s) => s.hachi);
   const { user: currentUser } = useSelector((s) => s.auth);
   const { colors: COLORS } = useTheme();
-  const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
+  const styles = useMemo(() => makeStyles(COLORS, isRTL), [COLORS, isRTL]);
   const { guestGate } = useGuestGate();
 
   const hachiPoints = currentUser?.hachiPoints || 0;
@@ -278,7 +279,7 @@ export default function HachiScreen({ navigation }) {
 
       {/* Search bar */}
       <View style={styles.searchBar}>
-        <Ionicons name="search-outline" size={16} color={COLORS.textMuted} />
+        <Ionicons name="search-outline" size={18} color={COLORS.textMuted} />
         <TextInput
           style={styles.searchInput}
           placeholder={t('hachi.search')}
@@ -290,7 +291,7 @@ export default function HachiScreen({ navigation }) {
         />
         {searchQuery.length > 0 && (
           <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="close-circle" size={16} color={COLORS.textMuted} />
+            <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
           </TouchableOpacity>
         )}
       </View>
@@ -455,18 +456,18 @@ export default function HachiScreen({ navigation }) {
   );
 }
 
-const makeStyles = (C) => StyleSheet.create({
+const makeStyles = (C, isRTL) => StyleSheet.create({
   container: { flex: 1, backgroundColor: C.white },
 
   header: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: C.separator,
   },
-  title: { flex: 1, fontSize: 22, fontWeight: '700', color: C.text },
+  title: { flex: 1, fontSize: 26, fontWeight: '700', color: C.text, textAlign: isRTL ? 'right' : 'left' },
   createBtn: { padding: 4 },
   lockedBtnRow: {
     flexDirection: 'row',
@@ -488,55 +489,55 @@ const makeStyles = (C) => StyleSheet.create({
     paddingVertical: 8,
     gap: 6,
   },
-  trendingLabel: { fontSize: 14, marginRight: 2 },
+  trendingLabel: { fontSize: 15, marginEnd: 2 },
   trendingChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 14,
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
     backgroundColor: C.fill,
   },
   trendingChipActive: { backgroundColor: C.accent },
-  trendingEmoji: { fontSize: 13 },
-  trendingText: { fontSize: 13, fontWeight: '600', color: C.textMuted },
-  trendingTextActive: { fontSize: 13, fontWeight: '600', color: '#fff' },
+  trendingEmoji: { fontSize: 14 },
+  trendingText: { fontSize: 14, fontWeight: '600', color: C.textMuted },
+  trendingTextActive: { fontSize: 14, fontWeight: '600', color: '#fff' },
 
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: C.fill,
-    borderRadius: 10,
+    borderRadius: 12,
     marginHorizontal: 16,
-    marginTop: 6,
+    marginTop: 8,
     marginBottom: 6,
-    paddingHorizontal: 10,
-    height: 38,
-    gap: 6,
+    paddingHorizontal: 12,
+    height: 42,
+    gap: 8,
   },
-  searchInput: { flex: 1, fontSize: 15, color: C.text, padding: 0 },
+  searchInput: { flex: 1, fontSize: 16, color: C.text, padding: 0, textAlign: isRTL ? 'right' : 'left' },
 
   // Category chips
   chipsScroll: { flexGrow: 0 },
   chipsRow: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 10,
     gap: 8,
   },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 22,
     backgroundColor: C.fill,
   },
   chipActive: { backgroundColor: C.accent },
-  chipEmoji: { fontSize: 14 },
-  chipLabel: { fontSize: 14, fontWeight: '500', color: C.textMuted },
+  chipEmoji: { fontSize: 15 },
+  chipLabel: { fontSize: 15, fontWeight: '500', color: C.textMuted },
   chipLabelActive: { color: '#fff', fontWeight: '600' },
 
   loader: { marginTop: 60 },
@@ -545,23 +546,23 @@ const makeStyles = (C) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 16,
     backgroundColor: C.white,
     gap: 12,
   },
   cardMain: { flex: 1 },
-  cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
-  cardEmoji: { fontSize: 16, lineHeight: 22 },
-  cardTitle: { flex: 1, fontSize: 16, fontWeight: '600', color: C.text, lineHeight: 22 },
+  cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 5 },
+  cardEmoji: { fontSize: 18, lineHeight: 24 },
+  cardTitle: { flex: 1, fontSize: 17, fontWeight: '600', color: C.text, lineHeight: 23 },
   cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  cardBy: { fontSize: 13, color: C.textMuted },
+  cardBy: { fontSize: 14, color: C.textMuted },
   joinedPill: {
     backgroundColor: '#EEF2FA',
     borderRadius: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
   },
-  joinedPillText: { fontSize: 11, fontWeight: '600', color: C.accent },
+  joinedPillText: { fontSize: 12, fontWeight: '600', color: C.accent },
   cardRight: { alignItems: 'flex-end', gap: 4, flexShrink: 0 },
   memberBadge: {
     flexDirection: 'row',
@@ -569,12 +570,12 @@ const makeStyles = (C) => StyleSheet.create({
     gap: 3,
     backgroundColor: C.fill,
     borderRadius: 10,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
-  memberCount: { fontSize: 12, fontWeight: '600', color: C.accent },
-  domReaction: { fontSize: 16 },
-  separator: { height: StyleSheet.hairlineWidth, backgroundColor: C.separator, marginLeft: 16 },
+  memberCount: { fontSize: 13, fontWeight: '600', color: C.accent },
+  domReaction: { fontSize: 17 },
+  separator: { height: StyleSheet.hairlineWidth, backgroundColor: C.separator, marginStart: 16 },
 
   // Live badge
   liveBadge: {
@@ -592,7 +593,7 @@ const makeStyles = (C) => StyleSheet.create({
     borderRadius: 3,
     backgroundColor: '#34C759',
   },
-  liveBadgeText: { fontSize: 11, fontWeight: '700', color: '#1A8C42' },
+  liveBadgeText: { fontSize: 12, fontWeight: '700', color: '#1A8C42' },
 
   // Archived card
   cardArchived: { opacity: 0.65 },
@@ -602,10 +603,10 @@ const makeStyles = (C) => StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 6,
     paddingVertical: 2,
-    marginLeft: 4,
+    marginStart: 4,
     flexShrink: 0,
   },
-  endedBadgeText: { fontSize: 11, fontWeight: '600', color: C.textMuted },
+  endedBadgeText: { fontSize: 12, fontWeight: '600', color: C.textMuted },
   archiveMsgCount: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -634,7 +635,7 @@ const makeStyles = (C) => StyleSheet.create({
     backgroundColor: C.fill,
     justifyContent: 'center', alignItems: 'center', marginBottom: 20,
   },
-  lockTitle: { fontSize: 22, fontWeight: '700', color: C.text, marginBottom: 10, textAlign: 'center' },
+  lockTitle: { fontSize: 24, fontWeight: '700', color: C.text, marginBottom: 10, textAlign: 'center' },
   lockSub: { fontSize: 14, color: C.textMuted, textAlign: 'center', lineHeight: 21, marginBottom: 28 },
   progressWrap: { width: '100%', marginBottom: 28 },
   progressTrack: { height: 8, backgroundColor: C.fill, borderRadius: 4, overflow: 'hidden', marginBottom: 8 },
@@ -684,6 +685,7 @@ const makeStyles = (C) => StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     minHeight: 52,
+    textAlign: isRTL ? 'right' : 'left',
   },
   charCount: { fontSize: 12, color: C.textMuted, marginTop: 6 },
 

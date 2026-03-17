@@ -13,10 +13,11 @@ import { useTheme } from '../../context/ThemeContext';
 
 export default function NotificationsScreen({ navigation }) {
   const dispatch = useDispatch();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language === 'ar';
   const insets = useSafeAreaInsets();
   const { colors: COLORS } = useTheme();
-  const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
+  const styles = useMemo(() => makeStyles(COLORS, isRTL), [COLORS, isRTL]);
   const { notifications, unreadCount, isLoading } = useSelector((s) => s.notifications);
 
   const TYPE_CONFIG = {
@@ -57,7 +58,7 @@ export default function NotificationsScreen({ navigation }) {
     return (
       <TouchableOpacity style={styles.row} onPress={() => handlePress(item)} activeOpacity={0.7}>
         <View style={[styles.iconCircle, { backgroundColor: cfg.color }]}>
-          <Ionicons name={cfg.icon} size={18} color="#fff" />
+          <Ionicons name={cfg.icon} size={20} color="#fff" />
         </View>
         <View style={styles.textBlock}>
           <Text style={[styles.message, !item.read && styles.messageUnread]}>
@@ -91,7 +92,7 @@ export default function NotificationsScreen({ navigation }) {
           style={styles.backBtn}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Ionicons name="chevron-back" size={22} color={COLORS.accent} />
+          <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={26} color={COLORS.accent} />
         </TouchableOpacity>
         <Text style={styles.title}>{t('notif.title')}</Text>
         {unreadCount > 0 ? (
@@ -121,7 +122,7 @@ export default function NotificationsScreen({ navigation }) {
   );
 }
 
-const makeStyles = (C) => StyleSheet.create({
+const makeStyles = (C, isRTL) => StyleSheet.create({
   container: { flex: 1, backgroundColor: C.white },
   header: {
     flexDirection: 'row', alignItems: 'center',
@@ -129,7 +130,7 @@ const makeStyles = (C) => StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.separator,
   },
   backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'flex-start' },
-  title: { flex: 1, fontSize: 22, fontWeight: '700', color: C.text },
+  title: { flex: 1, fontSize: 24, fontWeight: '700', color: C.text, textAlign: isRTL ? 'right' : 'left' },
   markAll: { fontSize: 13, color: C.accent, fontWeight: '500' },
   loader: { marginTop: 60 },
   row: {
@@ -139,7 +140,7 @@ const makeStyles = (C) => StyleSheet.create({
   },
   iconCircle: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
   textBlock: { flex: 1 },
-  message: { fontSize: 15, color: C.text, lineHeight: 20 },
+  message: { fontSize: 16, color: C.text, lineHeight: 22 },
   messageUnread: { fontWeight: '600' },
   preview: { fontSize: 13, color: C.textMuted, fontStyle: 'italic', marginTop: 2 },
   time: { fontSize: 12, color: C.textMuted, marginTop: 3 },

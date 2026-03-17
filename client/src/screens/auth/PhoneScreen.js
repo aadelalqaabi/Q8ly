@@ -1,7 +1,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ActivityIndicator, I18nManager,
+  KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -146,7 +146,7 @@ export default function PhoneScreen({ navigation }) {
             : (
               <View style={styles.btnInner}>
                 <Text style={styles.btnText}>{t('auth.continue')}</Text>
-                <Text style={styles.btnArrow}>{I18nManager.isRTL ? '←' : '→'}</Text>
+                <Text style={styles.btnArrow}>{isRTL ? '←' : '→'}</Text>
               </View>
             )
           }
@@ -193,7 +193,7 @@ const makeStyles = (C, isDark) => StyleSheet.create({
   stepRow: { flexDirection: 'row', marginBottom: 40 },
   stepSeg: { flex: 1, height: 3, borderRadius: 2, backgroundColor: C.separator },
   stepSegActive: { backgroundColor: C.accent },
-  stepGap: { marginRight: 4 },
+  stepGap: { marginEnd: 4 },
 
   title: { fontSize: 30, fontWeight: '700', color: C.text, letterSpacing: -0.5, marginBottom: 8 },
   subtitle: { fontSize: 15, color: C.textMuted, lineHeight: 22, marginBottom: 28 },

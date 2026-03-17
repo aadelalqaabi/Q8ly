@@ -39,9 +39,9 @@ const getFeed = async (req, res, next) => {
     const limitInt = parseInt(limit);
     const posts = await Post.find(query)
       .lean()
-      .populate('userId', 'username name profilePic verifiedBadge accountType')
+      .populate('userId', 'username name profilePic verifiedBadge accountType isFounder')
       .populate('topicTags', 'name nameAr slug color')
-      .populate({ path: 'originalPost', select: 'content images video videoThumbnail userId createdAt', populate: { path: 'userId', select: 'username name profilePic verifiedBadge' } })
+      .populate({ path: 'originalPost', select: 'content images video videoThumbnail userId createdAt', populate: { path: 'userId', select: 'username name profilePic verifiedBadge isFounder' } })
       .sort(tab === 'following' ? { createdAt: -1 } : { trendingScore: -1, createdAt: -1 })
       .skip(skip)
       .limit(limitInt);
@@ -70,7 +70,7 @@ const getFeed = async (req, res, next) => {
         trendingScore: { $gt: 2 },
       })
         .lean()
-        .populate('userId', 'username name profilePic verifiedBadge accountType')
+        .populate('userId', 'username name profilePic verifiedBadge accountType isFounder')
         .sort({ trendingScore: -1 })
         .limit(6);
 
@@ -106,7 +106,7 @@ const getTrending = async (req, res, next) => {
 
     const posts = await Post.find({ isRemoved: false, visibility: 'public', trendingScore: { $gt: 0 } })
       .lean()
-      .populate('userId', 'username name profilePic verifiedBadge accountType')
+      .populate('userId', 'username name profilePic verifiedBadge accountType isFounder')
       .populate('topicTags', 'name nameAr slug color')
       .sort({ trendingScore: -1 })
       .skip(skip)
@@ -128,10 +128,10 @@ const getPost = async (req, res, next) => {
     }
     const post = await Post.findById(req.params.id)
       .lean()
-      .populate('userId', 'username name profilePic verifiedBadge accountType bio')
+      .populate('userId', 'username name profilePic verifiedBadge accountType bio isFounder')
       .populate('topicTags', 'name nameAr slug color')
       .populate('spaceTags', 'name nameAr slug type')
-      .populate({ path: 'originalPost', select: 'content images video videoThumbnail userId createdAt', populate: { path: 'userId', select: 'username name profilePic verifiedBadge' } })
+      .populate({ path: 'originalPost', select: 'content images video videoThumbnail userId createdAt', populate: { path: 'userId', select: 'username name profilePic verifiedBadge isFounder' } })
       .populate('communityNote.addedBy', 'username name verifiedBadge');
 
     if (!post || post.isRemoved) {
@@ -220,7 +220,7 @@ const createPost = async (req, res, next) => {
 
     // Populate and return
     const populatedPost = await Post.findById(post._id)
-      .populate('userId', 'username name profilePic verifiedBadge accountType')
+      .populate('userId', 'username name profilePic verifiedBadge accountType isFounder')
       .populate('topicTags', 'name nameAr slug color');
 
     // Emit to followers via socket
@@ -575,9 +575,9 @@ const getBookmarks = async (req, res, next) => {
 
     const posts = await Post.find({ _id: { $in: sliced }, isRemoved: false })
       .lean()
-      .populate('userId', 'username name profilePic verifiedBadge accountType')
+      .populate('userId', 'username name profilePic verifiedBadge accountType isFounder')
       .populate('topicTags', 'name nameAr slug color')
-      .populate({ path: 'originalPost', select: 'content images video videoThumbnail userId createdAt', populate: { path: 'userId', select: 'username name profilePic verifiedBadge' } });
+      .populate({ path: 'originalPost', select: 'content images video videoThumbnail userId createdAt', populate: { path: 'userId', select: 'username name profilePic verifiedBadge isFounder' } });
 
     // Restore order
     const ordered = sliced.map((id) => posts.find((p) => p._id.toString() === id.toString())).filter(Boolean);

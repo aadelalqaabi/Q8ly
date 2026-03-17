@@ -20,8 +20,8 @@ const THEME_OPTIONS = [
   { key: 'dark',  icon: 'moon-outline',            labelKey: 'settings.themeDark'  },
 ];
 
-function SectionLabel({ label, colors }) {
-  return <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textMuted, paddingHorizontal: 20, paddingTop: 24, paddingBottom: 8, letterSpacing: 0.2 }}>{label}</Text>;
+function SectionLabel({ label, colors, isRTL }) {
+  return <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textMuted, paddingHorizontal: 20, paddingTop: 24, paddingBottom: 8, letterSpacing: 0.2, textAlign: isRTL ? 'right' : 'left' }}>{label}</Text>;
 }
 
 export default function SettingsScreen({ navigation }) {
@@ -29,9 +29,10 @@ export default function SettingsScreen({ navigation }) {
   const dispatch = useDispatch();
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
+  const isRTL = lang === 'ar';
   const restartApp = useContext(AppRestartContext);
   const { colors, scheme, setScheme } = useTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const styles = useMemo(() => makeStyles(colors, isRTL), [colors, isRTL]);
   const [logoutMenuVisible, setLogoutMenuVisible] = useState(false);
   const [suggestVisible, setSuggestVisible] = useState(false);
   const [suggestText, setSuggestText] = useState('');
@@ -82,7 +83,7 @@ export default function SettingsScreen({ navigation }) {
           style={styles.backBtn}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Ionicons name="chevron-back" size={22} color={colors.accent} />
+          <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={22} color={colors.accent} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('settings.title')}</Text>
         <View style={styles.backBtn} />
@@ -93,13 +94,13 @@ export default function SettingsScreen({ navigation }) {
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
       >
         {/* Appearance section */}
-        <SectionLabel label={t('settings.appearance')} colors={colors} />
+        <SectionLabel label={t('settings.appearance')} colors={colors} isRTL={isRTL} />
         <View style={styles.card}>
 
           {/* Language */}
           <View style={styles.langCard}>
             <View style={styles.rowHeader}>
-              <Ionicons name="language-outline" size={18} color={colors.textMuted} />
+              <Ionicons name="language-outline" size={22} color={colors.textMuted} />
               <Text style={styles.rowHeaderLabel}>{t('settings.language')}</Text>
             </View>
             <View style={styles.segmentRow}>
@@ -123,7 +124,7 @@ export default function SettingsScreen({ navigation }) {
           {/* Theme */}
           <View style={styles.langCard}>
             <View style={styles.rowHeader}>
-              <Ionicons name="contrast-outline" size={18} color={colors.textMuted} />
+              <Ionicons name="contrast-outline" size={22} color={colors.textMuted} />
               <Text style={styles.rowHeaderLabel}>{t('settings.theme')}</Text>
             </View>
             <View style={styles.segmentRow}>
@@ -136,7 +137,7 @@ export default function SettingsScreen({ navigation }) {
                 >
                   <Ionicons
                     name={opt.icon}
-                    size={14}
+                    size={16}
                     color={scheme === opt.key ? colors.white : colors.textMuted}
                   />
                   <Text style={[styles.segmentPillText, scheme === opt.key && styles.segmentPillTextActive]}>
@@ -150,26 +151,26 @@ export default function SettingsScreen({ navigation }) {
         </View>
 
         {/* Feedback section */}
-        <SectionLabel label={t('suggest.support')} colors={colors} />
+        <SectionLabel label={t('suggest.support')} colors={colors} isRTL={isRTL} />
         <View style={styles.card}>
           <TouchableOpacity style={styles.row} onPress={() => setSuggestVisible(true)} activeOpacity={0.7}>
             <View style={[styles.rowIcon, { backgroundColor: '#EEF2FA' }]}>
-              <Ionicons name="bulb-outline" size={18} color={colors.accent} />
+              <Ionicons name="bulb-outline" size={22} color={colors.accent} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.rowLabel}>{t('suggest.title')}</Text>
               <Text style={styles.rowSub}>{t('suggest.sub')}</Text>
             </View>
-            <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+            <Ionicons name={isRTL ? 'chevron-back' : 'chevron-forward'} size={18} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
 
         {/* Account section */}
-        <SectionLabel label={t('settings.account')} colors={colors} />
+        <SectionLabel label={t('settings.account')} colors={colors} isRTL={isRTL} />
         <View style={styles.card}>
           <TouchableOpacity style={styles.row} onPress={() => setLogoutMenuVisible(true)} activeOpacity={0.6}>
             <View style={styles.rowIconDestructive}>
-              <Ionicons name="log-out-outline" size={18} color={colors.error} />
+              <Ionicons name="log-out-outline" size={22} color={colors.error} />
             </View>
             <Text style={styles.rowLabelDestructive}>{t('settings.signOut')}</Text>
           </TouchableOpacity>
@@ -268,7 +269,7 @@ export default function SettingsScreen({ navigation }) {
   );
 }
 
-const makeStyles = (C) => StyleSheet.create({
+const makeStyles = (C, isRTL) => StyleSheet.create({
   container: { flex: 1, backgroundColor: C.background },
 
   header: {
@@ -326,13 +327,13 @@ const makeStyles = (C) => StyleSheet.create({
 
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
   rowIcon: { width: 32, height: 32, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
-  rowLabel: { fontSize: 15, color: C.text, fontWeight: '500' },
-  rowSub: { fontSize: 12, color: C.textMuted, marginTop: 1 },
+  rowLabel: { fontSize: 15, color: C.text, fontWeight: '500', textAlign: isRTL ? 'right' : 'left' },
+  rowSub: { fontSize: 12, color: C.textMuted, marginTop: 1, textAlign: isRTL ? 'right' : 'left' },
   rowIconDestructive: {
     width: 32, height: 32, borderRadius: 8,
     backgroundColor: '#EEF2FA', justifyContent: 'center', alignItems: 'center',
   },
-  rowLabelDestructive: { flex: 1, fontSize: 15, color: C.error },
+  rowLabelDestructive: { flex: 1, fontSize: 15, color: C.error, textAlign: isRTL ? 'right' : 'left' },
 
   // Suggestion modal
   modalHeader: {

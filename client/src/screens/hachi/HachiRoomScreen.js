@@ -108,11 +108,12 @@ export default function HachiRoomScreen({ navigation, route }) {
   const { roomId } = route.params;
   const dispatch = useDispatch();
   const insets = useSafeAreaInsets();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language === 'ar';
   const { activeRoom, roomLoading, joinRequests, waitingApproval } = useSelector((s) => s.hachi);
   const { user: currentUser } = useSelector((s) => s.auth);
   const { colors: COLORS } = useTheme();
-  const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
+  const styles = useMemo(() => makeStyles(COLORS, isRTL), [COLORS, isRTL]);
   const flatRef = useRef(null);
   const [text, setText] = useState('');
   const [endMenuVisible, setEndMenuVisible] = useState(false);
@@ -265,15 +266,11 @@ export default function HachiRoomScreen({ navigation, route }) {
     if (!activeRoom) return;
     navigation.setOptions({
       title: activeRoom.title,
-      headerRight: () => (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-          {isCreator && activeRoom.isActive && (
-            <TouchableOpacity onPress={() => setEndMenuVisible(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={{ fontSize: 15, color: COLORS.error }}>{t('hachi.endHachi')}</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      ),
+      headerRight: isCreator && activeRoom.isActive ? () => (
+        <TouchableOpacity onPress={() => setEndMenuVisible(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Text style={{ fontSize: 15, color: COLORS.error }}>{t('hachi.endHachi')}</Text>
+        </TouchableOpacity>
+      ) : undefined,
     });
   }, [activeRoom, isCreator]);
 
@@ -343,13 +340,13 @@ export default function HachiRoomScreen({ navigation, route }) {
       <View style={styles.center}>
         <View style={styles.summaryCard}>
           <Ionicons name="ban-outline" size={32} color={COLORS.textMuted} style={{ marginBottom: 12 }} />
-          <Text style={styles.summaryTitle}>لا يمكنك الدخول</Text>
-          <Text style={styles.waitingSubtitle}>تم إزالتك من هذا النقاش أو أنه غير موجود.</Text>
+          <Text style={styles.summaryTitle}>{t('hachi.noAccess')}</Text>
+          <Text style={styles.waitingSubtitle}>{t('hachi.noAccessMsg')}</Text>
           <TouchableOpacity
             style={{ marginTop: 16, paddingHorizontal: 24, paddingVertical: 10, backgroundColor: COLORS.fill, borderRadius: 20 }}
             onPress={() => navigation.goBack()}
           >
-            <Text style={{ fontSize: 15, fontWeight: '600', color: COLORS.text }}>رجوع</Text>
+            <Text style={{ fontSize: 15, fontWeight: '600', color: COLORS.text }}>{t('common.back')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -362,8 +359,8 @@ export default function HachiRoomScreen({ navigation, route }) {
       <View style={styles.center}>
         <View style={styles.summaryCard}>
           <ActivityIndicator size="large" color={COLORS.accent} style={{ marginBottom: 16 }} />
-          <Text style={styles.summaryTitle}>في انتظار الموافقة</Text>
-          <Text style={styles.waitingSubtitle}>أرسلنا طلبك للمشرف. انتظر حتى يقبلك.</Text>
+          <Text style={styles.summaryTitle}>{t('hachi.waitingApproval')}</Text>
+          <Text style={styles.waitingSubtitle}>{t('hachi.waitingApprovalMsg')}</Text>
         </View>
       </View>
     );
@@ -406,13 +403,13 @@ export default function HachiRoomScreen({ navigation, route }) {
               </View>
             ) : null}
             {archivedMessages.length > 0 && (
-              <Text style={styles.archiveReadOnly}>للقراءة فقط</Text>
+              <Text style={styles.archiveReadOnly}>{t('hachi.readOnly')}</Text>
             )}
           </View>
         )}
         ListEmptyComponent={
           <View style={styles.emptyMessages}>
-            <Text style={styles.emptyText}>{t('hachi.noMessages') || 'لا توجد رسائل'}</Text>
+            <Text style={styles.emptyText}>{t('hachi.noMessages')}</Text>
           </View>
         }
         contentContainerStyle={{ padding: 12, paddingBottom: 40 }}
@@ -440,7 +437,7 @@ export default function HachiRoomScreen({ navigation, route }) {
               <>
                 <Text style={styles.infoDot}>·</Text>
                 <Ionicons name="lock-closed" size={12} color={COLORS.textMuted} />
-                <Text style={styles.infoText}>خاص</Text>
+                <Text style={styles.infoText}>{t('hachi.private')}</Text>
               </>
             )}
             {minsLeft !== null && minsLeft > 0 && (
@@ -458,7 +455,7 @@ export default function HachiRoomScreen({ navigation, route }) {
             {/* Join requests badge (creator only) */}
             {isCreator && joinRequests.length > 0 && (
               <TouchableOpacity style={styles.joinReqBadge} onPress={() => setShowRequests(true)}>
-                <Text style={styles.joinReqText}>{joinRequests.length} طلب</Text>
+                <Text style={styles.joinReqText}>{t('hachi.joinReqCount', { count: joinRequests.length })}</Text>
               </TouchableOpacity>
             )}
 
@@ -470,7 +467,7 @@ export default function HachiRoomScreen({ navigation, route }) {
           <View style={styles.pinnedBanner}>
             <View style={styles.pinnedHeader}>
               <Ionicons name="pin" size={12} color={COLORS.accent} />
-              <Text style={styles.pinnedLabel}>مثبّت</Text>
+              <Text style={styles.pinnedLabel}>{t('hachi.pinned')}</Text>
             </View>
             <ScrollView
               horizontal
@@ -523,7 +520,7 @@ export default function HachiRoomScreen({ navigation, route }) {
         {isViewOnly ? (
           <View style={[styles.viewOnlyBar, { paddingBottom: keyboardVisible ? 8 : insets.bottom + 8 }]}>
             <Ionicons name="eye-outline" size={14} color={COLORS.textMuted} />
-            <Text style={styles.viewOnlyText}>تمت إزالتك · للقراءة فقط</Text>
+            <Text style={styles.viewOnlyText}>{t('hachi.removedReadOnly')}</Text>
           </View>
         ) : (
           <View style={[styles.inputBar, { paddingBottom: keyboardVisible ? 10 : insets.bottom + 10 }]}>
@@ -599,7 +596,7 @@ export default function HachiRoomScreen({ navigation, route }) {
                     >
                       <Ionicons name="pin-outline" size={17} color={COLORS.accent} />
                       <Text style={[styles.modText, { color: COLORS.accent }]}>
-                        {isPinned ? 'إلغاء التثبيت' : 'تثبيت الرسالة'}
+                        {isPinned ? t('hachi.unpinMessage') : t('hachi.pinMessage')}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -611,11 +608,11 @@ export default function HachiRoomScreen({ navigation, route }) {
                     style={styles.modRow}
                     onPress={() => handleKick(
                       selectedMsg.user?._id || selectedMsg.user,
-                      selectedMsg.user?.name || 'هذا المستخدم'
+                      selectedMsg.user?.name || t('hachi.someoneDefault')
                     )}
                   >
                     <Ionicons name="person-remove-outline" size={17} color="#FF3B30" />
-                    <Text style={styles.kickText}>إزالة من النقاش</Text>
+                    <Text style={styles.kickText}>{t('hachi.kickTitle')}</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -633,13 +630,13 @@ export default function HachiRoomScreen({ navigation, route }) {
       >
         <View style={styles.reqModal}>
           <View style={styles.reqHeader}>
-            <Text style={styles.reqTitle}>طلبات الانضمام</Text>
+            <Text style={styles.reqTitle}>{t('hachi.joinReqTitle')}</Text>
             <TouchableOpacity onPress={() => setShowRequests(false)}>
               <Ionicons name="close" size={24} color={COLORS.text} />
             </TouchableOpacity>
           </View>
           {joinRequests.length === 0 ? (
-            <Text style={styles.reqEmpty}>لا توجد طلبات</Text>
+            <Text style={styles.reqEmpty}>{t('hachi.noJoinRequests')}</Text>
           ) : (
             joinRequests.map((req) => (
               <View key={req.user._id} style={styles.reqRow}>
@@ -657,7 +654,7 @@ export default function HachiRoomScreen({ navigation, route }) {
                     dispatch(removeJoinRequest({ userId: req.user._id }));
                   }}
                 >
-                  <Text style={styles.reqApproveText}>قبول</Text>
+                  <Text style={styles.reqApproveText}>{t('dm.accept')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.reqReject}
@@ -677,7 +674,7 @@ export default function HachiRoomScreen({ navigation, route }) {
   );
 }
 
-const makeStyles = (C) => StyleSheet.create({
+const makeStyles = (C, isRTL) => StyleSheet.create({
   container: { flex: 1, backgroundColor: C.white },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
 
@@ -759,7 +756,7 @@ const makeStyles = (C) => StyleSheet.create({
 
   // Join request badge
   joinReqBadge: {
-    marginLeft: 'auto',
+    marginStart: 'auto',
     backgroundColor: C.accent,
     borderRadius: 12,
     paddingHorizontal: 10,
@@ -850,6 +847,7 @@ const makeStyles = (C) => StyleSheet.create({
     fontSize: 15,
     color: C.text,
     maxHeight: 100,
+    textAlign: isRTL ? 'right' : 'left',
   },
   sendBtn: {
     width: 40, height: 40, borderRadius: 20,
@@ -937,7 +935,7 @@ const makeStyles = (C) => StyleSheet.create({
     borderColor: C.accent + '33',
     paddingHorizontal: 10,
     paddingVertical: 8,
-    paddingRight: 28, // room for unpin button
+    paddingEnd: 28, // room for unpin button
     position: 'relative',
   },
   pinnedAuthor: { fontSize: 11, fontWeight: '700', color: C.accent, marginBottom: 2 },
@@ -945,7 +943,7 @@ const makeStyles = (C) => StyleSheet.create({
   pinnedUnpin: {
     position: 'absolute',
     top: 6,
-    right: 6,
+    end: 6,
   },
 
   // Join requests modal

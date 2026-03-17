@@ -77,17 +77,21 @@ export async function initLanguage() {
   // (LanguageSelectScreen will ask on first launch and override this).
   const lang = (explicit === 'ar' || explicit === 'en') ? explicit : getDeviceLang();
 
-  const needsRTLChange = (lang === 'ar') !== I18nManager.isRTL;
-  I18nManager.forceRTL(lang === 'ar');
-  await i18n.changeLanguage(lang);
-
-  // RTL direction only takes effect after a full JS reload — trigger once
-  if (needsRTLChange) {
-    const { reloadAsync } = require('expo-updates');
-    await reloadAsync();
-    // execution stops here — app reloads cleanly with correct RTL/LTR
+  // One-time migration: disable native RTL mirroring — we handle layout direction
+  // manually via component-level `isRTL = i18n.language === 'ar'` checks.
+  if (I18nManager.isRTL) {
+    I18nManager.allowRTL(false);
+    I18nManager.forceRTL(false);
+    await i18n.changeLanguage(lang);
+    try {
+      const Updates = require('expo-updates');
+      await Updates.reloadAsync(); // execution stops here — restarts with isRTL=false
+    } catch (e) {
+      console.warn('[i18n] reloadAsync failed, restart the app once to finish migration:', e?.message);
+    }
   }
 
+  await i18n.changeLanguage(lang);
   return lang;
 }
 
@@ -102,9 +106,7 @@ export async function changeAppLanguage(newLang, i18nInstance, restartApp) {
 
   await i18nInstance.changeLanguage(newLang);
   await AsyncStorage.setItem(LANG_EXPLICIT_KEY, newLang);
-  I18nManager.forceRTL(newLang === 'ar');
-
-  // Remount the navigation tree — direction applies immediately, no manual restart
+  // No forceRTL — layout direction is handled by component-level isRTL checks.
   restartApp();
 }
 

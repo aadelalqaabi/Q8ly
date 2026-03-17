@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ActivityIndicator, I18nManager,
+  KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -101,7 +101,7 @@ export default function OtpScreen({ navigation, route }) {
           onPress={() => navigation.goBack()}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-          <Ionicons name={I18nManager.isRTL ? 'chevron-forward' : 'chevron-back'} size={22} color={C.accent} />
+          <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={22} color={C.accent} />
           <Text style={styles.backText}>{t('common.back')}</Text>
         </TouchableOpacity>
 
@@ -148,6 +148,8 @@ export default function OtpScreen({ navigation, route }) {
             value={code}
             onChangeText={handleCodeChange}
             keyboardType="number-pad"
+            textContentType="oneTimeCode"
+            autoComplete="one-time-code"
             maxLength={CODE_LENGTH}
             autoFocus
             style={styles.hiddenInput}
@@ -197,7 +199,7 @@ const makeStyles = (C, isDark) => StyleSheet.create({
   stepSeg: { flex: 1, height: 3, borderRadius: 2 },
   stepSegActive: { backgroundColor: C.accent },
   stepSegInactive: { backgroundColor: C.separator },
-  stepGap: { marginRight: 4 },
+  stepGap: { marginEnd: 4 },
 
   title: { fontSize: 30, fontWeight: '700', color: C.text, letterSpacing: -0.5, marginBottom: 8 },
   subtitle: { fontSize: 15, color: C.textMuted, lineHeight: 22, marginBottom: 28 },

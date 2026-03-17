@@ -26,11 +26,7 @@ const CATEGORY_ICONS = {
   other: 'ellipsis-horizontal-outline',
 };
 
-const SEARCH_TABS = [
-  { key: 'posts',    label: 'Posts'    },
-  { key: 'accounts', label: 'Accounts' },
-  { key: 'circles',  label: 'Circles'  },
-];
+const SEARCH_TAB_KEYS = ['posts', 'accounts', 'circles'];
 
 // ── Trending topic row ────────────────────────────────────────────────────────
 function TrendingRow({ topic, rank, onPress }) {
@@ -60,7 +56,7 @@ function TrendingRow({ topic, rank, onPress }) {
           <Text style={styles.trendCat}>{topic.category}</Text>
           {topic.isOfficial && (
             <View style={[styles.officialBadge, { backgroundColor: accent + '20' }]}>
-              <Text style={[styles.officialText, { color: accent }]}>رسمي</Text>
+              <Text style={[styles.officialText, { color: accent }]}>{t('badge.official')}</Text>
             </View>
           )}
         </View>
@@ -81,10 +77,11 @@ function TrendingRow({ topic, rank, onPress }) {
 }
 
 export default function DiscoverScreen({ navigation }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language === 'ar';
   const insets = useSafeAreaInsets();
   const { colors: COLORS } = useTheme();
-  const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
+  const styles = useMemo(() => makeStyles(COLORS, isRTL), [COLORS, isRTL]);
   const inputRef = useRef(null);
 
   const [query, setQuery] = useState('');
@@ -180,12 +177,12 @@ export default function DiscoverScreen({ navigation }) {
       <View style={{ flex: 1 }}>
         <Text style={styles.circleTitle} numberOfLines={1}>{room.title}</Text>
         <Text style={styles.circleMeta}>
-          {room.memberCount || 0} listening · {room.category}
+          {room.memberCount || 0} {t('discover.listening')} · {room.category}
         </Text>
       </View>
       <View style={[styles.liveChip, !room.isActive && styles.liveChipOff]}>
         <Text style={[styles.liveChipText, !room.isActive && styles.liveChipTextOff]}>
-          {room.isActive ? 'LIVE' : 'ENDED'}
+          {room.isActive ? t('hachi.liveBadge') : t('hachi.endedBadge')}
         </Text>
       </View>
     </TouchableOpacity>
@@ -240,12 +237,11 @@ export default function DiscoverScreen({ navigation }) {
   const renderEmpty = () => {
     if (isSearching) return null;
     if (isSearchMode) {
-      const labels = { accounts: 'accounts', posts: 'posts', circles: 'circles' };
       return (
         <View style={styles.empty}>
           <Ionicons name="search-outline" size={36} color={COLORS.textMuted} style={{ marginBottom: 12 }} />
-          <Text style={styles.emptyTitle}>No {labels[tab]} found</Text>
-          <Text style={styles.emptySub}>Try a different search term</Text>
+          <Text style={styles.emptyTitle}>{t('discover.noSearchResults')}</Text>
+          <Text style={styles.emptySub}>{t('discover.noSearchResultsSub')}</Text>
         </View>
       );
     }
@@ -262,14 +258,14 @@ export default function DiscoverScreen({ navigation }) {
             onPress={() => { inputRef.current?.focus(); if (query.trim()) doSearch(query); }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Ionicons name="search" size={16} color={COLORS.textMuted} />
+            <Ionicons name="search" size={18} color={COLORS.textMuted} />
           </TouchableOpacity>
           <TextInput
             ref={inputRef}
             style={styles.searchInput}
             value={query}
             onChangeText={setQuery}
-            placeholder="Search accounts, posts, or circles…"
+            placeholder={t('discover.searchPlaceholder')}
             placeholderTextColor={COLORS.textPlaceholder}
             returnKeyType="search"
             onSubmitEditing={() => { if (query.trim()) doSearch(query); }}
@@ -278,7 +274,7 @@ export default function DiscoverScreen({ navigation }) {
           />
           {query.length > 0 && (
             <TouchableOpacity onPress={() => setQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="close-circle" size={16} color={COLORS.textMuted} />
+              <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
             </TouchableOpacity>
           )}
         </View>
@@ -287,18 +283,19 @@ export default function DiscoverScreen({ navigation }) {
       {/* Tabs — only visible in search mode */}
       {isSearchMode && (
         <View style={styles.tabRow}>
-          {SEARCH_TABS.map((tb) => {
-            const active = tab === tb.key;
-            const count = countFor(tb.key);
+          {SEARCH_TAB_KEYS.map((key) => {
+            const active = tab === key;
+            const count = countFor(key);
+            const tabLabel = t(`discover.tab${key.charAt(0).toUpperCase()}${key.slice(1)}`);
             return (
               <TouchableOpacity
-                key={tb.key}
+                key={key}
                 style={styles.tabItem}
-                onPress={() => setTab(tb.key)}
+                onPress={() => setTab(key)}
                 activeOpacity={0.7}
               >
                 <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>
-                  {tb.label}{count > 0 ? ` (${count})` : ''}
+                  {tabLabel}{count > 0 ? ` (${count})` : ''}
                 </Text>
                 <View style={[styles.tabDot, active && styles.tabDotActive]} />
               </TouchableOpacity>
@@ -329,7 +326,7 @@ export default function DiscoverScreen({ navigation }) {
   );
 }
 
-const makeStyles = (C) => StyleSheet.create({
+const makeStyles = (C, isRTL) => StyleSheet.create({
   container: { flex: 1, backgroundColor: C.white },
   header: {
     paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12,
@@ -339,7 +336,7 @@ const makeStyles = (C) => StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: C.fill, borderRadius: 10, height: 38, paddingHorizontal: 10, gap: 6,
   },
-  searchInput: { flex: 1, fontSize: 15, color: C.text },
+  searchInput: { flex: 1, fontSize: 15, color: C.text, textAlign: isRTL ? 'right' : 'left' },
 
   tabRow: {
     flexDirection: 'row',
@@ -363,10 +360,10 @@ const makeStyles = (C) => StyleSheet.create({
   },
   trendHeaderTitle: {
     fontSize: 22, fontWeight: '800', color: C.text,
-    letterSpacing: -0.3,
+    letterSpacing: -0.3, textAlign: isRTL ? 'right' : 'left',
   },
   trendHeaderSub: {
-    fontSize: 13, color: C.textMuted, marginTop: 2,
+    fontSize: 13, color: C.textMuted, marginTop: 2, textAlign: isRTL ? 'right' : 'left',
   },
 
   // ── Trending row ────────────────────────────────────────────────────────────
@@ -374,14 +371,14 @@ const makeStyles = (C) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 14,
-    paddingRight: 16,
+    paddingEnd: 16,
     backgroundColor: C.white,
   },
   trendAccent: {
     width: 3,
     alignSelf: 'stretch',
     borderRadius: 2,
-    marginRight: 12,
+    marginEnd: 12,
   },
   trendRank: {
     fontSize: 28,
@@ -393,7 +390,7 @@ const makeStyles = (C) => StyleSheet.create({
   },
   trendBody: {
     flex: 1,
-    marginLeft: 8,
+    marginStart: 8,
     gap: 3,
   },
   trendCatRow: {
@@ -412,7 +409,7 @@ const makeStyles = (C) => StyleSheet.create({
     borderRadius: 6,
     paddingHorizontal: 5,
     paddingVertical: 1,
-    marginLeft: 4,
+    marginStart: 4,
   },
   officialText: {
     fontSize: 9,
@@ -433,12 +430,12 @@ const makeStyles = (C) => StyleSheet.create({
   trendIconWrap: {
     width: 34, height: 34, borderRadius: 17,
     justifyContent: 'center', alignItems: 'center',
-    marginLeft: 10,
+    marginStart: 10,
   },
   trendSep: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: C.separator,
-    marginLeft: 71, // aligns with trendBody: 3 (bar) + 12 + 38 (rank) + 8 = 61 + 16 padding
+    marginStart: 71,
   },
 
   // ── Empty trending ──────────────────────────────────────────────────────────

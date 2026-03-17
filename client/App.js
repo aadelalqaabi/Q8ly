@@ -1,7 +1,6 @@
 import 'react-native-url-polyfill/auto';
 import './src/i18n'; // registers i18next before anything else
 import { useState, useEffect, useCallback } from 'react';
-import { I18nManager } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Provider } from 'react-redux';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -15,8 +14,6 @@ import { initLanguage } from './src/i18n';
 import { AppRestartContext } from './src/context/AppRestartContext';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 
-// Allow RTL — direction is set by initLanguage() before first render
-I18nManager.allowRTL(true);
 
 // Inner component so useTheme() works inside ThemeProvider
 function AppInner({ navKey }) {
@@ -35,7 +32,9 @@ export default function App() {
   const [navKey, setNavKey] = useState(0);
 
   useEffect(() => {
-    initLanguage().then(() => setIsReady(true));
+    initLanguage()
+      .then(() => setIsReady(true))
+      .catch(() => setIsReady(true)); // always unblock render even if lang init fails
   }, []);
 
   const restartApp = useCallback(() => {

@@ -1,29 +1,19 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useContext } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, I18nManager,
+  View, Text, TouchableOpacity, StyleSheet, ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import i18n from '../../i18n';
+import { AppRestartContext } from '../../context/AppRestartContext';
 
 const ACCENT = '#0033A0';
 const LANG_EXPLICIT_KEY = '@kn_lang_explicit';
 
-export default function LanguageSelectScreen({ navigation }) {
+export default function LanguageSelectScreen() {
   const insets = useSafeAreaInsets();
-  const [checking, setChecking] = useState(true);
   const [selecting, setSelecting] = useState(null); // 'ar' | 'en'
-
-  useEffect(() => {
-    // If user already chose a language, skip straight to Phone
-    AsyncStorage.getItem(LANG_EXPLICIT_KEY).then((val) => {
-      if (val === 'ar' || val === 'en') {
-        navigation.replace('Phone');
-      } else {
-        setChecking(false);
-      }
-    });
-  }, []);
+  const restartApp = useContext(AppRestartContext);
 
   const pick = async (lang) => {
     if (selecting) return;
@@ -32,20 +22,17 @@ export default function LanguageSelectScreen({ navigation }) {
     await AsyncStorage.setItem(LANG_EXPLICIT_KEY, lang);
     await i18n.changeLanguage(lang);
 
-    const needsRTL = (lang === 'ar') !== I18nManager.isRTL;
-    I18nManager.forceRTL(lang === 'ar');
-
-    if (needsRTL) {
-      // RTL layout only applies after a JS bundle reload
-      const { reloadAsync } = require('expo-updates');
-      await reloadAsync();
-      return; // app restarts; LanguageSelectScreen will auto-skip on next mount
+    // Try a full JS reload so the language change applies cleanly
+    try {
+      const Updates = require('expo-updates');
+      await Updates.reloadAsync();
+    } catch (e) {
+      // Expo Go or new-arch: reload failed — remount navigation tree instead.
+      // Language is already saved; AppNavigator will re-read it and show the correct stack.
+      console.warn('[LanguageSelect] reloadAsync failed, falling back to restartApp:', e?.message);
+      restartApp();
     }
-
-    navigation.replace('Phone');
   };
-
-  if (checking) return <View style={styles.root} />;
 
   return (
     <View style={[styles.root, { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 40 }]}>

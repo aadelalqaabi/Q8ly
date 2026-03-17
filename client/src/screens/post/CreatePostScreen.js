@@ -39,12 +39,13 @@ function avatarBg(name) {
 
 export default function CreatePostScreen({ navigation }) {
   const dispatch = useDispatch();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language === 'ar';
   const insets = useSafeAreaInsets();
   const { user } = useSelector((s) => s.auth);
   const { createPostLoading } = useSelector((s) => s.posts);
   const { colors: COLORS } = useTheme();
-  const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
+  const styles = useMemo(() => makeStyles(COLORS, isRTL), [COLORS, isRTL]);
 
   const [content, setContent] = useState('');
   // media: [{ uri, type: 'image'|'video', width, height, duration }]
@@ -189,11 +190,11 @@ export default function CreatePostScreen({ navigation }) {
     const status = await getPermissionStatus();
     if (status !== 'granted') {
       Alert.alert(
-        'Stay in the loop 🔔',
-        'Turn on notifications to know when people like or comment on your posts.',
+        t('post.notifLoopTitle'),
+        t('post.notifLoopMsg'),
         [
-          { text: 'Not now', style: 'cancel' },
-          { text: 'Enable', onPress: () => registerForPushNotifications() },
+          { text: t('post.notifNotNow'), style: 'cancel' },
+          { text: t('post.notifEnable'), onPress: () => registerForPushNotifications() },
         ]
       );
     }
@@ -224,7 +225,7 @@ export default function CreatePostScreen({ navigation }) {
 
       if (images.length > 0) {
         setIsUploading(true);
-        setUploadProgress('Uploading photos…');
+        setUploadProgress(t('post.uploadingPhotos'));
         const formData = new FormData();
         images.forEach((img, i) => {
           formData.append('images', { uri: img.uri, type: 'image/jpeg', name: `img_${i}.jpg` });
@@ -238,7 +239,7 @@ export default function CreatePostScreen({ navigation }) {
 
       if (videos.length > 0) {
         setIsUploading(true);
-        setUploadProgress('Uploading video…');
+        setUploadProgress(t('post.uploadingVideo'));
         const vid = videos[0];
         const formData = new FormData();
         formData.append('video', { uri: vid.uri, type: 'video/mp4', name: 'video.mp4' });
@@ -250,7 +251,7 @@ export default function CreatePostScreen({ navigation }) {
         videoHeight = res.height || vid.height || 0;
       }
 
-      setUploadProgress('Publishing…');
+      setUploadProgress(t('post.publishing'));
       const type = videos.length > 0 ? 'video' : images.length > 0 ? 'photo' : 'text';
       await dispatch(createPost({
         content: content.trim(),
@@ -300,7 +301,7 @@ export default function CreatePostScreen({ navigation }) {
       {/* Upload status */}
       {isUploading && uploadProgress ? (
         <View style={styles.uploadBar}>
-          <ActivityIndicator size="small" color={COLORS.accent} style={{ marginRight: 8 }} />
+          <ActivityIndicator size="small" color={COLORS.accent} style={{ marginEnd: 8 }} />
           <Text style={styles.uploadText}>{uploadProgress}</Text>
         </View>
       ) : null}
@@ -379,7 +380,7 @@ export default function CreatePostScreen({ navigation }) {
               style={styles.pollQuestion}
               value={pollQuestion}
               onChangeText={setPollQuestion}
-              placeholder="Ask a question…"
+              placeholder={t('post.pollQuestion')}
               placeholderTextColor={COLORS.textPlaceholder}
               maxLength={120}
               returnKeyType="next"
@@ -392,7 +393,7 @@ export default function CreatePostScreen({ navigation }) {
                   style={styles.pollOptionInput}
                   value={opt}
                   onChangeText={(t) => updatePollOption(i, t)}
-                  placeholder={`Choice ${i + 1}${i >= 2 ? ' (optional)' : ''}`}
+                  placeholder={i >= 2 ? t('post.pollChoiceOptional', { n: i + 1 }) : t('post.pollChoice', { n: i + 1 })}
                   placeholderTextColor={COLORS.textPlaceholder}
                   maxLength={60}
                   returnKeyType="next"
@@ -409,15 +410,15 @@ export default function CreatePostScreen({ navigation }) {
             {pollOptions.length < 4 && (
               <TouchableOpacity style={styles.addOptionBtn} onPress={addPollOption}>
                 <Ionicons name="add" size={16} color={COLORS.accent} />
-                <Text style={styles.addOptionText}>Add choice</Text>
+                <Text style={styles.addOptionText}>{t('post.addChoice')}</Text>
               </TouchableOpacity>
             )}
 
             {/* Duration */}
             <View style={styles.durationRow}>
-              <Text style={styles.durationLabel}>Duration</Text>
+              <Text style={styles.durationLabel}>{t('post.duration')}</Text>
               <View style={styles.durationChips}>
-                {[['1', '1 day'], ['3', '3 days'], ['7', '7 days']].map(([val, label]) => (
+                {[['1', t('post.durationDay')], ['3', t('post.durationDays', { n: 3 })], ['7', t('post.durationDays', { n: 7 })]].map(([val, label]) => (
                   <TouchableOpacity
                     key={val}
                     style={[styles.durationChip, pollDuration === val && styles.durationChipActive]}
@@ -510,7 +511,7 @@ export default function CreatePostScreen({ navigation }) {
   );
 }
 
-const makeStyles = (C) => StyleSheet.create({
+const makeStyles = (C, isRTL) => StyleSheet.create({
   container: { flex: 1, backgroundColor: C.white },
 
   header: {
@@ -547,6 +548,7 @@ const makeStyles = (C) => StyleSheet.create({
   textInput: {
     flex: 1, fontSize: 17, color: C.text, lineHeight: 24,
     minHeight: 100, paddingTop: 0,
+    textAlign: isRTL ? 'right' : 'left',
   },
 
   previewGrid: {
@@ -555,7 +557,7 @@ const makeStyles = (C) => StyleSheet.create({
   },
   previewItem: { position: 'relative' },
   previewImg: { width: 90, height: 90, borderRadius: 10 },
-  removeBtn: { position: 'absolute', top: -6, right: -6 },
+  removeBtn: { position: 'absolute', top: -6, end: -6 },
   removeBadge: {
     width: 20, height: 20, borderRadius: 10,
     backgroundColor: 'rgba(0,0,0,0.7)',
@@ -568,7 +570,7 @@ const makeStyles = (C) => StyleSheet.create({
     borderRadius: 12, overflow: 'hidden',
     width: '100%',
   },
-  removeVideoBtn: { position: 'absolute', top: 8, right: 8 },
+  removeVideoBtn: { position: 'absolute', top: 8, end: 8 },
 
   toolbar: {
     position: 'absolute',

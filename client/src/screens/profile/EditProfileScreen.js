@@ -24,9 +24,10 @@ export default function EditProfileScreen({ navigation }) {
   const dispatch = useDispatch();
   const insets = useSafeAreaInsets();
   const { user } = useSelector((s) => s.auth);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language === 'ar';
   const { colors: COLORS } = useTheme();
-  const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
+  const styles = useMemo(() => makeStyles(COLORS, isRTL), [COLORS, isRTL]);
 
   const [name, setName] = useState(user?.name || '');
   const [bio, setBio] = useState(user?.bio || '');
@@ -159,7 +160,7 @@ export default function EditProfileScreen({ navigation }) {
             </View>
           </TouchableOpacity>
           <Text style={styles.changePhotoText}>
-            {isUploading ? 'جاري الرفع...' : 'تغيير الصورة'}
+            {isUploading ? t('profile.uploading') : t('profile.changePhoto')}
           </Text>
         </View>
 
@@ -203,7 +204,7 @@ export default function EditProfileScreen({ navigation }) {
   );
 }
 
-const makeStyles = (C) => StyleSheet.create({
+const makeStyles = (C, isRTL) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: C.background,
@@ -261,7 +262,7 @@ const makeStyles = (C) => StyleSheet.create({
   cameraBadge: {
     position: 'absolute',
     bottom: 0,
-    right: 0,
+    end: 0,
     width: 28,
     height: 28,
     borderRadius: 14,
@@ -286,6 +287,7 @@ const makeStyles = (C) => StyleSheet.create({
     fontWeight: '600',
     color: C.textMuted,
     letterSpacing: 0.2,
+    textAlign: isRTL ? 'right' : 'left',
   },
 
   // ── Section card
@@ -304,14 +306,14 @@ const makeStyles = (C) => StyleSheet.create({
     borderTopColor: C.separator,
   },
   fieldRowNoBorder: { borderTopWidth: 0 },
-  fieldLabel: { fontSize: 13, color: C.textMuted, marginBottom: 4 },
-  fieldInput: { fontSize: 16, color: C.text, padding: 0 },
+  fieldLabel: { fontSize: 13, color: C.textMuted, marginBottom: 4, textAlign: isRTL ? 'right' : 'left' },
+  fieldInput: { fontSize: 16, color: C.text, padding: 0, textAlign: isRTL ? 'right' : 'left' },
   bioInput: { minHeight: 80 },
   charCounter: {
     fontSize: 12,
     color: C.textMuted,
     textAlign: 'right',
-    marginRight: 20,
+    marginEnd: 20,
     marginTop: 4,
   },
 });
