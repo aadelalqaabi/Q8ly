@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  Image, ActivityIndicator, Alert, Share, Platform,
+  Image, ActivityIndicator, Alert, Share, Platform, Modal,
 } from 'react-native';
 import { useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
@@ -106,6 +106,33 @@ export default function ProfileScreen({ navigation, route }) {
   const [isFollowing, setIsFollowing] = useState(false);
   const [isNotifyEnabled, setIsNotifyEnabled] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
+
+  // Followers / Following modal
+  const [listModal, setListModal] = useState(null); // 'followers' | 'following' | null
+  const [listData, setListData] = useState([]);
+  const [listLoading, setListLoading] = useState(false);
+
+  const openList = useCallback(async (type) => {
+    setListModal(type);
+    setListLoading(true);
+    setListData([]);
+    try {
+      const res = type === 'followers'
+        ? await usersAPI.getFollowers(profile?.username)
+        : await usersAPI.getFollowing(profile?.username);
+      setListData(res.users || []);
+    } catch { /* silent */ } finally {
+      setListLoading(false);
+    }
+  }, [profile?.username]);
+
+  const handleUnfollow = useCallback(async (userId) => {
+    try {
+      await usersAPI.toggleFollow(userId);
+      setListData(prev => prev.filter(u => u._id !== userId));
+      setProfile(prev => prev ? { ...prev, followingCount: Math.max(0, (prev.followingCount || 1) - 1) } : prev);
+    } catch { /* silent */ }
+  }, []);
 
   const loadProfile = useCallback(async () => {
     try {
@@ -308,15 +335,23 @@ export default function ProfileScreen({ navigation, route }) {
           <Text style={styles.statLabel}>{t('profile.posts')}</Text>
         </View>
         <View style={styles.statDot} />
-        <View style={styles.stat}>
+        <TouchableOpacity
+          style={styles.stat}
+          onPress={isOwnProfile ? () => openList('followers') : undefined}
+          activeOpacity={isOwnProfile ? 0.7 : 1}
+        >
           <Text style={styles.statNum}>{fmt(profile?.followersCount)}</Text>
-          <Text style={styles.statLabel}>{t('profile.followers')}</Text>
-        </View>
+          <Text style={[styles.statLabel, isOwnProfile && { color: COLORS.accent }]}>{t('profile.followers')}</Text>
+        </TouchableOpacity>
         <View style={styles.statDot} />
-        <View style={styles.stat}>
+        <TouchableOpacity
+          style={styles.stat}
+          onPress={isOwnProfile ? () => openList('following') : undefined}
+          activeOpacity={isOwnProfile ? 0.7 : 1}
+        >
           <Text style={styles.statNum}>{fmt(profile?.followingCount)}</Text>
-          <Text style={styles.statLabel}>{t('profile.followingPl')}</Text>
-        </View>
+          <Text style={[styles.statLabel, isOwnProfile && { color: COLORS.accent }]}>{t('profile.followingPl')}</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Action row */}
@@ -467,6 +502,71 @@ export default function ProfileScreen({ navigation, route }) {
         }}
       />
 
+      {/* Followers / Following modal */}
+      <Modal
+        visible={!!listModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setListModal(null)}
+      >
+        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setListModal(null)} />
+        <View style={[styles.modalSheet, { backgroundColor: COLORS.white }]}>
+          {/* Header */}
+          <View style={styles.modalHeader}>
+            <Text style={[styles.modalTitle, { color: COLORS.text }]}>
+              {listModal === 'followers' ? t('profile.followers') : t('profile.followingPl')}
+            </Text>
+            <TouchableOpacity onPress={() => setListModal(null)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="close" size={22} color={COLORS.textMuted} />
+            </TouchableOpacity>
+          </View>
+
+          {listLoading ? (
+            <ActivityIndicator style={{ marginTop: 32 }} color={COLORS.accent} />
+          ) : (
+            <FlatList
+              data={listData}
+              keyExtractor={item => item._id}
+              renderItem={({ item }) => (
+                <View style={[styles.userRow, { borderBottomColor: COLORS.separator }]}>
+                  <TouchableOpacity
+                    style={styles.userRowLeft}
+                    onPress={() => { setListModal(null); navigation.navigate('ProfileDetail', { username: item.username }); }}
+                    activeOpacity={0.7}
+                  >
+                    {item.profilePic ? (
+                      <Image source={{ uri: item.profilePic }} style={styles.userRowAvatar} />
+                    ) : (
+                      <View style={[styles.userRowAvatar, { backgroundColor: avatarBg(item.name) }]}>
+                        <Text style={styles.userRowInitial}>{item.name?.[0]?.toUpperCase() || '?'}</Text>
+                      </View>
+                    )}
+                    <View>
+                      <Text style={[styles.userRowName, { color: COLORS.text }]} numberOfLines={1}>{item.name}</Text>
+                      <Text style={[styles.userRowUsername, { color: COLORS.textMuted }]}>@{item.username}</Text>
+                    </View>
+                  </TouchableOpacity>
+                  {listModal === 'following' && (
+                    <TouchableOpacity
+                      style={[styles.unfollowBtn, { borderColor: COLORS.separator }]}
+                      onPress={() => handleUnfollow(item._id)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.unfollowText, { color: COLORS.text }]}>{t('profile.following')}</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+              ListEmptyComponent={
+                <Text style={[styles.emptyText, { color: COLORS.textMuted, marginTop: 32 }]}>
+                  {listModal === 'followers' ? t('profile.noFollowers', 'No followers yet') : t('profile.noFollowing', 'Not following anyone yet')}
+                </Text>
+              }
+            />
+          )}
+        </View>
+      </Modal>
+
       {/* DM confirm menu removed — future feature */}
       <ShareProfileCard
         visible={shareCardVisible}
@@ -524,7 +624,46 @@ const makeStyles = (C) => StyleSheet.create({
   postsHeaderText: { fontSize: 11, fontWeight: '600', color: C.textMuted, textTransform: 'uppercase', letterSpacing: 1 },
 
   empty: { paddingTop: 48, alignItems: 'center' },
-  emptyText: { fontSize: 15, color: C.textMuted },
+  emptyText: { fontSize: 15, color: C.textMuted, textAlign: 'center' },
+
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
+  modalSheet: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '75%',
+    paddingBottom: 32,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: C.separator,
+  },
+  modalTitle: { fontSize: 17, fontWeight: '700' },
+  userRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  userRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  userRowAvatar: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  userRowInitial: { fontSize: 17, fontWeight: '700', color: '#fff' },
+  userRowName: { fontSize: 15, fontWeight: '600' },
+  userRowUsername: { fontSize: 13, marginTop: 1 },
+  unfollowBtn: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    marginLeft: 8,
+  },
+  unfollowText: { fontSize: 13, fontWeight: '600' },
 
   circleRow: {
     flexDirection: 'row',
