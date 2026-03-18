@@ -8,6 +8,7 @@ import QRCode from 'react-native-qrcode-svg';
 import { useTranslation } from 'react-i18next';
 
 const BLUE = '#0033A0';
+const GOLD = '#CBA052';
 
 const BADGE_LABELS = {
   government: 'OFFICIAL',
@@ -38,7 +39,7 @@ export default function ShareProfileCard({ visible, onClose, profile }) {
   const badge = profile?.verifiedBadge && profile.verifiedBadge !== 'none'
     ? profile.verifiedBadge : null;
   const isFounder = badge === 'founder';
-  const tagline = isArabic ? 'أنا على كواي' : "I'M ON KUWAI";
+  const tagline = isArabic ? 'تطبيق الكويت الاجتماعي' : "KUWAIT'S SOCIAL APP";
 
   const handleShare = async () => {
     if (sharing) return;
@@ -100,7 +101,7 @@ export default function ShareProfileCard({ visible, onClose, profile }) {
               )}
 
               {/* Tagline */}
-              <Text style={s.tagline}>{tagline}</Text>
+              <Text style={[s.tagline, !isArabic && { letterSpacing: 3 }]}>{tagline}</Text>
             </View>
 
             {/* ── BOTTOM SECTION — white ── */}
@@ -217,7 +218,7 @@ const s = StyleSheet.create({
     height: 110,
     borderRadius: 55,
     borderWidth: 4,
-    borderColor: '#fff',
+    borderColor: GOLD,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -237,7 +238,7 @@ const s = StyleSheet.create({
     gap: 5,
     marginBottom: 16,
   },
-  star: { color: '#FFD700', fontSize: 11 },
+  star: { color: GOLD, fontSize: 11 },
   badgeText: {
     color: 'rgba(255,255,255,0.7)',
     fontSize: 11,
@@ -247,8 +248,8 @@ const s = StyleSheet.create({
   tagline: {
     fontSize: 11,
     fontWeight: '800',
-    color: 'rgba(255,255,255,0.5)',
-    letterSpacing: 3,
+    color: GOLD,
+    opacity: 0.85,
     textTransform: 'uppercase',
   },
 
@@ -261,7 +262,7 @@ const s = StyleSheet.create({
   accentLine: {
     width: '100%',
     height: 3,
-    backgroundColor: BLUE,
+    backgroundColor: GOLD,
   },
   bottomInner: {
     flex: 1,
