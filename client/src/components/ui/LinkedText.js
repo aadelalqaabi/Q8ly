@@ -3,9 +3,9 @@ import { Text, Linking } from 'react-native';
 
 const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`[\]]+/g;
 
-export default function LinkedText({ children, style, numberOfLines, linkColor = '#0033A0' }) {
+export default function LinkedText({ children, style, numberOfLines, linkColor = '#0033A0', selectable = false }) {
   if (!children || typeof children !== 'string') {
-    return <Text style={style} numberOfLines={numberOfLines}>{children}</Text>;
+    return <Text style={style} numberOfLines={numberOfLines} selectable={selectable}>{children}</Text>;
   }
 
   const parts = [];
@@ -29,7 +29,7 @@ export default function LinkedText({ children, style, numberOfLines, linkColor =
   }
 
   return (
-    <Text style={style} numberOfLines={numberOfLines}>
+    <Text style={style} numberOfLines={numberOfLines} selectable={selectable}>
       {parts.map((part, i) =>
         part.isLink ? (
           <Text

@@ -267,17 +267,15 @@ export default function HachiRoomScreen({ navigation, route }) {
     navigation.setOptions({
       title: activeRoom.title,
       headerRight: () => (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-          <TouchableOpacity onPress={handleShare} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="arrow-redo-outline" size={22} color={COLORS.accent} />
-          </TouchableOpacity>
-          {isCreator && activeRoom.isActive && (
-            <TouchableOpacity onPress={() => setEndMenuVisible(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={{ fontSize: 15, color: COLORS.error }}>{t('hachi.endHachi')}</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        <TouchableOpacity onPress={handleShare} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Ionicons name="arrow-redo-outline" size={22} color={COLORS.accent} />
+        </TouchableOpacity>
       ),
+      headerLeft: isCreator && activeRoom.isActive ? () => (
+        <TouchableOpacity onPress={() => setEndMenuVisible(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ marginStart: 4 }}>
+          <Text style={{ fontSize: 15, color: COLORS.error }}>{t('hachi.endHachi')}</Text>
+        </TouchableOpacity>
+      ) : undefined,
     });
   }, [activeRoom, isCreator]);
 
@@ -530,7 +528,7 @@ export default function HachiRoomScreen({ navigation, route }) {
             <Text style={styles.viewOnlyText}>{t('hachi.removedReadOnly')}</Text>
           </View>
         ) : (
-          <View style={[styles.inputBar, { paddingBottom: keyboardVisible ? 10 : insets.bottom + 10 }]}>
+          <View style={[styles.inputBar, { paddingBottom: keyboardVisible ? 16 : insets.bottom + 10 }]}>
             <TextInput
               style={styles.input}
               placeholder={t('hachi.messagePlaceholder')}

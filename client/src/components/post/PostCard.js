@@ -579,7 +579,7 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
 
             {/* Text body */}
             {!!displayContent && (
-              <LinkedText style={styles.body} numberOfLines={isDetailView ? undefined : 5} linkColor={COLORS.accent}>
+              <LinkedText style={styles.body} numberOfLines={isDetailView ? undefined : 5} linkColor={COLORS.accent} selectable={isDetailView}>
                 {displayContent}
               </LinkedText>
             )}
