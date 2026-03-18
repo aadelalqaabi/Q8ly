@@ -10,12 +10,19 @@ import { useTranslation } from 'react-i18next';
 const BLUE = '#0033A0';
 const GOLD = '#CBA052';
 
-const BADGE_LABELS = {
+const BADGE_LABELS_EN = {
   government: 'OFFICIAL',
   media: 'MEDIA',
   business: 'BUSINESS',
   influencer: 'INFLUENCER',
   founder: 'FOUNDER',
+};
+const BADGE_LABELS_AR = {
+  government: 'رسمي',
+  media: 'إعلام',
+  business: 'أعمال',
+  influencer: 'مؤثر',
+  founder: 'مؤسس',
 };
 
 const PALETTE = ['#1a3f8f', '#0a5c2e', '#7a2a10', '#1a3a8f', '#4a0a8a', '#0a4a6b', '#7a4a0a'];
@@ -40,6 +47,8 @@ export default function ShareProfileCard({ visible, onClose, profile }) {
     ? profile.verifiedBadge : null;
   const isFounder = badge === 'founder';
   const tagline = isArabic ? 'اول منصة تواصل اجتماعي كويتية' : "KUWAIT'S FIRST SOCIAL MEDIA APP";
+  const BADGE_LABELS = isArabic ? BADGE_LABELS_AR : BADGE_LABELS_EN;
+  const followText = isArabic ? 'تابعني على التطبيق' : 'Follow me on the app';
 
   const handleShare = async () => {
     if (sharing) return;
@@ -96,7 +105,7 @@ export default function ShareProfileCard({ visible, onClose, profile }) {
               {!!badge && (
                 <View style={s.badgeRow}>
                   {isFounder && <Text style={s.star}>★</Text>}
-                  <Text style={s.badgeText}>{BADGE_LABELS[badge]}</Text>
+                  <Text style={[s.badgeText, isArabic && { letterSpacing: 0 }]}>{BADGE_LABELS[badge]}</Text>
                 </View>
               )}
 
@@ -122,7 +131,7 @@ export default function ShareProfileCard({ visible, onClose, profile }) {
                 <View style={s.bottomText}>
                   <Text style={s.bottomWordmark}>KUWAI</Text>
                   <View style={s.followBadge}>
-                    <Text style={s.followBadgeText}>Follow me on the app</Text>
+                    <Text style={s.followBadgeText}>{followText}</Text>
                   </View>
                 </View>
               </View>
