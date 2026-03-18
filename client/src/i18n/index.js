@@ -106,8 +106,13 @@ export async function changeAppLanguage(newLang, i18nInstance, restartApp) {
 
   await i18nInstance.changeLanguage(newLang);
   await AsyncStorage.setItem(LANG_EXPLICIT_KEY, newLang);
-  // No forceRTL — layout direction is handled by component-level isRTL checks.
-  restartApp();
+
+  try {
+    const Updates = require('expo-updates');
+    await Updates.reloadAsync(); // full native reload — execution stops here
+  } catch {
+    restartApp(); // fallback for Expo Go / new arch
+  }
 }
 
 // ── date-fns locale helper ────────────────────────────────────────────────────
