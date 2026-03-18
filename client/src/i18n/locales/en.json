@@ -116,7 +116,9 @@
     "noFollowers": "No followers yet",
     "noFollowing": "Not following anyone yet",
     "leaveCircle": "Leave Circle",
-    "leaveCircleMsg": "You will be removed from this circle."
+    "leaveCircleMsg": "You will be removed from this circle.",
+    "pin": "Pin",
+    "unpin": "Unpin"
   },
 
   "hachi": {

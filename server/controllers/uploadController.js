@@ -128,7 +128,7 @@ const uploadVideo = async (req, res, next) => {
     const result = await uploadToCloudinary(req.file.buffer, {
       folder: 'kuwait-now/videos',
       resource_type: 'video',
-      transformation: [{ quality: 'auto' }],
+      // Store at original quality — no lossy re-encoding
       eager: [{ format: 'jpg', transformation: [{ width: 720, crop: 'scale' }, { so: '0' }] }],
       eager_async: false,
     });

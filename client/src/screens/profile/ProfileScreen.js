@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   Image, ActivityIndicator, Alert, Share, Platform, Modal, RefreshControl,
 } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 import { useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -293,37 +294,6 @@ export default function ProfileScreen({ navigation, route }) {
 
   const renderHeader = () => (
     <View>
-      {/* Nav row */}
-      <View style={[styles.navRow, { paddingTop: insets.top + 6 }]}>
-        {isPushed ? (
-          <TouchableOpacity style={styles.navBtn} onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={26} color={COLORS.text} />
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.navBtn} />
-        )}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <TouchableOpacity style={styles.navBtn} onPress={handleShare} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Ionicons name="arrow-redo-outline" size={23} color={COLORS.textMuted} />
-          </TouchableOpacity>
-          {isOwnProfile && (
-            <TouchableOpacity style={styles.navBtn} onPress={() => setShareCardVisible(true)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name="qr-code-outline" size={22} color={COLORS.textMuted} />
-            </TouchableOpacity>
-          )}
-          {isOwnProfile && (
-            <TouchableOpacity style={styles.navBtn} onPress={() => navigation.navigate('Settings')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name="settings-outline" size={24} color={COLORS.textMuted} />
-            </TouchableOpacity>
-          )}
-          {isPushed && !isOwnProfile && (
-            <TouchableOpacity style={styles.navBtn} onPress={handleBlock} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name={isBlocked ? 'ban' : 'ellipsis-horizontal'} size={24} color={COLORS.textMuted} />
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
       {/* Avatar */}
       <View style={styles.avatarSection}>
         {profile?.profilePic ? (
@@ -445,67 +415,73 @@ export default function ProfileScreen({ navigation, route }) {
 
   const renderCircleItem = useCallback(({ item: room }) => {
     const isPinned = pinnedIds.includes(String(room._id));
-    return (
-    <View style={styles.circleRow}>
-      <TouchableOpacity
-        style={styles.circleRowMain}
-        onPress={() => navigation.navigate('HachiRoom', { roomId: room._id })}
-        activeOpacity={0.7}
-      >
-        <View style={[styles.circleDot, { backgroundColor: room.isActive ? '#34C759' : COLORS.separator }]} />
-        <View style={styles.circleInfo}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-            {isPinned && <Ionicons name="pin" size={11} color={COLORS.accent} />}
-            <Text style={styles.circleTitle} numberOfLines={1}>{room.title}</Text>
-          </View>
-          <Text style={styles.circleMeta}>{room.memberCount || 1} {t('profile.membersLabel')} · {room.category}</Text>
-        </View>
-        {room.isActive ? (
-          <View style={[styles.circleLiveBadge, { backgroundColor: '#34C75918' }]}>
-            <Text style={styles.circleLiveText}>{t('hachi.liveBadge')}</Text>
-          </View>
-        ) : (
-          <Text style={styles.circleEndedText}>{t('hachi.endedBadge')}</Text>
-        )}
-      </TouchableOpacity>
-      <TouchableOpacity
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        onPress={() => handleTogglePin(room._id)}
-        activeOpacity={0.7}
-        style={{ paddingHorizontal: 6 }}
-      >
-        <Ionicons name={isPinned ? 'pin' : 'pin-outline'} size={18} color={isPinned ? COLORS.accent : COLORS.textMuted} />
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.circleDeleteBtn}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        onPress={() => {
-          Alert.alert(
-            t('profile.deleteCircle'),
-            t('profile.deleteCircleMsg'),
-            [
-              { text: t('common.cancel'), style: 'cancel' },
-              {
-                text: t('common.delete'),
-                style: 'destructive',
-                onPress: async () => {
-                  try {
-                    await hachiAPI.deleteRoom(room._id);
-                    setCircles((prev) => prev.filter((r) => r._id !== room._id));
-                  } catch (e) {
-                    Alert.alert(t('common.error'), e.message || t('common.somethingWrong'));
-                  }
+
+    const renderRightActions = () => (
+      <View style={styles.swipeActions}>
+        <TouchableOpacity
+          style={[styles.swipeAction, { backgroundColor: COLORS.accent }]}
+          onPress={() => handleTogglePin(room._id)}
+          activeOpacity={0.85}
+        >
+          <Ionicons name={isPinned ? 'pin' : 'pin-outline'} size={20} color="#fff" />
+          <Text style={styles.swipeActionText}>{isPinned ? t('profile.unpin') : t('profile.pin')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.swipeAction, { backgroundColor: '#FF3B30' }]}
+          onPress={() => {
+            Alert.alert(
+              t('profile.deleteCircle'),
+              t('profile.deleteCircleMsg'),
+              [
+                { text: t('common.cancel'), style: 'cancel' },
+                {
+                  text: t('common.delete'),
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      await hachiAPI.deleteRoom(room._id);
+                      setCircles((prev) => prev.filter((r) => r._id !== room._id));
+                    } catch (e) {
+                      Alert.alert(t('common.error'), e.message || t('common.somethingWrong'));
+                    }
+                  },
                 },
-              },
-            ]
-          );
-        }}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="trash-outline" size={20} color="#FF3B30" />
-      </TouchableOpacity>
-    </View>
-  );
+              ]
+            );
+          }}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="trash-outline" size={20} color="#fff" />
+          <Text style={styles.swipeActionText}>{t('common.delete')}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+
+    return (
+      <Swipeable renderRightActions={renderRightActions} overshootRight={false}>
+        <TouchableOpacity
+          style={styles.circleRow}
+          onPress={() => navigation.navigate('HachiRoom', { roomId: room._id })}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.circleDot, { backgroundColor: room.isActive ? '#34C759' : COLORS.separator }]} />
+          <View style={styles.circleInfo}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              {isPinned && <Ionicons name="pin" size={11} color={COLORS.accent} />}
+              <Text style={styles.circleTitle} numberOfLines={1}>{room.title}</Text>
+            </View>
+            <Text style={styles.circleMeta}>{room.memberCount || 1} {t('profile.membersLabel')} · {room.category}</Text>
+          </View>
+          {room.isActive ? (
+            <View style={[styles.circleLiveBadge, { backgroundColor: '#34C75918' }]}>
+              <Text style={styles.circleLiveText}>{t('hachi.liveBadge')}</Text>
+            </View>
+          ) : (
+            <Text style={styles.circleEndedText}>{t('hachi.endedBadge')}</Text>
+          )}
+        </TouchableOpacity>
+      </Swipeable>
+    );
   }, [pinnedIds, handleTogglePin, t, COLORS, navigation]);
 
   const renderPostItem = useCallback(({ item }) => (
@@ -522,6 +498,37 @@ export default function ProfileScreen({ navigation, route }) {
 
   return (
     <View style={styles.container}>
+      {/* Fixed nav bar — lives outside FlatList so it never blocks the refresh indicator */}
+      <View style={[styles.navRow, { paddingTop: insets.top + 6, backgroundColor: COLORS.white }]}>
+        {isPushed ? (
+          <TouchableOpacity style={styles.navBtn} onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={26} color={COLORS.text} />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.navBtn} />
+        )}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <TouchableOpacity style={styles.navBtn} onPress={handleShare} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Ionicons name="arrow-redo-outline" size={23} color={COLORS.textMuted} />
+          </TouchableOpacity>
+          {isOwnProfile && (
+            <TouchableOpacity style={styles.navBtn} onPress={() => setShareCardVisible(true)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="qr-code-outline" size={22} color={COLORS.textMuted} />
+            </TouchableOpacity>
+          )}
+          {isOwnProfile && (
+            <TouchableOpacity style={styles.navBtn} onPress={() => navigation.navigate('Settings')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="settings-outline" size={24} color={COLORS.textMuted} />
+            </TouchableOpacity>
+          )}
+          {isPushed && !isOwnProfile && (
+            <TouchableOpacity style={styles.navBtn} onPress={handleBlock} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name={isBlocked ? 'ban' : 'ellipsis-horizontal'} size={24} color={COLORS.textMuted} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
       <FlatList
         ref={flatListRef}
         data={feedData}
@@ -730,17 +737,12 @@ const makeStyles = (C) => StyleSheet.create({
   circleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingEnd: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: C.separator,
-  },
-  circleRowMain: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingStart: 16,
+    paddingHorizontal: 16,
     paddingVertical: 14,
     gap: 12,
+    backgroundColor: C.white,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: C.separator,
   },
   circleDot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
   circleInfo: { flex: 1 },
@@ -749,5 +751,13 @@ const makeStyles = (C) => StyleSheet.create({
   circleLiveBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10 },
   circleLiveText: { fontSize: 12, fontWeight: '700', color: '#34C759' },
   circleEndedText: { fontSize: 12, color: C.textMuted },
-  circleDeleteBtn: { paddingStart: 12, paddingVertical: 14 },
+
+  swipeActions: { flexDirection: 'row' },
+  swipeAction: {
+    width: 72,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 4,
+  },
+  swipeActionText: { fontSize: 11, fontWeight: '600', color: '#fff' },
 });
