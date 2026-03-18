@@ -5,14 +5,14 @@ import {
 } from 'react-native';
 import ViewShot from 'react-native-view-shot';
 import QRCode from 'react-native-qrcode-svg';
-import { useTheme } from '../../context/ThemeContext';
+import { useTranslation } from 'react-i18next';
 
 const BADGE_COLORS = {
-  government: '#0033A0',
-  media:      '#D97706',
-  business:   '#16A34A',
-  influencer: '#7C3AED',
-  founder:    '#0033A0',
+  government: '#1A3A6B',
+  media:      '#92500A',
+  business:   '#0D5C2E',
+  influencer: '#4A1A8A',
+  founder:    '#1A3A6B',
 };
 const BADGE_LABELS = {
   government: 'OFFICIAL',
@@ -22,7 +22,7 @@ const BADGE_LABELS = {
   founder:    'FOUNDER',
 };
 
-const PALETTE = ['#0033A0', '#007A3D', '#FF6B35', '#2196F3', '#9C27B0', '#00BCD4', '#FF9800'];
+const PALETTE = ['#1A3A6B', '#0D5C2E', '#8B3A1A', '#1A4A8B', '#4A1A8A', '#0A5A6B', '#8B5A0A'];
 function avatarBg(name) {
   if (!name) return PALETTE[0];
   let h = 0;
@@ -30,14 +30,20 @@ function avatarBg(name) {
   return PALETTE[Math.abs(h) % PALETTE.length];
 }
 
+// Card width in points — ViewShot pixelRatio scales this to 1080px
+const CARD_W = 300;
+const CARD_H = CARD_W * (16 / 9); // 533pt → 1920px at pixelRatio 3.6
+
 export default function ShareProfileCard({ visible, onClose, profile }) {
-  const { colors: COLORS } = useTheme();
+  const { t, i18n } = useTranslation();
+  const isArabic = i18n.language === 'ar';
   const shotRef = useRef();
   const [sharing, setSharing] = useState(false);
 
   const profileUrl = `https://kuwai.app/profile/${profile?.username}`;
-  const badge = profile?.verifiedBadge !== 'none' ? profile?.verifiedBadge : null;
+  const badge = profile?.verifiedBadge && profile.verifiedBadge !== 'none' ? profile.verifiedBadge : null;
   const isFounder = badge === 'founder';
+  const tagline = isArabic ? 'أنا على كواي' : "I'm on KUWAI";
 
   const handleShare = async () => {
     if (sharing) return;
@@ -57,12 +63,16 @@ export default function ShareProfileCard({ visible, onClose, profile }) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} />
-      <View style={[styles.sheet, { backgroundColor: COLORS.white }]}>
-        {/* Card — captured by ViewShot */}
-        <ViewShot ref={shotRef} options={{ format: 'png', quality: 1 }} style={styles.shotWrapper}>
-          <View style={styles.card}>
-            {/* Top accent bar */}
-            <View style={styles.accentBar} />
+      <View style={styles.sheet}>
+        {/* Card — captured by ViewShot at 1080×1920 */}
+        <ViewShot
+          ref={shotRef}
+          options={{ format: 'png', quality: 1, pixelRatio: 1080 / CARD_W }}
+          style={styles.shotWrapper}
+        >
+          <View style={[styles.card, { width: CARD_W, height: CARD_H }]}>
+            {/* Tagline top */}
+            <Text style={styles.tagline}>{tagline}</Text>
 
             {/* Avatar */}
             <View style={styles.avatarWrap}>
@@ -77,32 +87,29 @@ export default function ShareProfileCard({ visible, onClose, profile }) {
               )}
             </View>
 
-            {/* Name + username */}
+            {/* Name */}
             <Text style={styles.name}>{profile?.name}</Text>
-            <Text style={styles.username}>@{profile?.username}</Text>
 
             {/* Badge */}
             {!!badge && (
               <View style={[styles.badge, { backgroundColor: BADGE_COLORS[badge] }]}>
-                {isFounder && (
-                  <Text style={styles.badgeStar}>★</Text>
-                )}
+                {isFounder && <Text style={styles.badgeStar}>★</Text>}
                 <Text style={styles.badgeText}>{BADGE_LABELS[badge]}</Text>
               </View>
             )}
 
-            {/* Divider */}
-            <View style={styles.divider} />
+            {/* Spacer */}
+            <View style={{ flex: 1 }} />
 
-            {/* QR code */}
-            <QRCode
-              value={profileUrl}
-              size={110}
-              color="#000"
-              backgroundColor="#fff"
-            />
-
-            <Text style={styles.profileUrl}>kuwai.app/profile/{profile?.username}</Text>
+            {/* QR code on white pill */}
+            <View style={styles.qrWrap}>
+              <QRCode
+                value={profileUrl}
+                size={90}
+                color="#0033A0"
+                backgroundColor="#fff"
+              />
+            </View>
 
             {/* Wordmark */}
             <Text style={styles.wordmark}>KUWAI</Text>
@@ -118,12 +125,12 @@ export default function ShareProfileCard({ visible, onClose, profile }) {
         >
           {sharing
             ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.shareBtnText}>Share</Text>
+            : <Text style={styles.shareBtnText}>{t('common.share', 'Share')}</Text>
           }
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.cancelBtn} onPress={onClose} activeOpacity={0.7}>
-          <Text style={[styles.cancelText, { color: COLORS.textMuted }]}>Cancel</Text>
+          <Text style={styles.cancelText}>{t('common.cancel', 'Cancel')}</Text>
         </TouchableOpacity>
       </View>
     </Modal>
@@ -133,73 +140,65 @@ export default function ShareProfileCard({ visible, onClose, profile }) {
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   sheet: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingTop: 12,
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 16,
     paddingHorizontal: 24,
-    paddingBottom: 36,
+    paddingBottom: 40,
     alignItems: 'center',
-    gap: 12,
+    gap: 14,
   },
   shotWrapper: {
     borderRadius: 20,
     overflow: 'hidden',
   },
   card: {
-    width: 300,
-    backgroundColor: '#fff',
+    backgroundColor: '#0033A0',
     borderRadius: 20,
     alignItems: 'center',
-    paddingBottom: 28,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
+    paddingTop: 44,
+    paddingBottom: 36,
+    paddingHorizontal: 24,
   },
-  accentBar: {
-    width: '100%',
-    height: 6,
-    backgroundColor: '#0033A0',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+  tagline: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.7)',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
     marginBottom: 28,
   },
   avatarWrap: {
-    marginBottom: 14,
-    shadowColor: '#0033A0',
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
+    marginBottom: 18,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
   },
   avatar: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
-    borderColor: '#0033A0',
   },
   avatarInitial: {
-    fontSize: 36,
+    fontSize: 38,
     fontWeight: '700',
     color: '#fff',
   },
   name: {
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: '800',
-    color: '#000',
+    color: '#fff',
     letterSpacing: -0.3,
-  },
-  username: {
-    fontSize: 14,
-    color: '#6C6C70',
-    marginTop: 2,
-    marginBottom: 10,
+    textAlign: 'center',
   },
   badge: {
     flexDirection: 'row',
@@ -208,7 +207,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    marginBottom: 6,
+    marginTop: 10,
   },
   badgeStar: {
     color: '#FFD700',
@@ -216,29 +215,22 @@ const styles = StyleSheet.create({
     lineHeight: 11,
   },
   badgeText: {
-    color: '#fff',
+    color: 'rgba(255,255,255,0.9)',
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.5,
   },
-  divider: {
-    width: 40,
-    height: 1,
-    backgroundColor: '#E5E5EA',
-    marginVertical: 20,
-  },
-  profileUrl: {
-    fontSize: 11,
-    color: '#6C6C70',
-    marginTop: 10,
-    letterSpacing: 0.2,
+  qrWrap: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 20,
   },
   wordmark: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '900',
-    color: '#0033A0',
-    letterSpacing: 4,
-    marginTop: 18,
+    color: '#fff',
+    letterSpacing: 6,
   },
   shareBtn: {
     width: '100%',
@@ -253,9 +245,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   cancelBtn: {
-    paddingVertical: 8,
+    paddingVertical: 4,
   },
   cancelText: {
     fontSize: 16,
+    color: '#6C6C70',
   },
 });

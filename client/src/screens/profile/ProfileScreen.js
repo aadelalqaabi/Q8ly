@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  Image, ActivityIndicator, Alert,
+  Image, ActivityIndicator, Alert, Share, Platform,
 } from 'react-native';
 import { useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
@@ -211,7 +211,13 @@ export default function ProfileScreen({ navigation, route }) {
   };
 
   const [shareCardVisible, setShareCardVisible] = useState(false);
-  const handleShare = () => setShareCardVisible(true);
+
+  const handleShare = async () => {
+    const url = `https://kuwai.app/profile/${profile?.username}`;
+    try {
+      await Share.share(Platform.OS === 'ios' ? { url } : { message: url });
+    } catch { /* silent */ }
+  };
 
   const handleBlock = () => {
     const actionKey = isBlocked ? 'profile.unblock' : 'profile.block';
@@ -242,19 +248,32 @@ export default function ProfileScreen({ navigation, route }) {
     <View>
       {/* Nav row */}
       <View style={[styles.navRow, { paddingTop: insets.top + 6 }]}>
-        {isPushed ? (
-          <TouchableOpacity style={styles.navBtn} onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={26} color={COLORS.text} />
-          </TouchableOpacity>
-        ) : isOwnProfile ? (
-          <View style={styles.navBtn} />
-        ) : (
-          <View style={styles.navBtn} />
-        )}
+        {/* Left: back (if pushed) + avatar */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          {isPushed && (
+            <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={26} color={COLORS.text} />
+            </TouchableOpacity>
+          )}
+          {profile?.profilePic ? (
+            <Image source={{ uri: profile.profilePic }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatar, { backgroundColor: avatarBg(profile?.name) }]}>
+              <Text style={styles.avatarInitial}>{profile?.name?.[0]?.toUpperCase() || '?'}</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Right: actions */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
           <TouchableOpacity style={styles.navBtn} onPress={handleShare} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Ionicons name="arrow-redo-outline" size={23} color={COLORS.textMuted} />
           </TouchableOpacity>
+          {isOwnProfile && (
+            <TouchableOpacity style={styles.navBtn} onPress={() => setShareCardVisible(true)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="qr-code-outline" size={22} color={COLORS.textMuted} />
+            </TouchableOpacity>
+          )}
           {isOwnProfile && (
             <TouchableOpacity style={styles.navBtn} onPress={() => navigation.navigate('Settings')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <Ionicons name="settings-outline" size={24} color={COLORS.textMuted} />
@@ -264,19 +283,6 @@ export default function ProfileScreen({ navigation, route }) {
             <TouchableOpacity style={styles.navBtn} onPress={handleBlock} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <Ionicons name={isBlocked ? 'ban' : 'ellipsis-horizontal'} size={24} color={COLORS.textMuted} />
             </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
-      {/* Avatar */}
-      <View style={styles.avatarSection}>
-        <View style={styles.avatarRing}>
-          {profile?.profilePic ? (
-            <Image source={{ uri: profile.profilePic }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, { backgroundColor: avatarBg(profile?.name) }]}>
-              <Text style={styles.avatarInitial}>{profile?.name?.[0]?.toUpperCase() || '?'}</Text>
-            </View>
           )}
         </View>
       </View>
@@ -479,14 +485,12 @@ const makeStyles = (C) => StyleSheet.create({
   notifBadge: { position: 'absolute', top: -4, right: -6, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: '#FF3B30', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3 },
   notifBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '700', lineHeight: 12 },
 
-  avatarSection: { alignItems: 'center', paddingTop: 8, paddingBottom: 16 },
-  avatarRing: { borderRadius: 52 },
-  avatar: { width: 104, height: 104, borderRadius: 52, justifyContent: 'center', alignItems: 'center' },
-  avatarInitial: { fontSize: 38, fontWeight: '700', color: '#fff' },
+  avatar: { width: 52, height: 52, borderRadius: 26, justifyContent: 'center', alignItems: 'center' },
+  avatarInitial: { fontSize: 20, fontWeight: '700', color: '#fff' },
 
-  identity: { alignItems: 'center', paddingHorizontal: 32, paddingBottom: 20, gap: 4 },
-  name: { fontSize: 24, fontWeight: '800', color: C.text, textAlign: 'center', letterSpacing: -0.5 },
-  bio: { fontSize: 14, color: C.text, lineHeight: 20, textAlign: 'center', marginTop: 6 },
+  identity: { alignItems: 'flex-start', paddingHorizontal: 16, paddingBottom: 20, gap: 4 },
+  name: { fontSize: 24, fontWeight: '800', color: C.text, letterSpacing: -0.5 },
+  bio: { fontSize: 14, color: C.text, lineHeight: 20, marginTop: 6 },
   location: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 4 },
   locationText: { fontSize: 12, color: C.textMuted },
 
