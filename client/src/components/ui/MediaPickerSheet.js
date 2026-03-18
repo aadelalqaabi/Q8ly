@@ -4,6 +4,7 @@ import {
   Image, Animated, Dimensions, ActivityIndicator,
 } from 'react-native';
 import * as MediaLibrary from 'expo-media-library';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
@@ -20,6 +21,24 @@ function fmtDuration(secs) {
   const m = Math.floor(secs / 60);
   const s = Math.floor(secs % 60);
   return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+function VideoThumb({ uri, style }) {
+  const player = useVideoPlayer(uri, (p) => {
+    p.pause();
+    p.currentTime = 0;
+  });
+  return (
+    <VideoView
+      player={player}
+      style={style}
+      contentFit="cover"
+      nativeControls={false}
+      allowsFullscreen={false}
+      allowsPictureInPicture={false}
+      pointerEvents="none"
+    />
+  );
 }
 
 export default function MediaPickerSheet({ visible, onClose, onSelect, maxItems = 4 }) {
@@ -93,8 +112,8 @@ export default function MediaPickerSheet({ visible, onClose, onSelect, maxItems 
   }, []);
 
   // Resolve ph:// → file:// localUri for photos so Image can render them.
-  // Videos: use a.uri (ph:// on iOS) directly — Image can render ph:// as a thumbnail,
-  // but cannot render a localUri (.MOV/.MP4 video file), which causes a black square.
+  // Videos: use a.uri (ph:// on iOS) directly — VideoView handles ph:// natively and
+  // renders the first frame. Image cannot render video ph:// URIs (shows black).
   useEffect(() => {
     if (assets.length === 0) return;
     const unresolved = assets.filter((a) => !uriCache[a.id]);
@@ -184,9 +203,11 @@ export default function MediaPickerSheet({ visible, onClose, onSelect, maxItems 
         onPress={() => !isMaxed && toggleSelect(item)}
         activeOpacity={0.75}
       >
-        {thumbUri
-          ? <Image source={{ uri: thumbUri }} style={styles.thumbImg} />
-          : <View style={[styles.thumbImg, { backgroundColor: COLORS.fill }]} />
+        {item.mediaType === 'video' && thumbUri
+          ? <VideoThumb uri={thumbUri} style={styles.thumbImg} />
+          : thumbUri
+            ? <Image source={{ uri: thumbUri }} style={styles.thumbImg} />
+            : <View style={[styles.thumbImg, { backgroundColor: COLORS.fill }]} />
         }
 
         {item.mediaType === 'video' && (

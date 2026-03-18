@@ -198,6 +198,7 @@ userSchema.methods.toPublicProfile = function () {
     postsCount: this.postsCount,
     likesReceived: this.likesReceived,
     hachiPoints: this.hachiPoints || 0,
+    pinnedCircles: (this.pinnedCircles || []).map(String),
     createdAt: this.createdAt,
   };
 };

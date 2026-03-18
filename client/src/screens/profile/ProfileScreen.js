@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  Image, ActivityIndicator, Alert, Share, Platform, Modal,
+  Image, ActivityIndicator, Alert, Share, Platform, Modal, RefreshControl,
 } from 'react-native';
 import { useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
@@ -175,8 +175,8 @@ export default function ProfileScreen({ navigation, route }) {
     try {
       const res = await hachiAPI.getMyCircles();
       const rooms = res.rooms || [];
-      // Pinned IDs come from the auth user's profile
-      const pinned = (currentUser?.pinnedCircles || []).map(String);
+      // Pinned IDs come from the server profile
+      const pinned = (profile?.pinnedCircles || currentUser?.pinnedCircles || []).map(String);
       setPinnedIds(pinned);
       // Sort: pinned first
       rooms.sort((a, b) => {
@@ -187,7 +187,7 @@ export default function ProfileScreen({ navigation, route }) {
       setCircles(rooms);
     } catch (e) { console.error(e); }
     finally { setPostsLoading(false); }
-  }, [profile?._id, currentUser?.pinnedCircles]);
+  }, [profile?._id, profile?.pinnedCircles, currentUser?.pinnedCircles]);
 
   useEffect(() => {
     const init = async () => {
@@ -545,17 +545,23 @@ export default function ProfileScreen({ navigation, route }) {
         onEndReached={() => { if (!postsLoading && hasMore && activeTab === 'posts') loadPosts(page + 1); }}
         onEndReachedThreshold={0.4}
         showsVerticalScrollIndicator={false}
-        refreshing={refreshing}
-        onRefresh={async () => {
-          setRefreshing(true);
-          await Promise.all([
-            loadProfile(),
-            activeTab === 'posts' ? loadPosts(1)
-              : activeTab === 'bookmarks' ? loadBookmarks()
-              : loadCircles(),
-          ]);
-          setRefreshing(false);
-        }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={async () => {
+              setRefreshing(true);
+              await Promise.all([
+                loadProfile(),
+                activeTab === 'posts' ? loadPosts(1)
+                  : activeTab === 'bookmarks' ? loadBookmarks()
+                  : loadCircles(),
+              ]);
+              setRefreshing(false);
+            }}
+            tintColor={COLORS.accent}
+            colors={[COLORS.accent]}
+          />
+        }
       />
 
       {/* Followers / Following modal */}
