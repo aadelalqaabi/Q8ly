@@ -256,7 +256,7 @@ export default function HachiRoomScreen({ navigation, route }) {
   }, [activeRoom?.messages?.length]);
 
   const handleShare = async () => {
-    const url = `kuwai://circle/${roomId}`;
+    const url = `https://kuwai.app/circle/${roomId}`;
     try {
       await Share.share(Platform.OS === 'ios' ? { url } : { message: url });
     } catch { /* silent */ }
@@ -266,11 +266,18 @@ export default function HachiRoomScreen({ navigation, route }) {
     if (!activeRoom) return;
     navigation.setOptions({
       title: activeRoom.title,
-      headerRight: isCreator && activeRoom.isActive ? () => (
-        <TouchableOpacity onPress={() => setEndMenuVisible(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={{ fontSize: 15, color: COLORS.error }}>{t('hachi.endHachi')}</Text>
-        </TouchableOpacity>
-      ) : undefined,
+      headerRight: () => (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+          <TouchableOpacity onPress={handleShare} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="arrow-redo-outline" size={22} color={COLORS.accent} />
+          </TouchableOpacity>
+          {isCreator && activeRoom.isActive && (
+            <TouchableOpacity onPress={() => setEndMenuVisible(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={{ fontSize: 15, color: COLORS.error }}>{t('hachi.endHachi')}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      ),
     });
   }, [activeRoom, isCreator]);
 

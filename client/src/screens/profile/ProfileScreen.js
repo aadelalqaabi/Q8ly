@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { usersAPI, hachiAPI } from '../../services/api';
 import PostCard from '../../components/post/PostCard';
 import BottomMenu from '../../components/ui/BottomMenu';
+import ShareProfileCard from '../../components/ui/ShareProfileCard';
 import { useTheme } from '../../context/ThemeContext';
 import { useGuestGate } from '../../context/GuestGateContext';
 
@@ -209,6 +210,9 @@ export default function ProfileScreen({ navigation, route }) {
     }
   };
 
+  const [shareCardVisible, setShareCardVisible] = useState(false);
+  const handleShare = () => setShareCardVisible(true);
+
   const handleBlock = () => {
     const actionKey = isBlocked ? 'profile.unblock' : 'profile.block';
     const action = t(actionKey);
@@ -247,16 +251,21 @@ export default function ProfileScreen({ navigation, route }) {
         ) : (
           <View style={styles.navBtn} />
         )}
-        {isOwnProfile && (
-          <TouchableOpacity style={styles.navBtn} onPress={() => navigation.navigate('Settings')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Ionicons name="settings-outline" size={24} color={COLORS.textMuted} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <TouchableOpacity style={styles.navBtn} onPress={handleShare} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Ionicons name="arrow-redo-outline" size={23} color={COLORS.textMuted} />
           </TouchableOpacity>
-        )}
-        {isPushed && !isOwnProfile && (
-          <TouchableOpacity style={styles.navBtn} onPress={handleBlock} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Ionicons name={isBlocked ? 'ban' : 'ellipsis-horizontal'} size={24} color={COLORS.textMuted} />
-          </TouchableOpacity>
-        )}
+          {isOwnProfile && (
+            <TouchableOpacity style={styles.navBtn} onPress={() => navigation.navigate('Settings')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="settings-outline" size={24} color={COLORS.textMuted} />
+            </TouchableOpacity>
+          )}
+          {isPushed && !isOwnProfile && (
+            <TouchableOpacity style={styles.navBtn} onPress={handleBlock} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name={isBlocked ? 'ban' : 'ellipsis-horizontal'} size={24} color={COLORS.textMuted} />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {/* Avatar */}
@@ -452,6 +461,11 @@ export default function ProfileScreen({ navigation, route }) {
       />
 
       {/* DM confirm menu removed — future feature */}
+      <ShareProfileCard
+        visible={shareCardVisible}
+        onClose={() => setShareCardVisible(false)}
+        profile={profile}
+      />
     </View>
   );
 }

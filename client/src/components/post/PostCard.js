@@ -442,7 +442,7 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
   };
 
   const handleShare = async () => {
-    const url = `kuwai://post/${post._id}`;
+    const url = `https://kuwai.app/post/${post._id}`;
     try {
       await Share.share(Platform.OS === 'ios' ? { url } : { message: url });
     } catch { /* silent */ }
@@ -648,7 +648,10 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
                 />
               </TouchableOpacity>
 
-              {/* Share — disabled */}
+              {/* Share */}
+              <TouchableOpacity style={styles.action} onPress={handleShare} hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}>
+                <Ionicons name="arrow-redo-outline" size={20} color={COLORS.textMuted} />
+              </TouchableOpacity>
             </View>
             {!!timestamp && <Text style={styles.timestamp}>{timestamp}</Text>}
             </View>
