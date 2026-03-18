@@ -292,13 +292,15 @@ const s = StyleSheet.create({
     borderRadius: 6,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    alignSelf: 'flex-start',
     marginTop: 6,
+    alignSelf: 'stretch',
+    alignItems: 'center',
   },
   followBadgeText: {
     fontSize: 11,
     fontWeight: '700',
     color: '#fff',
+    textAlign: 'center',
     letterSpacing: 0.3,
   },
 
