@@ -248,23 +248,13 @@ export default function ProfileScreen({ navigation, route }) {
     <View>
       {/* Nav row */}
       <View style={[styles.navRow, { paddingTop: insets.top + 6 }]}>
-        {/* Left: back (if pushed) + avatar */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          {isPushed && (
-            <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={26} color={COLORS.text} />
-            </TouchableOpacity>
-          )}
-          {profile?.profilePic ? (
-            <Image source={{ uri: profile.profilePic }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, { backgroundColor: avatarBg(profile?.name) }]}>
-              <Text style={styles.avatarInitial}>{profile?.name?.[0]?.toUpperCase() || '?'}</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Right: actions */}
+        {isPushed ? (
+          <TouchableOpacity style={styles.navBtn} onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={26} color={COLORS.text} />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.navBtn} />
+        )}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
           <TouchableOpacity style={styles.navBtn} onPress={handleShare} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Ionicons name="arrow-redo-outline" size={23} color={COLORS.textMuted} />
@@ -285,6 +275,17 @@ export default function ProfileScreen({ navigation, route }) {
             </TouchableOpacity>
           )}
         </View>
+      </View>
+
+      {/* Avatar */}
+      <View style={styles.avatarSection}>
+        {profile?.profilePic ? (
+          <Image source={{ uri: profile.profilePic }} style={styles.avatar} />
+        ) : (
+          <View style={[styles.avatar, { backgroundColor: avatarBg(profile?.name) }]}>
+            <Text style={styles.avatarInitial}>{profile?.name?.[0]?.toUpperCase() || '?'}</Text>
+          </View>
+        )}
       </View>
 
       {/* Identity */}
@@ -485,12 +486,13 @@ const makeStyles = (C) => StyleSheet.create({
   notifBadge: { position: 'absolute', top: -4, right: -6, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: '#FF3B30', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3 },
   notifBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '700', lineHeight: 12 },
 
-  avatar: { width: 52, height: 52, borderRadius: 26, justifyContent: 'center', alignItems: 'center' },
-  avatarInitial: { fontSize: 20, fontWeight: '700', color: '#fff' },
+  avatarSection: { alignItems: 'center', paddingTop: 8, paddingBottom: 16 },
+  avatar: { width: 104, height: 104, borderRadius: 52, justifyContent: 'center', alignItems: 'center' },
+  avatarInitial: { fontSize: 38, fontWeight: '700', color: '#fff' },
 
-  identity: { alignItems: 'flex-start', paddingHorizontal: 16, paddingBottom: 20, gap: 4 },
-  name: { fontSize: 24, fontWeight: '800', color: C.text, letterSpacing: -0.5 },
-  bio: { fontSize: 14, color: C.text, lineHeight: 20, marginTop: 6 },
+  identity: { alignItems: 'center', paddingHorizontal: 32, paddingBottom: 20, gap: 4 },
+  name: { fontSize: 24, fontWeight: '800', color: C.text, textAlign: 'center', letterSpacing: -0.5 },
+  bio: { fontSize: 14, color: C.text, lineHeight: 20, textAlign: 'center', marginTop: 6 },
   location: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 4 },
   locationText: { fontSize: 12, color: C.textMuted },
 
