@@ -424,7 +424,7 @@ export default function ProfileScreen({ navigation, route }) {
     </View>
   );
 
-  const listData = activeTab === 'circles' ? circles : activeTab === 'bookmarks' ? bookmarks : posts;
+  const feedData = activeTab === 'circles' ? circles : activeTab === 'bookmarks' ? bookmarks : posts;
 
   const handleTogglePin = useCallback(async (roomId) => {
     const isPinned = pinnedIds.includes(String(roomId));
@@ -524,7 +524,7 @@ export default function ProfileScreen({ navigation, route }) {
     <View style={styles.container}>
       <FlatList
         ref={flatListRef}
-        data={listData}
+        data={feedData}
         keyExtractor={(item) => item._id}
         renderItem={activeTab === 'circles' ? renderCircleItem : renderPostItem}
         ListHeaderComponent={renderHeader}
