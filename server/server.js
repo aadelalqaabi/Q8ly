@@ -115,6 +115,76 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+// Smart redirect — open in app or fall back to App Store
+const appRedirectHTML = (deepLink, title = 'KUWAI') => `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${title}</title>
+  <meta name="apple-itunes-app" content="app-id=6760574615, app-argument=${deepLink}" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+      text-align: center;
+    }
+    .logo { font-size: 36px; font-weight: 900; color: #0033A0; letter-spacing: 6px; margin-bottom: 12px; }
+    .sub { font-size: 16px; color: #6C6C70; margin-bottom: 40px; }
+    .btn {
+      display: inline-block;
+      background: #0033A0;
+      color: #fff;
+      font-size: 17px;
+      font-weight: 600;
+      text-decoration: none;
+      padding: 16px 40px;
+      border-radius: 14px;
+      margin-bottom: 16px;
+    }
+    .store { font-size: 14px; color: #6C6C70; }
+    .store a { color: #0033A0; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="logo">KUWAI</div>
+  <div class="sub">Opening in the app…</div>
+  <a class="btn" href="${deepLink}">Open KUWAI</a>
+  <div class="store">
+    Don't have the app?
+    <a href="https://apps.apple.com/us/app/kuwai/id6760574615">Download on the App Store</a>
+  </div>
+  <script>
+    window.location = '${deepLink}';
+    setTimeout(function() {
+      window.location = 'https://apps.apple.com/us/app/kuwai/id6760574615';
+    }, 2000);
+  </script>
+</body>
+</html>`;
+
+app.get('/post/:id', (req, res) => {
+  res.setHeader('Content-Type', 'text/html');
+  res.send(appRedirectHTML(`kuwai://post/${req.params.id}`, 'Open in KUWAI'));
+});
+
+app.get('/profile/:username', (req, res) => {
+  res.setHeader('Content-Type', 'text/html');
+  res.send(appRedirectHTML(`kuwai://profile/${req.params.username}`, `@${req.params.username} on KUWAI`));
+});
+
+app.get('/circle/:id', (req, res) => {
+  res.setHeader('Content-Type', 'text/html');
+  res.send(appRedirectHTML(`kuwai://circle/${req.params.id}`, 'Join Circle on KUWAI'));
+});
+
 // Universal Links — iOS (Apple App Site Association)
 app.get('/.well-known/apple-app-site-association', (req, res) => {
   res.setHeader('Content-Type', 'application/json');
