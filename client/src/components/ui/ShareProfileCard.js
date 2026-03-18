@@ -140,12 +140,12 @@ export default function ShareProfileCard({ visible, onClose, profile }) {
         >
           {sharing
             ? <ActivityIndicator color="#fff" />
-            : <Text style={s.shareBtnText}>Share Card</Text>
+            : <Text style={s.shareBtnText}>{t('common.shareCard')}</Text>
           }
         </TouchableOpacity>
 
         <TouchableOpacity onPress={onClose} activeOpacity={0.7} style={s.cancelBtn}>
-          <Text style={s.cancelText}>Cancel</Text>
+          <Text style={s.cancelText}>{t('common.cancel')}</Text>
         </TouchableOpacity>
       </View>
     </Modal>
