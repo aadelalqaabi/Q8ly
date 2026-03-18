@@ -152,6 +152,10 @@ export const hachiAPI = {
   getMyCircles: () => api.get('/hachi/my'),
   getJoinedRooms: () => api.get('/hachi/joined'),
   deleteRoom: (id) => api.delete(`/hachi/${id}/delete`),
+  pinRoom: (id) => api.post(`/hachi/${id}/pin`),
+  unpinRoom: (id) => api.delete(`/hachi/${id}/pin`),
+  leaveRoom: (id) => api.post(`/hachi/${id}/leave`),
+  getPinnedCircles: () => api.get('/hachi/joined'),
 };
 
 // ── Upload ────────────────────────────────────────────────────────────────────

@@ -218,6 +218,52 @@ exports.deleteRoom = async (req, res) => {
   }
 };
 
+// POST /api/hachi/:id/pin — pin a circle (max 3)
+exports.pinRoom = async (req, res) => {
+  try {
+    const user = req.user;
+    if (user.pinnedCircles.length >= 3) {
+      return res.status(400).json({ success: false, message: 'Max 3 pinned circles' });
+    }
+    if (user.pinnedCircles.map(String).includes(req.params.id)) {
+      return res.json({ success: true, pinned: true });
+    }
+    user.pinnedCircles.push(req.params.id);
+    await user.save();
+    res.json({ success: true, pinned: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// DELETE /api/hachi/:id/pin — unpin a circle
+exports.unpinRoom = async (req, res) => {
+  try {
+    req.user.pinnedCircles.pull(req.params.id);
+    await req.user.save();
+    res.json({ success: true, pinned: false });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// POST /api/hachi/:id/leave — leave a circle as a member (non-creator)
+exports.leaveRoom = async (req, res) => {
+  try {
+    const room = await Hachi.findById(req.params.id);
+    if (!room) return res.status(404).json({ success: false, message: 'Room not found' });
+    if (room.creator.toString() === req.user._id.toString()) {
+      return res.status(400).json({ success: false, message: 'Creator cannot leave — end the circle instead' });
+    }
+    room.members.pull(req.user._id);
+    room.memberCount = Math.max(1, (room.memberCount || 1) - 1);
+    await room.save();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 // GET /api/hachi/search?q=... — search active rooms by title
 exports.searchRooms = async (req, res) => {
   try {

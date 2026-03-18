@@ -62,10 +62,20 @@ export default function PostDetailScreen({ navigation, route }) {
     const socket = getSocket();
     if (socket) {
       socket.on('newComment', ({ comment, postId: pid }) => {
-        if (pid === postId && comment?.userId?._id !== user?._id && comment?.userId !== user?._id) {
+        if (pid !== postId) return;
+        const isOwn = comment?.userId?._id === user?._id || comment?.userId === user?._id;
+        if (isOwn) return;
+        if (comment.parentId) {
+          // Add to parent's replies if already loaded
+          setComments((prev) => prev.map((c) => {
+            if (c._id !== comment.parentId && String(c._id) !== String(comment.parentId)) return c;
+            if (!Array.isArray(c.replies)) return { ...c, repliesCount: (c.repliesCount || 0) + 1 };
+            return { ...c, replies: [...c.replies, comment], repliesCount: (c.repliesCount || 0) + 1 };
+          }));
+        } else {
           setComments((prev) => [comment, ...prev]);
-          setPost((p) => p ? { ...p, commentsCount: p.commentsCount + 1 } : p);
         }
+        setPost((p) => p ? { ...p, commentsCount: p.commentsCount + 1 } : p);
       });
     }
     return () => {
@@ -83,8 +93,20 @@ export default function PostDetailScreen({ navigation, route }) {
         parentId: replyTo?.id || null,
       });
       setCommentText('');
+      const isReply = !!replyTo?.id;
       setReplyTo(null);
-      setComments((prev) => prev.some((c) => c._id === res.comment._id) ? prev : [res.comment, ...prev]);
+      if (isReply) {
+        // Insert under parent comment's replies
+        setComments((prev) => prev.map((c) => {
+          if (c._id !== replyTo.id) return c;
+          const newReplies = Array.isArray(c.replies)
+            ? [...c.replies, res.comment]
+            : [res.comment];
+          return { ...c, replies: newReplies, repliesCount: (c.repliesCount || 0) + 1 };
+        }));
+      } else {
+        setComments((prev) => prev.some((c) => c._id === res.comment._id) ? prev : [res.comment, ...prev]);
+      }
       setPost((p) => p ? { ...p, commentsCount: p.commentsCount + 1 } : p);
     } catch (e) {
       Alert.alert(t('common.error'), e.message);
@@ -96,13 +118,37 @@ export default function PostDetailScreen({ navigation, route }) {
   const handleLikeComment = async (commentId) => {
     try {
       const res = await postsAPI.likeComment(postId, commentId);
-      setComments((prev) =>
-        prev.map((c) => c._id === commentId
-          ? { ...c, isLiked: res.liked, likesCount: res.likesCount }
-          : c
-        )
-      );
+      // Update in top-level comments or inside replies
+      setComments((prev) => prev.map((c) => {
+        if (c._id === commentId) return { ...c, isLiked: res.liked, likesCount: res.likesCount };
+        if (c.replies) {
+          return {
+            ...c,
+            replies: c.replies.map((r) =>
+              r._id === commentId ? { ...r, isLiked: res.liked, likesCount: res.likesCount } : r
+            ),
+          };
+        }
+        return c;
+      }));
     } catch { /* silent */ }
+  };
+
+  const handleLoadReplies = async (parentCommentId) => {
+    // Mark as loading
+    setComments((prev) => prev.map((c) =>
+      c._id === parentCommentId ? { ...c, replies: [], repliesLoading: true } : c
+    ));
+    try {
+      const res = await postsAPI.getComments(postId, { parentId: parentCommentId, limit: 50 });
+      setComments((prev) => prev.map((c) =>
+        c._id === parentCommentId ? { ...c, replies: res.comments, repliesLoading: false } : c
+      ));
+    } catch {
+      setComments((prev) => prev.map((c) =>
+        c._id === parentCommentId ? { ...c, replies: undefined, repliesLoading: false } : c
+      ));
+    }
   };
 
   const renderHeader = () => (
@@ -141,6 +187,7 @@ export default function PostDetailScreen({ navigation, route }) {
               comment={item}
               onLike={handleLikeComment}
               onReply={(c) => setReplyTo({ id: c._id, name: c.userId?.name })}
+              onLoadReplies={handleLoadReplies}
               navigation={navigation}
             />
           )}

@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { formatDistanceToNow } from 'date-fns';
@@ -15,7 +15,57 @@ function avatarBg(name) {
   return PALETTE[Math.abs(h) % PALETTE.length];
 }
 
-export default function CommentItem({ comment, onLike, onReply, navigation }) {
+function ReplyRow({ comment, onLike, navigation }) {
+  const { colors: COLORS } = useTheme();
+  const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
+  const author = comment.userId;
+  const timeAgo = comment.createdAt
+    ? formatDistanceToNow(new Date(comment.createdAt), { addSuffix: false, locale: getDateLocale() })
+    : '';
+
+  return (
+    <View style={styles.replyRow}>
+      <TouchableOpacity
+        onPress={() => author?.username && navigation.navigate('ProfileDetail', { username: author.username })}
+        activeOpacity={0.7}
+      >
+        {author?.profilePic ? (
+          <Image source={{ uri: author.profilePic }} style={styles.replyAvatar} />
+        ) : (
+          <View style={[styles.replyAvatar, { backgroundColor: avatarBg(author?.name) }]}>
+            <Text style={styles.replyAvatarInitial}>{author?.name?.[0]?.toUpperCase() || '?'}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+
+      <View style={styles.replyBody}>
+        <Text style={styles.replyAuthorLine}>
+          <Text style={styles.replyAuthorName}>{author?.name}</Text>
+          <Text style={styles.replyMeta}>{'  '}{timeAgo}</Text>
+        </Text>
+        <LinkedText style={styles.replyContent} linkColor={COLORS.accent}>{comment.content}</LinkedText>
+        <TouchableOpacity
+          style={styles.replyLikeBtn}
+          onPress={() => onLike(comment._id)}
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+        >
+          <Ionicons
+            name={comment.isLiked ? 'heart' : 'heart-outline'}
+            size={13}
+            color={comment.isLiked ? COLORS.accent : COLORS.textMuted}
+          />
+          {comment.likesCount > 0 && (
+            <Text style={[styles.replyLikeCount, comment.isLiked && { color: COLORS.accent }]}>
+              {comment.likesCount}
+            </Text>
+          )}
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+export default function CommentItem({ comment, onLike, onReply, onLoadReplies, navigation }) {
   const { t } = useTranslation();
   const { colors: COLORS } = useTheme();
   const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
@@ -28,6 +78,9 @@ export default function CommentItem({ comment, onLike, onReply, navigation }) {
   const toProfile = () => {
     if (author?.username) navigation.navigate('ProfileDetail', { username: author.username });
   };
+
+  const hasReplies = (comment.repliesCount || 0) > 0;
+  const repliesLoaded = Array.isArray(comment.replies);
 
   return (
     <View style={styles.container}>
@@ -77,6 +130,32 @@ export default function CommentItem({ comment, onLike, onReply, navigation }) {
             <Text style={styles.replyText}>{t('comment.reply')}</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Replies section */}
+        {hasReplies && !repliesLoaded && (
+          <TouchableOpacity
+            style={styles.viewRepliesBtn}
+            onPress={() => onLoadReplies(comment._id)}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <View style={styles.viewRepliesLine} />
+            <Text style={styles.viewRepliesText}>
+              {t('comment.viewReplies', { count: comment.repliesCount })}
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {repliesLoaded && (
+          <View style={styles.repliesWrap}>
+            {comment.repliesLoading ? (
+              <ActivityIndicator size="small" color={COLORS.accent} style={{ marginTop: 8 }} />
+            ) : (
+              comment.replies.map((r) => (
+                <ReplyRow key={r._id} comment={r} onLike={onLike} navigation={navigation} />
+              ))
+            )}
+          </View>
+        )}
       </View>
     </View>
   );
@@ -86,7 +165,8 @@ const makeStyles = (C) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingTop: 14,
+    paddingBottom: 4,
     backgroundColor: C.white,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: C.separator,
@@ -101,7 +181,7 @@ const makeStyles = (C) => StyleSheet.create({
     alignItems: 'center',
   },
   avatarInitial: { fontSize: 16, fontWeight: '700', color: '#fff' },
-  body: { flex: 1 },
+  body: { flex: 1, paddingBottom: 10 },
   authorLine: { lineHeight: 21, marginBottom: 3 },
   authorName: { fontSize: 15, fontWeight: '600', color: C.text },
   authorMeta: { fontSize: 14, fontWeight: '400', color: C.textMuted },
@@ -110,4 +190,29 @@ const makeStyles = (C) => StyleSheet.create({
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   actionCount: { fontSize: 13, color: C.textMuted },
   replyText: { fontSize: 13, fontWeight: '500', color: C.textMuted },
+
+  viewRepliesBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
+  viewRepliesLine: { width: 24, height: 1, backgroundColor: C.separator },
+  viewRepliesText: { fontSize: 13, fontWeight: '600', color: C.textMuted },
+
+  repliesWrap: { marginTop: 10, gap: 12 },
+
+  // Reply rows (nested)
+  replyRow: { flexDirection: 'row', gap: 10 },
+  replyAvatar: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  replyAvatarInitial: { fontSize: 12, fontWeight: '700', color: '#fff' },
+  replyBody: { flex: 1 },
+  replyAuthorLine: { lineHeight: 19, marginBottom: 2 },
+  replyAuthorName: { fontSize: 13, fontWeight: '600', color: C.text },
+  replyMeta: { fontSize: 12, color: C.textMuted },
+  replyContent: { fontSize: 14, color: C.text, lineHeight: 20, marginBottom: 4 },
+  replyLikeBtn: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  replyLikeCount: { fontSize: 12, color: C.textMuted },
 });

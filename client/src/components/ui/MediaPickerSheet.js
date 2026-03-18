@@ -92,13 +92,19 @@ export default function MediaPickerSheet({ visible, onClose, onSelect, maxItems 
     setLoading(false);
   }, []);
 
-  // Resolve ph:// → file:// localUri for each loaded asset so Image can render them
+  // Resolve ph:// → file:// localUri for photos so Image can render them.
+  // Videos: use a.uri (ph:// on iOS) directly — Image can render ph:// as a thumbnail,
+  // but cannot render a localUri (.MOV/.MP4 video file), which causes a black square.
   useEffect(() => {
     if (assets.length === 0) return;
     const unresolved = assets.filter((a) => !uriCache[a.id]);
     if (unresolved.length === 0) return;
     Promise.all(
       unresolved.map(async (a) => {
+        if (a.mediaType === 'video') {
+          // ph:// URI is renderable as a thumbnail by the iOS Image component
+          return [a.id, a.uri];
+        }
         try {
           const info = await MediaLibrary.getAssetInfoAsync(a, { shouldDownloadFromNetwork: false });
           return [a.id, info.localUri || a.uri];
@@ -138,9 +144,16 @@ export default function MediaPickerSheet({ visible, onClose, onSelect, maxItems 
     try {
       const full = await Promise.all(
         selected.map(async (a) => {
-          const info = await MediaLibrary.getAssetInfoAsync(a);
+          let uri = a.uri; // ph:// URI — always accessible, RN can upload it natively
+          try {
+            // Try to get the local file:// path without triggering an iCloud download.
+            // shouldDownloadFromNetwork: false prevents the timeout that occurs when
+            // the photo is in iCloud and the user has limited library access.
+            const info = await MediaLibrary.getAssetInfoAsync(a, { shouldDownloadFromNetwork: false });
+            if (info.localUri) uri = info.localUri; // prefer file:// when already on-device
+          } catch { /* fall back to ph:// */ }
           return {
-            uri: info.localUri || info.uri,
+            uri,
             type: a.mediaType === 'video' ? 'video' : 'image',
             width: a.width,
             height: a.height,

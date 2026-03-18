@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { protect, optionalAuth } = require('../middleware/auth');
-const { getRooms, getArchivedRooms, createRoom, getRoom, closeRoom, reactRoom, searchRooms, getMyRooms, getJoinedRooms, deleteRoom } = require('../controllers/hachiController');
+const { getRooms, getArchivedRooms, createRoom, getRoom, closeRoom, reactRoom, searchRooms, getMyRooms, getJoinedRooms, deleteRoom, pinRoom, unpinRoom, leaveRoom } = require('../controllers/hachiController');
 
 router.get('/', getRooms);
 router.get('/search', searchRooms);
@@ -13,5 +13,8 @@ router.get('/:id', optionalAuth, getRoom);
 router.post('/:id/react', protect, reactRoom);
 router.delete('/:id', protect, closeRoom);
 router.delete('/:id/delete', protect, deleteRoom);
+router.post('/:id/pin', protect, pinRoom);
+router.delete('/:id/pin', protect, unpinRoom);
+router.post('/:id/leave', protect, leaveRoom);
 
 module.exports = router;

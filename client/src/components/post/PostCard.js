@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, Image, Share, Dimensions, Alert, Platform,
+  View, Text, StyleSheet, TouchableOpacity, Image, Share, Dimensions, Alert, Platform, Animated,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +12,64 @@ import { postsAPI } from '../../services/api';
 import { REPORT_REASONS } from '../../constants';
 import { useTheme } from '../../context/ThemeContext';
 import LinkedText from '../ui/LinkedText';
+
+// ── Sparkle burst on like ─────────────────────────────────────────────────────
+const SPARKLE_COLOR = '#CBA052';
+const ANGLES = [0, 40, 80, 130, 180, 230, 280, 320]; // 8 particles
+const RADIUS = 20;
+
+function SparkleParticles({ trigger }) {
+  const anims = useRef(ANGLES.map(() => ({
+    pos: new Animated.Value(0),
+    opacity: new Animated.Value(0),
+  }))).current;
+
+  useEffect(() => {
+    if (!trigger) return;
+    anims.forEach((a) => { a.pos.setValue(0); a.opacity.setValue(0); });
+    Animated.parallel(
+      anims.map((a) =>
+        Animated.parallel([
+          Animated.timing(a.pos, { toValue: 1, duration: 480, useNativeDriver: true }),
+          Animated.sequence([
+            Animated.timing(a.opacity, { toValue: 1, duration: 80, useNativeDriver: true }),
+            Animated.timing(a.opacity, { toValue: 0, duration: 400, useNativeDriver: true }),
+          ]),
+        ])
+      )
+    ).start();
+  }, [trigger]);
+
+  return (
+    <View style={{ position: 'absolute', width: 0, height: 0 }} pointerEvents="none">
+      {anims.map((a, i) => {
+        const rad = (ANGLES[i] * Math.PI) / 180;
+        const tx = Math.cos(rad) * RADIUS;
+        const ty = Math.sin(rad) * RADIUS;
+        const size = i % 3 === 0 ? 5 : 3;
+        return (
+          <Animated.View
+            key={i}
+            style={{
+              position: 'absolute',
+              width: size,
+              height: size,
+              borderRadius: size / 2,
+              backgroundColor: SPARKLE_COLOR,
+              top: -size / 2,
+              left: -size / 2,
+              opacity: a.opacity,
+              transform: [
+                { translateX: a.pos.interpolate({ inputRange: [0, 1], outputRange: [0, tx] }) },
+                { translateY: a.pos.interpolate({ inputRange: [0, 1], outputRange: [0, ty] }) },
+              ],
+            }}
+          />
+        );
+      })}
+    </View>
+  );
+}
 
 const BADGE_COLORS = {
   government: '#0033A0',
@@ -416,6 +474,7 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
   const { colors: COLORS } = useTheme();
   const [liked, setLiked] = useState(post.isLiked);
   const [likesCount, setLikesCount] = useState(post.likesCount);
+  const [sparkleKey, setSparkleKey] = useState(0);
   const [bookmarked, setBookmarked] = useState(post.isBookmarked || false);
   const [menuVisible, setMenuVisible] = useState(false);
   const [deleteMenuVisible, setDeleteMenuVisible] = useState(false);
@@ -433,6 +492,7 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
     const next = !liked;
     setLiked(next);
     setLikesCount((c) => next ? c + 1 : Math.max(0, c - 1));
+    if (next) setSparkleKey((k) => k + 1);
     try {
       await dispatch(toggleLike(post._id)).unwrap();
     } catch {
@@ -626,12 +686,15 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
                 disabled={isOwnPost}
                 hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
               >
-                <Ionicons
-                  name={liked ? 'heart' : 'heart-outline'}
-                  size={20}
-                  color={liked ? COLORS.accent : COLORS.textMuted}
-                  style={isOwnPost ? { opacity: 0.3 } : undefined}
-                />
+                <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                  <SparkleParticles trigger={sparkleKey} />
+                  <Ionicons
+                    name={liked ? 'heart' : 'heart-outline'}
+                    size={20}
+                    color={liked ? COLORS.accent : COLORS.textMuted}
+                    style={isOwnPost ? { opacity: 0.3 } : undefined}
+                  />
+                </View>
                 {likesCount > 0 && (
                   <Text style={[styles.actionCount, liked && styles.actionCountLiked]}>
                     {likesCount}

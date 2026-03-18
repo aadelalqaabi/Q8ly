@@ -139,6 +139,8 @@ const userSchema = new mongoose.Schema(
     expoPushToken: { type: String, default: null },
     // Bookmarked posts
     bookmarks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }],
+    // Pinned circles (max 3)
+    pinnedCircles: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Hachi' }],
     // Verification request
     verificationRequest: {
       status: { type: String, enum: ['none', 'pending', 'approved', 'rejected'], default: 'none' },

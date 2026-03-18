@@ -111,13 +111,16 @@ const toggleFollow = async (req, res, next) => {
       });
 
       const io = req.app.get('io');
-      if (io) io.to(`user:${targetUser._id}`).emit('notification', notification);
+      if (io) {
+        const populated = await notification.populate('fromUser', 'name username profilePic verifiedBadge');
+        io.to(`user:${targetUser._id}`).emit('notification', populated);
+      }
 
       // Push notification
       sendToUser(
         targetUser, 'follows',
         'New follower',
-        `@${currentUser.username} started following you`,
+        `${currentUser.name || currentUser.username} started following you`,
         { type: 'follow', userId: currentUser._id.toString() }
       );
     }

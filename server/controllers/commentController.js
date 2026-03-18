@@ -100,7 +100,8 @@ const addComment = async (req, res, next) => {
       });
       const io = req.app.get('io');
       if (io) {
-        io.to(`user:${post.userId}`).emit('notification', notification);
+        const populatedNotif = await notification.populate('fromUser', 'name username profilePic verifiedBadge');
+        io.to(`user:${post.userId}`).emit('notification', populatedNotif);
         io.to(`post:${post._id}`).emit('newComment', {
           comment: await comment.populate('userId', 'username name profilePic verifiedBadge'),
           postId: post._id,
@@ -112,7 +113,7 @@ const addComment = async (req, res, next) => {
       sendToUser(
         postAuthor, 'comments',
         parentId ? 'New reply' : 'New comment',
-        `@${req.user.username} ${parentId ? 'replied to your comment' : 'commented on your post'}`,
+        `${req.user.name || req.user.username} ${parentId ? 'replied to your comment' : 'commented on your post'}`,
         { type: parentId ? 'reply' : 'comment', postId: post._id.toString() }
       );
     }

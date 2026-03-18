@@ -295,7 +295,8 @@ const toggleLike = async (req, res, next) => {
 
         const io = req.app.get('io');
         if (io) {
-          io.to(`user:${post.userId}`).emit('notification', notification);
+          const populated = await notification.populate('fromUser', 'name username profilePic verifiedBadge');
+          io.to(`user:${post.userId}`).emit('notification', populated);
         }
 
         // Push notification
@@ -303,7 +304,7 @@ const toggleLike = async (req, res, next) => {
         sendToUser(
           postAuthor, 'likes',
           'New like',
-          `@${req.user.username} liked your post`,
+          `${req.user.name || req.user.username} liked your post`,
           { type: 'like', postId: post._id.toString() }
         );
 
@@ -367,7 +368,10 @@ const repost = async (req, res, next) => {
         post: originalPost._id,
       });
       const io = req.app.get('io');
-      if (io) io.to(`user:${originalPost.userId}`).emit('notification', notification);
+      if (io) {
+        const populated = await notification.populate('fromUser', 'name username profilePic verifiedBadge');
+        io.to(`user:${originalPost.userId}`).emit('notification', populated);
+      }
     }
 
     res.status(201).json({ success: true, reposted: true, post: repostDoc });

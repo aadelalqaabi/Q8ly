@@ -69,7 +69,8 @@
   },
 
   "comment": {
-    "reply": "رد"
+    "reply": "رد",
+    "viewReplies": "عرض {{count}} ردود"
   },
 
   "profile": {
@@ -109,7 +110,13 @@
     "deleteCircleMsg": "سيتم حذف الدائرة وجميع رسائلها نهائياً.",
     "membersLabel": "عضو",
     "uploading": "جارٍ الرفع...",
-    "changePhoto": "تغيير الصورة"
+    "changePhoto": "تغيير الصورة",
+    "pinLimitTitle": "وصلت الحد الأقصى",
+    "pinLimitMsg": "يمكنك تثبيت 3 دوائر كحد أقصى",
+    "noFollowers": "لا يوجد متابعون بعد",
+    "noFollowing": "لا تتابع أحداً بعد",
+    "leaveCircle": "مغادرة الدائرة",
+    "leaveCircleMsg": "ستتم إزالتك من هذه الدائرة."
   },
 
   "hachi": {

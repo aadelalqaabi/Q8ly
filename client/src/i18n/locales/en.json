@@ -69,7 +69,8 @@
   },
 
   "comment": {
-    "reply": "Reply"
+    "reply": "Reply",
+    "viewReplies": "View {{count}} replies"
   },
 
   "profile": {
@@ -109,7 +110,13 @@
     "deleteCircleMsg": "This will permanently delete the circle and all its messages.",
     "membersLabel": "members",
     "uploading": "Uploading…",
-    "changePhoto": "Change Photo"
+    "changePhoto": "Change Photo",
+    "pinLimitTitle": "Pin limit reached",
+    "pinLimitMsg": "You can pin up to 3 circles",
+    "noFollowers": "No followers yet",
+    "noFollowing": "Not following anyone yet",
+    "leaveCircle": "Leave Circle",
+    "leaveCircleMsg": "You will be removed from this circle."
   },
 
   "hachi": {

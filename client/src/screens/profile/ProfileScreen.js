@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   Image, ActivityIndicator, Alert, Share, Platform, Modal,
@@ -94,10 +94,13 @@ export default function ProfileScreen({ navigation, route }) {
   const isPushed = !!route.params?.username;
 
 
+  const flatListRef = useRef(null);
+
   const [profile, setProfile] = useState(isOwnProfile ? currentUser : null);
   const [posts, setPosts] = useState([]);
   const [bookmarks, setBookmarks] = useState([]);
   const [circles, setCircles] = useState([]);
+  const [pinnedIds, setPinnedIds] = useState([]);
   const [activeTab, setActiveTab] = useState('posts');
   const [isLoading, setIsLoading] = useState(!isOwnProfile);
   const [postsLoading, setPostsLoading] = useState(false);
@@ -171,10 +174,20 @@ export default function ProfileScreen({ navigation, route }) {
     setPostsLoading(true);
     try {
       const res = await hachiAPI.getMyCircles();
-      setCircles(res.rooms || []);
+      const rooms = res.rooms || [];
+      // Pinned IDs come from the auth user's profile
+      const pinned = (currentUser?.pinnedCircles || []).map(String);
+      setPinnedIds(pinned);
+      // Sort: pinned first
+      rooms.sort((a, b) => {
+        const ap = pinned.includes(String(a._id)) ? 0 : 1;
+        const bp = pinned.includes(String(b._id)) ? 0 : 1;
+        return ap - bp;
+      });
+      setCircles(rooms);
     } catch (e) { console.error(e); }
     finally { setPostsLoading(false); }
-  }, [profile?._id]);
+  }, [profile?._id, currentUser?.pinnedCircles]);
 
   useEffect(() => {
     const init = async () => {
@@ -187,6 +200,12 @@ export default function ProfileScreen({ navigation, route }) {
   }, [username]);
 
   useEffect(() => {
+    return navigation.addListener('tabPress', () => {
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+    });
+  }, [navigation]);
+
+  useEffect(() => {
     if (activeTab === 'bookmarks' && isOwnProfile && bookmarks.length === 0) {
       loadBookmarks();
     }
@@ -195,6 +214,7 @@ export default function ProfileScreen({ navigation, route }) {
     }
   }, [activeTab]);
 
+  const [refreshing, setRefreshing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
 
   const doFollow = async () => {
@@ -406,7 +426,26 @@ export default function ProfileScreen({ navigation, route }) {
 
   const listData = activeTab === 'circles' ? circles : activeTab === 'bookmarks' ? bookmarks : posts;
 
-  const renderCircleItem = useCallback(({ item: room }) => (
+  const handleTogglePin = useCallback(async (roomId) => {
+    const isPinned = pinnedIds.includes(String(roomId));
+    if (!isPinned && pinnedIds.length >= 3) {
+      Alert.alert(t('profile.pinLimitTitle'), t('profile.pinLimitMsg'));
+      return;
+    }
+    try {
+      if (isPinned) {
+        await hachiAPI.unpinRoom(roomId);
+        setPinnedIds(prev => prev.filter(id => id !== String(roomId)));
+      } else {
+        await hachiAPI.pinRoom(roomId);
+        setPinnedIds(prev => [...prev, String(roomId)]);
+      }
+    } catch { /* silent */ }
+  }, [pinnedIds]);
+
+  const renderCircleItem = useCallback(({ item: room }) => {
+    const isPinned = pinnedIds.includes(String(room._id));
+    return (
     <View style={styles.circleRow}>
       <TouchableOpacity
         style={styles.circleRowMain}
@@ -415,7 +454,10 @@ export default function ProfileScreen({ navigation, route }) {
       >
         <View style={[styles.circleDot, { backgroundColor: room.isActive ? '#34C759' : COLORS.separator }]} />
         <View style={styles.circleInfo}>
-          <Text style={styles.circleTitle} numberOfLines={1}>{room.title}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+            {isPinned && <Ionicons name="pin" size={11} color={COLORS.accent} />}
+            <Text style={styles.circleTitle} numberOfLines={1}>{room.title}</Text>
+          </View>
           <Text style={styles.circleMeta}>{room.memberCount || 1} {t('profile.membersLabel')} · {room.category}</Text>
         </View>
         {room.isActive ? (
@@ -425,6 +467,14 @@ export default function ProfileScreen({ navigation, route }) {
         ) : (
           <Text style={styles.circleEndedText}>{t('hachi.endedBadge')}</Text>
         )}
+      </TouchableOpacity>
+      <TouchableOpacity
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        onPress={() => handleTogglePin(room._id)}
+        activeOpacity={0.7}
+        style={{ paddingHorizontal: 6 }}
+      >
+        <Ionicons name={isPinned ? 'pin' : 'pin-outline'} size={18} color={isPinned ? COLORS.accent : COLORS.textMuted} />
       </TouchableOpacity>
       <TouchableOpacity
         style={styles.circleDeleteBtn}
@@ -455,7 +505,8 @@ export default function ProfileScreen({ navigation, route }) {
         <Ionicons name="trash-outline" size={20} color="#FF3B30" />
       </TouchableOpacity>
     </View>
-  ), [COLORS, navigation]);
+  );
+  }, [pinnedIds, handleTogglePin, t, COLORS, navigation]);
 
   const renderPostItem = useCallback(({ item }) => (
     <PostCard post={item} navigation={navigation} />
@@ -472,6 +523,7 @@ export default function ProfileScreen({ navigation, route }) {
   return (
     <View style={styles.container}>
       <FlatList
+        ref={flatListRef}
         data={listData}
         keyExtractor={(item) => item._id}
         renderItem={activeTab === 'circles' ? renderCircleItem : renderPostItem}
@@ -493,12 +545,16 @@ export default function ProfileScreen({ navigation, route }) {
         onEndReached={() => { if (!postsLoading && hasMore && activeTab === 'posts') loadPosts(page + 1); }}
         onEndReachedThreshold={0.4}
         showsVerticalScrollIndicator={false}
-        refreshing={false}
-        onRefresh={() => {
-          loadProfile();
-          if (activeTab === 'posts') loadPosts(1);
-          else if (activeTab === 'bookmarks') loadBookmarks();
-          else loadCircles();
+        refreshing={refreshing}
+        onRefresh={async () => {
+          setRefreshing(true);
+          await Promise.all([
+            loadProfile(),
+            activeTab === 'posts' ? loadPosts(1)
+              : activeTab === 'bookmarks' ? loadBookmarks()
+              : loadCircles(),
+          ]);
+          setRefreshing(false);
         }}
       />
 
@@ -559,7 +615,7 @@ export default function ProfileScreen({ navigation, route }) {
               )}
               ListEmptyComponent={
                 <Text style={[styles.emptyText, { color: COLORS.textMuted, marginTop: 32 }]}>
-                  {listModal === 'followers' ? t('profile.noFollowers', 'No followers yet') : t('profile.noFollowing', 'Not following anyone yet')}
+                  {listModal === 'followers' ? t('profile.noFollowers') : t('profile.noFollowing')}
                 </Text>
               }
             />

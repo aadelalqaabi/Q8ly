@@ -22,6 +22,7 @@ import {
   sendHachiMessageReaction, sendHachiKick, sendHachiPin, approveHachiJoin, rejectHachiJoin,
 } from '../../services/socket';
 import { getDateLocale } from '../../i18n';
+import { hachiAPI } from '../../services/api';
 import { useTheme } from '../../context/ThemeContext';
 
 const PALETTE = ['#0033A0', '#007A3D', '#FF6B35', '#2196F3', '#9C27B0', '#00BCD4', '#FF9800'];
@@ -262,14 +263,43 @@ export default function HachiRoomScreen({ navigation, route }) {
     } catch { /* silent */ }
   };
 
+  const handleLeave = useCallback(() => {
+    Alert.alert(
+      t('profile.leaveCircle'),
+      t('profile.leaveCircleMsg'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('profile.leaveCircle'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await hachiAPI.leaveRoom(roomId);
+              navigation.goBack();
+            } catch (e) {
+              Alert.alert(t('common.error'), e.message || t('common.somethingWrong'));
+            }
+          },
+        },
+      ]
+    );
+  }, [roomId, navigation, t]);
+
   useEffect(() => {
     if (!activeRoom) return;
     navigation.setOptions({
       title: activeRoom.title,
       headerRight: () => (
-        <TouchableOpacity onPress={handleShare} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Ionicons name="arrow-redo-outline" size={22} color={COLORS.accent} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          {!isCreator && activeRoom.isActive && (
+            <TouchableOpacity onPress={handleLeave} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ marginEnd: 4 }}>
+              <Text style={{ fontSize: 15, color: COLORS.error }}>{t('profile.leaveCircle')}</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity onPress={handleShare} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="arrow-redo-outline" size={22} color={COLORS.accent} />
+          </TouchableOpacity>
+        </View>
       ),
       headerLeft: isCreator && activeRoom.isActive ? () => (
         <TouchableOpacity onPress={() => setEndMenuVisible(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ marginStart: 4 }}>
@@ -277,7 +307,7 @@ export default function HachiRoomScreen({ navigation, route }) {
         </TouchableOpacity>
       ) : undefined,
     });
-  }, [activeRoom, isCreator]);
+  }, [activeRoom, isCreator, handleLeave]);
 
   const handleSend = useCallback(() => {
     const trimmed = text.trim();
