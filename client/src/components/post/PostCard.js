@@ -11,6 +11,7 @@ import { toggleLike, deletePost, updateBookmark } from '../../store/slices/posts
 import { postsAPI } from '../../services/api';
 import { REPORT_REASONS } from '../../constants';
 import { useTheme } from '../../context/ThemeContext';
+import LinkedText from '../ui/LinkedText';
 
 const BADGE_COLORS = {
   government: '#0033A0',
@@ -571,16 +572,16 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
 
             {/* Reposter's comment (if any) shown above original content */}
             {isRepost && !!post.content && (
-              <Text style={[styles.body, { color: COLORS.textMuted, fontSize: 14 }]} numberOfLines={3}>
+              <LinkedText style={[styles.body, { color: COLORS.textMuted, fontSize: 14 }]} numberOfLines={3} linkColor={COLORS.accent}>
                 {post.content}
-              </Text>
+              </LinkedText>
             )}
 
             {/* Text body */}
             {!!displayContent && (
-              <Text style={styles.body} numberOfLines={isDetailView ? undefined : 5}>
+              <LinkedText style={styles.body} numberOfLines={isDetailView ? undefined : 5} linkColor={COLORS.accent}>
                 {displayContent}
-              </Text>
+              </LinkedText>
             )}
 
             {/* Poll */}

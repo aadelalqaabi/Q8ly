@@ -37,23 +37,18 @@ function VerifiedBadge({ badge }) {
   const isFounder = badge === 'founder';
   return (
     <View style={{
-      alignSelf: 'center',
+      backgroundColor: color,
+      borderRadius: 4,
+      paddingHorizontal: isFounder ? 6 : 5,
+      paddingVertical: 2,
       marginTop: 6,
+      alignSelf: 'center',
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
-      backgroundColor: color + '12',
-      borderRadius: 8,
-      paddingHorizontal: 12,
-      paddingVertical: 5,
-      borderWidth: 1,
-      borderColor: color + '45',
+      gap: isFounder ? 3 : 0,
     }}>
-      {isFounder
-        ? <Text style={{ color: '#FFD700', fontSize: 11, lineHeight: 13 }}>★</Text>
-        : <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: color }} />
-      }
-      <Text style={{ color, fontSize: 12, fontWeight: '700', letterSpacing: 0.7 }}>
+      {isFounder && <Text style={{ color: '#FFD700', fontSize: 8, lineHeight: 10 }}>★</Text>}
+      <Text style={{ color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 }}>
         {t(key).toUpperCase()}
       </Text>
     </View>
@@ -97,7 +92,7 @@ export default function ProfileScreen({ navigation, route }) {
   const isOwnProfile = username === currentUser?.username;
   const isPushed = !!route.params?.username;
 
-  const [msgConfirmVisible, setMsgConfirmVisible] = useState(false);
+
   const [profile, setProfile] = useState(isOwnProfile ? currentUser : null);
   const [posts, setPosts] = useState([]);
   const [bookmarks, setBookmarks] = useState([]);
@@ -212,10 +207,6 @@ export default function ProfileScreen({ navigation, route }) {
     } else {
       doFollow();
     }
-  };
-
-  const handleMessage = () => {
-    setMsgConfirmVisible(true);
   };
 
   const handleBlock = () => {
@@ -333,11 +324,7 @@ export default function ProfileScreen({ navigation, route }) {
                 </TouchableOpacity>
               )
             )}
-            {!isBlocked && (
-              <TouchableOpacity style={styles.messageBtn} onPress={() => guestGate(handleMessage)} activeOpacity={0.7}>
-                <Ionicons name="chatbubble-outline" size={22} color={COLORS.text} />
-              </TouchableOpacity>
-            )}
+            {/* DM button hidden — future feature */}
             {!isBlocked && (
               <TouchableOpacity style={styles.notifyBtn} onPress={handleToggleNotify} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} activeOpacity={0.7}>
                 <Ionicons
@@ -464,17 +451,7 @@ export default function ProfileScreen({ navigation, route }) {
         }}
       />
 
-      <BottomMenu
-        visible={msgConfirmVisible}
-        onClose={() => setMsgConfirmVisible(false)}
-        title={t('profile.msgRequestTitle', { name: profile?.name || profile?.username })}
-        options={[
-          {
-            label: t('profile.msgRequestSend'),
-            onPress: () => navigation.navigate('DMConversation', { userId: profile._id, username: profile.username, name: profile.name }),
-          },
-        ]}
-      />
+      {/* DM confirm menu removed — future feature */}
     </View>
   );
 }

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { formatDistanceToNow } from 'date-fns';
 import { getDateLocale } from '../../i18n';
 import { useTheme } from '../../context/ThemeContext';
+import LinkedText from '../ui/LinkedText';
 
 const PALETTE = ['#0033A0', '#007A3D', '#FF6B35', '#2196F3', '#9C27B0', '#00BCD4', '#FF9800'];
 function avatarBg(name) {
@@ -48,7 +49,7 @@ export default function CommentItem({ comment, onLike, onReply, navigation }) {
           </Text>
         </TouchableOpacity>
 
-        <Text style={styles.content}>{comment.content}</Text>
+        <LinkedText style={styles.content} linkColor={COLORS.accent}>{comment.content}</LinkedText>
 
         <View style={styles.actions}>
           <TouchableOpacity

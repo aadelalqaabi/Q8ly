@@ -16,6 +16,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "kuwai.cotan.com",
       "buildNumber": "2",
+      "associatedDomains": ["applinks:kuwai.app"],
       "infoPlist": {
         "NSCameraUsageDescription": "KUWAI needs camera access to take photos for posts.",
         "NSPhotoLibraryUsageDescription": "KUWAI needs photo library access to share photos and videos in posts.",
@@ -77,8 +78,8 @@
       "expo-secure-store"
     ],
     "extra": {
-      "API_URL": "https://kuwaa-production.up.railway.app/api",
-      "SOCKET_URL": "https://kuwaa-production.up.railway.app",
+      "API_URL": "https://kuwai.app/api",
+      "SOCKET_URL": "https://kuwai.app",
       "eas": {
         "projectId": "75fe5b25-a004-4cec-a932-f72d6d68379c"
       }

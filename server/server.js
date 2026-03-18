@@ -115,6 +115,37 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+// Universal Links — iOS (Apple App Site Association)
+app.get('/.well-known/apple-app-site-association', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.json({
+    applinks: {
+      apps: [],
+      details: [
+        {
+          appID: 'M8C6L4JP56.kuwai.cotan.com',
+          paths: ['/profile/*', '/post/*', '/circle/*'],
+        },
+      ],
+    },
+  });
+});
+
+// App Links — Android
+app.get('/.well-known/assetlinks.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.json([
+    {
+      relation: ['delegate_permission/common.handle_all_urls'],
+      target: {
+        namespace: 'android_app',
+        package_name: 'app.kuwaitnow',
+        sha256_cert_fingerprints: [], // fill in after first Android build
+      },
+    },
+  ]);
+});
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);

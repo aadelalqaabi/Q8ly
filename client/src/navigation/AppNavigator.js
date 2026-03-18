@@ -11,7 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { restoreSession } from '../store/slices/authSlice';
 import { GuestGateProvider, useGuestGate } from '../context/GuestGateContext';
 import { addNotificationRealtime } from '../store/slices/notificationsSlice';
-import { addRealtimeMessage, updateConversationAccepted } from '../store/slices/dmSlice';
+// import { addRealtimeMessage, updateConversationAccepted } from '../store/slices/dmSlice'; // DMs disabled
 import { getSocket } from '../services/socket';
 import { useTheme } from '../context/ThemeContext';
 import { registerForPushNotifications } from '../services/notificationService';
@@ -33,8 +33,9 @@ import HachiScreen from '../screens/hachi/HachiScreen';
 import HachiRoomScreen from '../screens/hachi/HachiRoomScreen';
 import SettingsScreen from '../screens/settings/SettingsScreen';
 import MediaViewerScreen from '../screens/media/MediaViewerScreen';
-import DMListScreen from '../screens/dm/DMListScreen';
-import DMConversationScreen from '../screens/dm/DMConversationScreen';
+// DMs disabled — kept for future feature
+// import DMListScreen from '../screens/dm/DMListScreen';
+// import DMConversationScreen from '../screens/dm/DMConversationScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -42,7 +43,6 @@ const Tab = createBottomTabNavigator();
 function MainTabs() {
   const insets = useSafeAreaInsets();
   const { colors: COLORS } = useTheme();
-  const dmUnreadCount = useSelector((s) => s.dm?.dmUnreadCount || 0);
   const { user, isGuest } = useSelector((s) => s.auth);
   const { guestGate } = useGuestGate();
   return (
@@ -89,38 +89,7 @@ function MainTabs() {
           ),
         }}
       />
-      <Tab.Screen
-        name="DMList"
-        component={DMListScreen}
-        listeners={{
-          tabPress: (e) => {
-            if (isGuest) {
-              e.preventDefault();
-              guestGate(null);
-            }
-          },
-        }}
-        options={{
-          tabBarIcon: ({ color, focused }) => (
-            <View style={{ position: 'relative' }}>
-              <Ionicons name={focused ? 'mail' : 'mail-outline'} size={27} color={color} />
-              {dmUnreadCount > 0 && (
-                <View style={{
-                  position: 'absolute', top: -4, right: -6,
-                  minWidth: 16, height: 16, borderRadius: 8,
-                  backgroundColor: '#FF3B30',
-                  justifyContent: 'center', alignItems: 'center',
-                  paddingHorizontal: 3,
-                }}>
-                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700', lineHeight: 12 }}>
-                    {dmUnreadCount > 99 ? '99+' : dmUnreadCount}
-                  </Text>
-                </View>
-              )}
-            </View>
-          ),
-        }}
-      />
+      {/* DMs tab hidden — future feature */}
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
@@ -182,7 +151,7 @@ function AppStack() {
       <Stack.Screen name="Discover" component={DiscoverScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Terms" component={TermsScreen} options={{ headerShown: false, presentation: 'modal' }} />
-      <Stack.Screen name="DMConversation" component={DMConversationScreen} options={{ headerShown: false }} />
+      {/* DMConversation hidden — future feature */}
       <Stack.Screen
         name="MediaViewer"
         component={MediaViewerScreen}
@@ -193,11 +162,12 @@ function AppStack() {
 }
 
 const linking = {
-  prefixes: ['kuwai://'],
+  prefixes: ['kuwai://', 'https://kuwai.app'],
   config: {
     screens: {
       PostDetail: 'post/:postId',
       HachiRoom: 'circle/:roomId',
+      ProfileDetail: 'profile/:username',
     },
   },
 };
@@ -223,8 +193,8 @@ export default function AppNavigator() {
     const socket = getSocket();
     if (!socket) return;
     socket.on('notification', (n) => dispatch(addNotificationRealtime(n)));
-    socket.on('dmMessage', (data) => dispatch(addRealtimeMessage(data)));
-    socket.on('dmRequestAccepted', (data) => dispatch(updateConversationAccepted(data.conversationId)));
+    // socket.on('dmMessage', ...) — DMs disabled
+    // socket.on('dmRequestAccepted', ...) — DMs disabled
     return () => {
       socket.off('notification');
       socket.off('dmMessage');
