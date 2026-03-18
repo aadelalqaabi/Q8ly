@@ -1,31 +1,47 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState } from "react";
 import {
-  View, Text, Modal, TouchableOpacity, StyleSheet,
-  Image, ActivityIndicator, Share, Platform, Pressable,
-} from 'react-native';
-import ViewShot from 'react-native-view-shot';
-import QRCode from 'react-native-qrcode-svg';
-import { useTranslation } from 'react-i18next';
+  View,
+  Text,
+  Modal,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  ActivityIndicator,
+  Share,
+  Platform,
+  Pressable,
+} from "react-native";
+import ViewShot from "react-native-view-shot";
+import QRCode from "react-native-qrcode-svg";
+import { useTranslation } from "react-i18next";
 
-const BLUE = '#0033A0';
-const GOLD = '#CBA052';
+const BLUE = "#0033A0";
+const GOLD = "#CBA052";
 
 const BADGE_LABELS_EN = {
-  government: 'OFFICIAL',
-  media: 'MEDIA',
-  business: 'BUSINESS',
-  influencer: 'INFLUENCER',
-  founder: 'FOUNDER',
+  government: "OFFICIAL",
+  media: "MEDIA",
+  business: "BUSINESS",
+  influencer: "INFLUENCER",
+  founder: "FOUNDER",
 };
 const BADGE_LABELS_AR = {
-  government: 'رسمي',
-  media: 'إعلام',
-  business: 'أعمال',
-  influencer: 'مؤثر',
-  founder: 'مؤسس',
+  government: "رسمي",
+  media: "إعلام",
+  business: "أعمال",
+  influencer: "مؤثر",
+  founder: "مؤسس",
 };
 
-const PALETTE = ['#1a3f8f', '#0a5c2e', '#7a2a10', '#1a3a8f', '#4a0a8a', '#0a4a6b', '#7a4a0a'];
+const PALETTE = [
+  "#1a3f8f",
+  "#0a5c2e",
+  "#7a2a10",
+  "#1a3a8f",
+  "#4a0a8a",
+  "#0a4a6b",
+  "#7a4a0a",
+];
 function avatarBg(name) {
   if (!name) return PALETTE[0];
   let h = 0;
@@ -38,17 +54,21 @@ const CARD_H = CARD_W * (16 / 9); // 9:16 → 533pt at 300pt wide
 
 export default function ShareProfileCard({ visible, onClose, profile }) {
   const { t, i18n } = useTranslation();
-  const isArabic = i18n.language === 'ar';
+  const isArabic = i18n.language === "ar";
   const shotRef = useRef();
   const [sharing, setSharing] = useState(false);
 
   const profileUrl = `https://kuwai.app/profile/${profile?.username}`;
-  const badge = profile?.verifiedBadge && profile.verifiedBadge !== 'none'
-    ? profile.verifiedBadge : null;
-  const isFounder = badge === 'founder';
-  const tagline = isArabic ? 'اول منصة تواصل اجتماعي كويتية' : "KUWAIT'S FIRST SOCIAL MEDIA APP";
+  const badge =
+    profile?.verifiedBadge && profile.verifiedBadge !== "none"
+      ? profile.verifiedBadge
+      : null;
+  const isFounder = badge === "founder";
+  const tagline = isArabic
+    ? "اول منصة تواصل اجتماعي كويتية"
+    : "KUWAIT'S FIRST SOCIAL MEDIA APP";
   const BADGE_LABELS = isArabic ? BADGE_LABELS_AR : BADGE_LABELS_EN;
-  const followText = isArabic ? 'تابعني على التطبيق' : 'Follow me on the app';
+  const followText = isArabic ? "تابعني على التطبيق" : "Follow me on the app";
 
   const handleShare = async () => {
     if (sharing) return;
@@ -56,26 +76,31 @@ export default function ShareProfileCard({ visible, onClose, profile }) {
     try {
       const uri = await shotRef.current.capture();
       await Share.share(
-        Platform.OS === 'ios'
+        Platform.OS === "ios"
           ? { url: uri }
-          : { message: profileUrl, title: profile?.name }
+          : { message: profileUrl, title: profile?.name },
       );
-    } catch { /* silent */ } finally {
+    } catch {
+      /* silent */
+    } finally {
       setSharing(false);
     }
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
       <Pressable style={s.backdrop} onPress={onClose} />
       <View style={s.sheet}>
-
         <ViewShot
           ref={shotRef}
-          options={{ format: 'png', quality: 1, pixelRatio: 1080 / CARD_W }}
+          options={{ format: "png", quality: 1, pixelRatio: 1080 / CARD_W }}
         >
-          <View style={{ width: CARD_W, height: CARD_H, overflow: 'hidden' }}>
-
+          <View style={{ width: CARD_W, height: CARD_H, overflow: "hidden" }}>
             {/* ── TOP SECTION — blue ── */}
             <View style={s.top}>
               {/* Giant faded KUWAI watermark */}
@@ -88,29 +113,43 @@ export default function ShareProfileCard({ visible, onClose, profile }) {
               {/* Avatar */}
               <View style={s.avatarWrap}>
                 {profile?.profilePic ? (
-                  <Image source={{ uri: profile.profilePic }} style={s.avatar} />
+                  <Image
+                    source={{ uri: profile.profilePic }}
+                    style={s.avatar}
+                  />
                 ) : (
-                  <View style={[s.avatar, { backgroundColor: avatarBg(profile?.name) }]}>
+                  <View
+                    style={[
+                      s.avatar,
+                      { backgroundColor: avatarBg(profile?.name) },
+                    ]}
+                  >
                     <Text style={s.avatarInitial}>
-                      {profile?.name?.[0]?.toUpperCase() || '?'}
+                      {profile?.name?.[0]?.toUpperCase() || "?"}
                     </Text>
                   </View>
                 )}
               </View>
 
               {/* Name */}
-              <Text style={s.name} numberOfLines={2}>{profile?.name}</Text>
+              <Text style={s.name} numberOfLines={2}>
+                {profile?.name}
+              </Text>
 
               {/* Badge */}
               {!!badge && (
                 <View style={s.badgeRow}>
                   {isFounder && <Text style={s.star}>★</Text>}
-                  <Text style={[s.badgeText, isArabic && { letterSpacing: 0 }]}>{BADGE_LABELS[badge]}</Text>
+                  <Text style={[s.badgeText, isArabic && { letterSpacing: 0 }]}>
+                    {BADGE_LABELS[badge]}
+                  </Text>
                 </View>
               )}
 
               {/* Tagline */}
-              <Text style={[s.tagline, !isArabic && { letterSpacing: 3 }]}>{tagline}</Text>
+              <Text style={[s.tagline, !isArabic && { letterSpacing: 3 }]}>
+                {tagline}
+              </Text>
             </View>
 
             {/* ── BOTTOM SECTION — white ── */}
@@ -136,7 +175,6 @@ export default function ShareProfileCard({ visible, onClose, profile }) {
                 </View>
               </View>
             </View>
-
           </View>
         </ViewShot>
 
@@ -147,14 +185,19 @@ export default function ShareProfileCard({ visible, onClose, profile }) {
           activeOpacity={0.85}
           disabled={sharing}
         >
-          {sharing
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={s.shareBtnText}>{t('common.shareCard')}</Text>
-          }
+          {sharing ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={s.shareBtnText}>{t("common.shareCard")}</Text>
+          )}
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={onClose} activeOpacity={0.7} style={s.cancelBtn}>
-          <Text style={s.cancelText}>{t('common.cancel')}</Text>
+        <TouchableOpacity
+          onPress={onClose}
+          activeOpacity={0.7}
+          style={s.cancelBtn}
+        >
+          <Text style={s.cancelText}>{t("common.cancel")}</Text>
         </TouchableOpacity>
       </View>
     </Modal>
@@ -162,15 +205,15 @@ export default function ShareProfileCard({ visible, onClose, profile }) {
 }
 
 const s = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)' },
+  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)" },
   sheet: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 20,
     paddingHorizontal: 20,
     paddingBottom: 40,
-    alignItems: 'center',
+    alignItems: "center",
     gap: 16,
   },
 
@@ -179,44 +222,44 @@ const s = StyleSheet.create({
     width: CARD_W,
     height: CARD_W * (16 / 9) * 0.68, // 68% of card height
     backgroundColor: BLUE,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
     paddingHorizontal: 24,
   },
   watermark: {
-    position: 'absolute',
+    position: "absolute",
     fontSize: 88,
-    fontWeight: '900',
-    color: '#fff',
+    fontWeight: "900",
+    color: "#fff",
     opacity: 0.05,
     letterSpacing: 12,
     top: 16,
     left: -8,
   },
   circle1: {
-    position: 'absolute',
+    position: "absolute",
     width: 220,
     height: 220,
     borderRadius: 110,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.07)',
+    borderColor: "rgba(255,255,255,0.07)",
     top: -60,
     right: -60,
   },
   circle2: {
-    position: 'absolute',
+    position: "absolute",
     width: 160,
     height: 160,
     borderRadius: 80,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.07)',
+    borderColor: "rgba(255,255,255,0.07)",
     bottom: -40,
     left: -30,
   },
   avatarWrap: {
     marginBottom: 14,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.4,
     shadowRadius: 20,
     shadowOffset: { width: 0, height: 8 },
@@ -227,62 +270,62 @@ const s = StyleSheet.create({
     borderRadius: 55,
     borderWidth: 4,
     borderColor: GOLD,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
-  avatarInitial: { fontSize: 44, fontWeight: '800', color: '#fff' },
+  avatarInitial: { fontSize: 44, fontWeight: "800", color: "#fff" },
   name: {
     fontSize: 28,
-    fontWeight: '900',
-    color: '#fff',
+    fontWeight: "900",
+    color: "#fff",
     letterSpacing: -0.5,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 33,
     marginBottom: 8,
   },
   badgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 5,
     marginBottom: 16,
   },
   star: { color: GOLD, fontSize: 11 },
   badgeText: {
-    color: 'rgba(255,255,255,0.7)',
+    color: "rgba(255,255,255,0.7)",
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: "700",
     letterSpacing: 2,
   },
   tagline: {
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: "800",
     color: GOLD,
     opacity: 0.85,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
 
   // ── Card bottom (white) ──
   bottom: {
     width: CARD_W,
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
   accentLine: {
-    width: '100%',
+    width: "100%",
     height: 3,
     backgroundColor: GOLD,
   },
   bottomInner: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 18,
     gap: 16,
   },
   bottomText: { flex: 1 },
   bottomWordmark: {
     fontSize: 18,
-    fontWeight: '900',
+    fontWeight: "900",
     color: BLUE,
     letterSpacing: 4,
     marginBottom: 4,
@@ -293,26 +336,25 @@ const s = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     marginTop: 6,
-    alignSelf: 'stretch',
-    alignItems: 'center',
+    alignSelf: "stretch",
+    alignItems: "center",
   },
   followBadgeText: {
     fontSize: 11,
-    fontWeight: '700',
-    color: '#fff',
-    textAlign: 'center',
-    letterSpacing: 0.3,
+    fontWeight: "700",
+    color: "#fff",
+    textAlign: "center",
   },
 
   // ── Sheet buttons ──
   shareBtn: {
-    width: '100%',
+    width: "100%",
     backgroundColor: BLUE,
     borderRadius: 14,
     paddingVertical: 16,
-    alignItems: 'center',
+    alignItems: "center",
   },
-  shareBtnText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  shareBtnText: { color: "#fff", fontSize: 17, fontWeight: "700" },
   cancelBtn: { paddingVertical: 4 },
-  cancelText: { fontSize: 16, color: '#6C6C70' },
+  cancelText: { fontSize: 16, color: "#6C6C70" },
 });
