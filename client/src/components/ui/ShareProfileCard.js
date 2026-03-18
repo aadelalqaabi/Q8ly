@@ -39,7 +39,7 @@ export default function ShareProfileCard({ visible, onClose, profile }) {
   const badge = profile?.verifiedBadge && profile.verifiedBadge !== 'none'
     ? profile.verifiedBadge : null;
   const isFounder = badge === 'founder';
-  const tagline = isArabic ? 'تطبيق الكويت الاجتماعي' : "KUWAIT'S SOCIAL APP";
+  const tagline = isArabic ? 'اول منصة تواصل اجتماعي كويتية' : "KUWAIT'S FIRST SOCIAL MEDIA APP";
 
   const handleShare = async () => {
     if (sharing) return;
