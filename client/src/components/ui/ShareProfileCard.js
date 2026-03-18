@@ -121,10 +121,9 @@ export default function ShareProfileCard({ visible, onClose, profile }) {
                 {/* Right side text */}
                 <View style={s.bottomText}>
                   <Text style={s.bottomWordmark}>KUWAI</Text>
-                  <Text style={s.bottomUrl} numberOfLines={1}>
-                    kuwai.app/profile/{profile?.username}
-                  </Text>
-                  <Text style={s.bottomSub}>Find me on the app</Text>
+                  <View style={s.followBadge}>
+                    <Text style={s.followBadgeText}>Follow me on the app</Text>
+                  </View>
                 </View>
               </View>
             </View>
@@ -279,15 +278,18 @@ const s = StyleSheet.create({
     letterSpacing: 4,
     marginBottom: 4,
   },
-  bottomUrl: {
-    fontSize: 9,
-    color: '#6C6C70',
-    letterSpacing: 0.2,
-    marginBottom: 3,
+  followBadge: {
+    backgroundColor: BLUE,
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    alignSelf: 'flex-start',
+    marginTop: 6,
   },
-  bottomSub: {
-    fontSize: 9,
-    color: '#aaa',
+  followBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#fff',
     letterSpacing: 0.3,
   },
 
