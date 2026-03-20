@@ -19,6 +19,15 @@ const FORCE_TEST   = process.env.OTP_TEST_MODE === 'true';
 const TEST_OTP = '123456';
 const OTP_EXPIRY_MS = 10 * 60 * 1000;
 
+// Demo numbers always accept TEST_OTP regardless of mode — used for Apple/store reviewers.
+// Set DEMO_PHONES as a comma-separated list in env vars, e.g. "+96500000000,+96500000001"
+const DEMO_NUMBERS = new Set(
+  (process.env.DEMO_PHONES || '+96500000000')
+    .split(',')
+    .map((n) => n.trim())
+    .filter(Boolean)
+);
+
 const otpStore = new Map(); // phone → { otp, expires, attempts }
 
 let verifyService = null;
@@ -60,6 +69,13 @@ function normalizePhone(raw) {
 async function sendOtp(phone) {
   const normalized = normalizePhone(phone);
 
+  // Demo numbers bypass OTP entirely — used for app store reviewer accounts
+  if (DEMO_NUMBERS.has(normalized)) {
+    otpStore.set(normalized, { otp: TEST_OTP, expires: Date.now() + OTP_EXPIRY_MS, attempts: 0 });
+    console.log(`[OTP DEMO] Demo number ${normalized} — code: ${TEST_OTP}`);
+    return { testMode: true };
+  }
+
   if (TEST_MODE) {
     otpStore.set(normalized, { otp: TEST_OTP, expires: Date.now() + OTP_EXPIRY_MS, attempts: 0 });
     console.log(`[OTP TEST] Code for ${normalized}: ${TEST_OTP}`);
@@ -92,6 +108,16 @@ async function sendOtp(phone) {
 
 async function verifyOtp(phone, code) {
   const normalized = normalizePhone(phone);
+
+  // Demo numbers always accept the test OTP
+  if (DEMO_NUMBERS.has(normalized)) {
+    const stored = otpStore.get(normalized);
+    if (!stored) return { valid: false, reason: 'No code was sent to this number' };
+    if (Date.now() > stored.expires) { otpStore.delete(normalized); return { valid: false, reason: 'Code has expired' }; }
+    if (stored.otp !== String(code)) return { valid: false, reason: 'Incorrect code' };
+    otpStore.delete(normalized);
+    return { valid: true };
+  }
 
   if (TEST_MODE) {
     const stored = otpStore.get(normalized);
