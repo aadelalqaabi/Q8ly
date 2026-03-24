@@ -67,34 +67,38 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
       return res.status(400).json({ success: false, message: 'Invalid email address.' });
     }
     try {
-      const nodemailer = require('nodemailer');
-      const emailUser = process.env.EMAIL_USER;
-      const emailPass = process.env.EMAIL_PASS;
-      if (!emailUser || !emailPass) {
-        console.error('[Contact form] EMAIL_USER or EMAIL_PASS env var is not set');
+      const apiKey = process.env.RESEND_API_KEY;
+      if (!apiKey) {
+        console.error('[Contact form] RESEND_API_KEY env var is not set');
         return res.status(500).json({ success: false, message: 'Mail service not configured.' });
       }
-      const port = parseInt(process.env.EMAIL_PORT) || 465;
-      const transporter = nodemailer.createTransport({
-        host: process.env.EMAIL_HOST || 'smtp.zoho.com',
-        port,
-        secure: port === 465,
-        connectionTimeout: 8000,
-        greetingTimeout: 8000,
-        socketTimeout: 8000,
-        auth: { user: emailUser, pass: emailPass },
-      });
-      await transporter.sendMail({
-        from: `"KUWAI" <${emailUser}>`,
-        to: emailUser,
-        replyTo: `"${name}" <${email}>`,
+      const payload = JSON.stringify({
+        from: 'KUWAI Support <info@kuwai.app>',
+        to: ['info@kuwai.app'],
+        reply_to: `${name} <${email}>`,
         subject: `[Support] ${subject}`,
         text: `Name: ${name}\nEmail: ${email}\nSubject: ${subject}\n\n${message}`,
         html: `<p><b>Name:</b> ${name}</p><p><b>Email:</b> <a href="mailto:${email}">${email}</a></p><p><b>Subject:</b> ${subject}</p><hr/><p>${message.replace(/\n/g, '<br/>')}</p>`,
       });
-      res.json({ success: true });
+      const response = await new Promise((resolve, reject) => {
+        const req = require('https').request(
+          { hostname: 'api.resend.com', path: '/emails', method: 'POST',
+            headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) } },
+          (r) => { let d = ''; r.on('data', (c) => d += c); r.on('end', () => resolve({ status: r.statusCode, body: d })); }
+        );
+        req.on('error', reject);
+        req.setTimeout(10000, () => { req.destroy(new Error('Request timeout')); });
+        req.write(payload);
+        req.end();
+      });
+      if (response.status >= 200 && response.status < 300) {
+        res.json({ success: true });
+      } else {
+        console.error('[Contact form] Resend error:', response.status, response.body);
+        res.status(500).json({ success: false, message: 'Could not send message.' });
+      }
     } catch (err) {
-      console.error('[Contact form] email error:', err.code, err.message);
+      console.error('[Contact form] error:', err.code, err.message);
       res.status(500).json({ success: false, message: 'Could not send message.' });
     }
   });
