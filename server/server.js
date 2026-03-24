@@ -53,6 +53,50 @@ app.use('/admin', (req, res, next) => {
 // Public web pages (privacy policy, support)
 app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] }));
 
+// Contact form — before CORS so same-server requests aren't blocked
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+{
+  const contactLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 5, message: 'Too many submissions, try again later.' });
+  app.post('/contact', contactLimiter, async (req, res) => {
+    const { name, email, subject, message } = req.body || {};
+    if (!name || !email || !subject || !message) {
+      return res.status(400).json({ success: false, message: 'All fields are required.' });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ success: false, message: 'Invalid email address.' });
+    }
+    try {
+      const nodemailer = require('nodemailer');
+      const emailUser = process.env.EMAIL_USER;
+      const emailPass = process.env.EMAIL_PASS;
+      if (!emailUser || !emailPass) {
+        console.error('[Contact form] EMAIL_USER or EMAIL_PASS env var is not set');
+        return res.status(500).json({ success: false, message: 'Mail service not configured.' });
+      }
+      const port = parseInt(process.env.EMAIL_PORT) || 465;
+      const transporter = nodemailer.createTransport({
+        host: process.env.EMAIL_HOST || 'smtp.zoho.com',
+        port,
+        secure: port === 465,
+        auth: { user: emailUser, pass: emailPass },
+      });
+      await transporter.sendMail({
+        from: `"KUWAI" <${emailUser}>`,
+        to: emailUser,
+        replyTo: `"${name}" <${email}>`,
+        subject: `[Support] ${subject}`,
+        text: `Name: ${name}\nEmail: ${email}\nSubject: ${subject}\n\n${message}`,
+        html: `<p><b>Name:</b> ${name}</p><p><b>Email:</b> <a href="mailto:${email}">${email}</a></p><p><b>Subject:</b> ${subject}</p><hr/><p>${message.replace(/\n/g, '<br/>')}</p>`,
+      });
+      res.json({ success: true });
+    } catch (err) {
+      console.error('[Contact form] email error:', err.code, err.message);
+      res.status(500).json({ success: false, message: 'Could not send message.' });
+    }
+  });
+}
+
 // Security middleware
 app.use(helmet({
   crossOriginEmbedderPolicy: false,
@@ -106,56 +150,12 @@ const adminLoginLimiter = rateLimit({
 });
 app.use('/api/admin/login', adminLoginLimiter);
 
-// Body parsing — keep low for regular API, uploads use multer limits
-app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ extended: true, limit: '1mb' }));
-
 // Logging
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
-});
-
-// Contact form — sends email to info@kuwai.app
-const contactLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 5, message: 'Too many submissions, try again later.' });
-app.post('/contact', contactLimiter, async (req, res) => {
-  const { name, email, subject, message } = req.body || {};
-  if (!name || !email || !subject || !message) {
-    return res.status(400).json({ success: false, message: 'All fields are required.' });
-  }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return res.status(400).json({ success: false, message: 'Invalid email address.' });
-  }
-  try {
-    const nodemailer = require('nodemailer');
-    const emailUser = process.env.EMAIL_USER;
-    const emailPass = process.env.EMAIL_PASS;
-    if (!emailUser || !emailPass) {
-      console.error('[Contact form] EMAIL_USER or EMAIL_PASS env var is not set');
-      return res.status(500).json({ success: false, message: 'Mail service not configured.' });
-    }
-    const port = parseInt(process.env.EMAIL_PORT) || 465;
-    const transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_HOST || 'smtp.zoho.com',
-      port,
-      secure: port === 465,
-      auth: { user: emailUser, pass: emailPass },
-    });
-    await transporter.sendMail({
-      from: `"KUWAI" <${emailUser}>`,
-      to: emailUser,
-      replyTo: `"${name}" <${email}>`,
-      subject: `[Support] ${subject}`,
-      text: `Name: ${name}\nEmail: ${email}\nSubject: ${subject}\n\n${message}`,
-      html: `<p><b>Name:</b> ${name}</p><p><b>Email:</b> <a href="mailto:${email}">${email}</a></p><p><b>Subject:</b> ${subject}</p><hr/><p>${message.replace(/\n/g, '<br/>')}</p>`,
-    });
-    res.json({ success: true });
-  } catch (err) {
-    console.error('[Contact form] email error:', err.code, err.message);
-    res.status(500).json({ success: false, message: 'Could not send message.' });
-  }
 });
 
 // Smart redirect — open in app or fall back to App Store
