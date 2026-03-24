@@ -12,7 +12,7 @@ import { AppRestartContext } from '../../context/AppRestartContext';
 import { useTheme } from '../../context/ThemeContext';
 import { logout } from '../../store/slices/authSlice';
 import BottomMenu from '../../components/ui/BottomMenu';
-import { suggestionsAPI } from '../../services/api';
+import { suggestionsAPI, usersAPI } from '../../services/api';
 
 const THEME_OPTIONS = [
   { key: 'auto',  icon: 'phone-portrait-outline', labelKey: 'settings.themeAuto'  },
@@ -34,6 +34,32 @@ export default function SettingsScreen({ navigation }) {
   const { colors, scheme, setScheme } = useTheme();
   const styles = useMemo(() => makeStyles(colors, isRTL), [colors, isRTL]);
   const [logoutMenuVisible, setLogoutMenuVisible] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      t('settings.deleteAccountTitle'),
+      t('settings.deleteAccountMsg'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('settings.deleteAccountConfirm'),
+          style: 'destructive',
+          onPress: async () => {
+            setDeleteLoading(true);
+            try {
+              await usersAPI.deleteAccount();
+              await dispatch(logout());
+              navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
+            } catch (e) {
+              setDeleteLoading(false);
+              Alert.alert(t('common.error'), e.message || t('common.somethingWrong'));
+            }
+          },
+        },
+      ]
+    );
+  };
   const [suggestVisible, setSuggestVisible] = useState(false);
   const [suggestText, setSuggestText] = useState('');
   const [suggestCategory, setSuggestCategory] = useState('feature');
@@ -173,6 +199,19 @@ export default function SettingsScreen({ navigation }) {
               <Ionicons name="log-out-outline" size={22} color={colors.error} />
             </View>
             <Text style={styles.rowLabelDestructive}>{t('settings.signOut')}</Text>
+          </TouchableOpacity>
+          <View style={styles.divider} />
+          <TouchableOpacity style={styles.row} onPress={handleDeleteAccount} activeOpacity={0.6} disabled={deleteLoading}>
+            <View style={[styles.rowIconDestructive, { backgroundColor: '#FFF2F2' }]}>
+              {deleteLoading
+                ? <ActivityIndicator size="small" color={colors.error} />
+                : <Ionicons name="trash-outline" size={22} color={colors.error} />
+              }
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.rowLabelDestructive}>{t('settings.deleteAccount')}</Text>
+              <Text style={[styles.rowSub, { color: colors.error, opacity: 0.7 }]}>{t('settings.deleteAccountSub')}</Text>
+            </View>
           </TouchableOpacity>
         </View>
       </ScrollView>

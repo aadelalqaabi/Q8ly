@@ -366,6 +366,34 @@ const requestVerification = async (req, res, next) => {
   }
 };
 
+// @desc    Permanently delete authenticated user's account and all their data
+// @route   DELETE /api/users/account
+// @access  Private
+const deleteAccount = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+
+    // Remove from other users' followers/following lists
+    await User.updateMany(
+      { $or: [{ followers: userId }, { following: userId }] },
+      { $pull: { followers: userId, following: userId } }
+    );
+
+    // Delete all posts by this user
+    await Post.deleteMany({ author: userId });
+
+    // Delete all notifications involving this user
+    await Notification.deleteMany({ $or: [{ recipient: userId }, { fromUser: userId }] });
+
+    // Delete the user document itself
+    await User.findByIdAndDelete(userId);
+
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getProfile,
   getUserPosts,
@@ -379,4 +407,5 @@ module.exports = {
   savePushToken,
   togglePostNotifications,
   requestVerification,
+  deleteAccount,
 };

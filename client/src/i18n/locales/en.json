@@ -275,6 +275,11 @@
     "themeDark": "Dark",
     "account": "Account",
     "signOut": "Sign Out",
+    "deleteAccount": "Delete Account",
+    "deleteAccountSub": "Permanently delete your account and all data",
+    "deleteAccountTitle": "Delete Account?",
+    "deleteAccountMsg": "This will permanently delete your account, posts, and all your data. This action cannot be undone.",
+    "deleteAccountConfirm": "Delete My Account",
     "dirHint": "Language change requires an app restart for layout direction to update"
   },
 
