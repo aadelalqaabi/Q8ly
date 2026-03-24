@@ -130,10 +130,11 @@ app.post('/contact', contactLimiter, async (req, res) => {
   }
   try {
     const nodemailer = require('nodemailer');
+    const port = parseInt(process.env.EMAIL_PORT) || 465;
     const transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_HOST,
-      port: parseInt(process.env.EMAIL_PORT) || 587,
-      secure: false,
+      host: process.env.EMAIL_HOST || 'smtp.zoho.com',
+      port,
+      secure: port === 465,
       auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
     });
     await transporter.sendMail({
