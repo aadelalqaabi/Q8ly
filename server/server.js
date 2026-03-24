@@ -130,24 +130,30 @@ app.post('/contact', contactLimiter, async (req, res) => {
   }
   try {
     const nodemailer = require('nodemailer');
+    const emailUser = process.env.EMAIL_USER;
+    const emailPass = process.env.EMAIL_PASS;
+    if (!emailUser || !emailPass) {
+      console.error('[Contact form] EMAIL_USER or EMAIL_PASS env var is not set');
+      return res.status(500).json({ success: false, message: 'Mail service not configured.' });
+    }
     const port = parseInt(process.env.EMAIL_PORT) || 465;
     const transporter = nodemailer.createTransport({
       host: process.env.EMAIL_HOST || 'smtp.zoho.com',
       port,
       secure: port === 465,
-      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+      auth: { user: emailUser, pass: emailPass },
     });
     await transporter.sendMail({
-      from: `"KUWAI Support Form" <${process.env.EMAIL_USER}>`,
-      to: 'info@kuwai.app',
+      from: `"KUWAI" <${emailUser}>`,
+      to: emailUser,
       replyTo: `"${name}" <${email}>`,
-      subject: `[KUWAI Support] ${subject}`,
+      subject: `[Support] ${subject}`,
       text: `Name: ${name}\nEmail: ${email}\nSubject: ${subject}\n\n${message}`,
       html: `<p><b>Name:</b> ${name}</p><p><b>Email:</b> <a href="mailto:${email}">${email}</a></p><p><b>Subject:</b> ${subject}</p><hr/><p>${message.replace(/\n/g, '<br/>')}</p>`,
     });
     res.json({ success: true });
   } catch (err) {
-    console.error('[Contact form] email error:', err.message);
+    console.error('[Contact form] email error:', err.code, err.message);
     res.status(500).json({ success: false, message: 'Could not send message.' });
   }
 });
