@@ -79,6 +79,9 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
         host: process.env.EMAIL_HOST || 'smtp.zoho.com',
         port,
         secure: port === 465,
+        connectionTimeout: 8000,
+        greetingTimeout: 8000,
+        socketTimeout: 8000,
         auth: { user: emailUser, pass: emailPass },
       });
       await transporter.sendMail({
