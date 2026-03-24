@@ -18,10 +18,10 @@
       "buildNumber": "2",
       "associatedDomains": ["applinks:kuwai.app"],
       "infoPlist": {
-        "NSCameraUsageDescription": "KUWAI needs camera access to take photos for posts.",
-        "NSPhotoLibraryUsageDescription": "KUWAI needs photo library access to share photos and videos in posts.",
-        "NSPhotoLibraryAddUsageDescription": "KUWAI needs access to save photos and videos.",
-        "NSMicrophoneUsageDescription": "KUWAI needs microphone access for video recording.",
+        "NSCameraUsageDescription": "KUWAI uses your camera so you can take photos and record videos to share in your posts and circles. For example, you can snap a photo of an event in Kuwait and post it directly to your feed.",
+        "NSPhotoLibraryUsageDescription": "KUWAI accesses your photo library so you can choose existing photos and videos to attach to your posts. For example, you can select up to 4 photos from your camera roll to share with your followers.",
+        "NSPhotoLibraryAddUsageDescription": "KUWAI saves photos and videos to your library when you download media shared in posts. For example, a video shared in a circle can be saved directly to your Photos app.",
+        "NSMicrophoneUsageDescription": "KUWAI uses your microphone to record audio when you create video posts. For example, when recording a video to share in your feed, your microphone captures the accompanying audio.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -68,8 +68,8 @@
       [
         "expo-media-library",
         {
-          "photosPermission": "Allow KUWAI to access your photos and videos.",
-          "savePhotosPermission": "Allow KUWAI to save photos.",
+          "photosPermission": "KUWAI accesses your photo library so you can choose existing photos and videos to attach to your posts. For example, you can select up to 4 photos from your camera roll to share with your followers.",
+          "savePhotosPermission": "KUWAI saves photos and videos to your library when you download media shared in posts.",
           "isAccessMediaLocationEnabled": true
         }
       ],
