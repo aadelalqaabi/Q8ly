@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Support — KUWAI</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --blue: #0033A0;
+      --text: #1c1c1e;
+      --muted: #6c6c70;
+      --sep: #e5e5ea;
+      --bg: #f2f2f7;
+      --fill: #f2f2f7;
+      --error: #ff3b30;
+      --success: #34c759;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      font-size: 16px;
+    }
+    header {
+      background: #fff;
+      border-bottom: 1px solid var(--sep);
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header a { text-decoration: none; }
+    .wordmark {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      color: var(--blue);
+    }
+    .flag { font-size: 20px; }
+    .nav-link {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--blue);
+      text-decoration: none;
+      margin-left: auto;
+    }
+    .nav-link:hover { text-decoration: underline; }
+    main {
+      max-width: 640px;
+      margin: 40px auto;
+      padding: 0 24px 80px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 18px;
+      padding: 40px 48px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    h1 {
+      font-size: 30px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+    }
+    .subtitle {
+      font-size: 15px;
+      color: var(--muted);
+      margin-bottom: 32px;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 6px;
+      letter-spacing: 0.2px;
+    }
+    input, select, textarea {
+      width: 100%;
+      background: var(--fill);
+      border: 1.5px solid transparent;
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 16px;
+      font-family: inherit;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.15s;
+      margin-bottom: 20px;
+      appearance: none;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--blue);
+      background: #eef2fa;
+    }
+    textarea { resize: vertical; min-height: 130px; }
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236c6c70' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 36px;
+    }
+    .field { margin-bottom: 4px; }
+    button[type="submit"] {
+      width: 100%;
+      background: var(--blue);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      padding: 16px;
+      font-size: 17px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: opacity 0.15s;
+    }
+    button[type="submit"]:hover { opacity: 0.88; }
+    button[type="submit"]:disabled { opacity: 0.4; cursor: not-allowed; }
+    .msg {
+      border-radius: 12px;
+      padding: 14px 18px;
+      font-size: 15px;
+      font-weight: 500;
+      margin-bottom: 20px;
+      display: none;
+    }
+    .msg.success { background: #e6f9ed; color: #1a7a3a; border: 1px solid #b2e8c3; }
+    .msg.error   { background: #fff2f2; color: var(--error); border: 1px solid #ffc9c9; }
+    .msg.show { display: block; }
+    .divider {
+      height: 1px;
+      background: var(--sep);
+      margin: 28px 0;
+    }
+    .alt-contact {
+      font-size: 14px;
+      color: var(--muted);
+      text-align: center;
+    }
+    .alt-contact a { color: var(--blue); text-decoration: none; font-weight: 500; }
+    .alt-contact a:hover { text-decoration: underline; }
+    footer {
+      text-align: center;
+      font-size: 13px;
+      color: var(--muted);
+      padding: 32px 24px;
+    }
+    footer a { color: var(--blue); text-decoration: none; }
+    @media (max-width: 600px) {
+      .card { padding: 28px 22px; border-radius: 14px; }
+      h1 { font-size: 24px; }
+      main { margin: 20px auto; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="flag">🇰🇼</span>
+  <a href="/"><span class="wordmark">KUWAI</span></a>
+  <a href="/privacy.html" class="nav-link">Privacy Policy</a>
+</header>
+
+<main>
+  <div class="card">
+    <h1>Contact Support</h1>
+    <p class="subtitle">Have a question or need help? Fill out the form below and we'll get back to you.</p>
+
+    <div class="msg success" id="successMsg">
+      ✅ Your message was sent! We'll reply to your email within 1–2 business days.
+    </div>
+    <div class="msg error" id="errorMsg">
+      Something went wrong. Please try again or email us directly at info@kuwai.app.
+    </div>
+
+    <form id="contactForm">
+      <div class="field">
+        <label for="name">Your Name</label>
+        <input type="text" id="name" name="name" placeholder="Ahmed Al-Mutairi" required maxlength="100" />
+      </div>
+
+      <div class="field">
+        <label for="email">Email Address</label>
+        <input type="email" id="email" name="email" placeholder="you@example.com" required maxlength="200" />
+      </div>
+
+      <div class="field">
+        <label for="subject">Subject</label>
+        <select id="subject" name="subject" required>
+          <option value="" disabled selected>Select a topic…</option>
+          <option value="Account issue">Account issue</option>
+          <option value="Content or post problem">Content or post problem</option>
+          <option value="Notification problem">Notification problem</option>
+          <option value="Privacy or data request">Privacy or data request</option>
+          <option value="Report a user">Report a user</option>
+          <option value="App bug or crash">App bug or crash</option>
+          <option value="Feature request">Feature request</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="message">Message</label>
+        <textarea id="message" name="message" placeholder="Describe your issue or question in detail…" required maxlength="2000"></textarea>
+      </div>
+
+      <button type="submit" id="submitBtn">Send Message</button>
+    </form>
+
+    <div class="divider"></div>
+
+    <p class="alt-contact">
+      Or email us directly at <a href="mailto:info@kuwai.app">info@kuwai.app</a>
+    </p>
+  </div>
+</main>
+
+<footer>© 2025 KUWAI · <a href="/privacy.html">Privacy Policy</a> · <a href="/support.html">Support</a></footer>
+
+<script>
+  const form = document.getElementById('contactForm');
+  const submitBtn = document.getElementById('submitBtn');
+  const successMsg = document.getElementById('successMsg');
+  const errorMsg = document.getElementById('errorMsg');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    successMsg.classList.remove('show');
+    errorMsg.classList.remove('show');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Sending…';
+
+    const body = {
+      name: form.name.value.trim(),
+      email: form.email.value.trim(),
+      subject: form.subject.value,
+      message: form.message.value.trim(),
+    };
+
+    try {
+      const res = await fetch('/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        form.reset();
+        successMsg.classList.add('show');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        errorMsg.classList.add('show');
+      }
+    } catch {
+      errorMsg.classList.add('show');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Send Message';
+    }
+  });
+</script>
+
+</body>
+</html>

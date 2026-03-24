@@ -50,6 +50,9 @@ app.use('/admin', (req, res, next) => {
   next();
 }, express.static(path.join(__dirname, 'public/admin')));
 
+// Public web pages (privacy policy, support)
+app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] }));
+
 // Security middleware
 app.use(helmet({
   crossOriginEmbedderPolicy: false,
@@ -113,6 +116,39 @@ app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
+});
+
+// Contact form — sends email to info@kuwai.app
+const contactLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 5, message: 'Too many submissions, try again later.' });
+app.post('/contact', contactLimiter, async (req, res) => {
+  const { name, email, subject, message } = req.body || {};
+  if (!name || !email || !subject || !message) {
+    return res.status(400).json({ success: false, message: 'All fields are required.' });
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ success: false, message: 'Invalid email address.' });
+  }
+  try {
+    const nodemailer = require('nodemailer');
+    const transporter = nodemailer.createTransport({
+      host: process.env.EMAIL_HOST,
+      port: parseInt(process.env.EMAIL_PORT) || 587,
+      secure: false,
+      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+    });
+    await transporter.sendMail({
+      from: `"KUWAI Support Form" <${process.env.EMAIL_USER}>`,
+      to: 'info@kuwai.app',
+      replyTo: `"${name}" <${email}>`,
+      subject: `[KUWAI Support] ${subject}`,
+      text: `Name: ${name}\nEmail: ${email}\nSubject: ${subject}\n\n${message}`,
+      html: `<p><b>Name:</b> ${name}</p><p><b>Email:</b> <a href="mailto:${email}">${email}</a></p><p><b>Subject:</b> ${subject}</p><hr/><p>${message.replace(/\n/g, '<br/>')}</p>`,
+    });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Contact form] email error:', err.message);
+    res.status(500).json({ success: false, message: 'Could not send message.' });
+  }
 });
 
 // Smart redirect — open in app or fall back to App Store
