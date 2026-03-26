@@ -22,7 +22,7 @@ const OTP_EXPIRY_MS = 10 * 60 * 1000;
 // Demo numbers always accept TEST_OTP regardless of mode — used for Apple/store reviewers.
 // Set DEMO_PHONES as a comma-separated list in env vars, e.g. "+96500000000,+96500000001"
 const DEMO_NUMBERS = new Set(
-  (process.env.DEMO_PHONES || '+96500000000')
+  (process.env.DEMO_PHONES || '')
     .split(',')
     .map((n) => n.trim())
     .filter(Boolean)
