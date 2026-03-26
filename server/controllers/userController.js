@@ -394,6 +394,29 @@ const deleteAccount = async (req, res, next) => {
   }
 };
 
+// @desc    Update push notification preferences
+// @route   PUT /api/users/notification-settings
+// @access  Private
+const updateNotificationSettings = async (req, res, next) => {
+  try {
+    const allowed = ['likes', 'comments', 'follows', 'mentions'];
+    const update = {};
+    allowed.forEach((key) => {
+      if (typeof req.body[key] === 'boolean') {
+        update[`notificationSettings.${key}`] = req.body[key];
+      }
+    });
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { $set: update },
+      { new: true }
+    ).select('notificationSettings');
+    res.json({ success: true, notificationSettings: user.notificationSettings });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getProfile,
   getUserPosts,
@@ -408,4 +431,5 @@ module.exports = {
   togglePostNotifications,
   requestVerification,
   deleteAccount,
+  updateNotificationSettings,
 };

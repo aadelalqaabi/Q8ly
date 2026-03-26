@@ -88,6 +88,7 @@ export const usersAPI = {
   requestVerification: (type, reason) => api.post('/users/verify-request', { type, reason }),
   getBookmarks: (params) => api.get('/users/bookmarks', { params }),
   deleteAccount: () => api.delete('/users/account'),
+  updateNotificationSettings: (settings) => api.put('/users/notification-settings', settings),
 };
 
 // ── Direct Messages ───────────────────────────────────────────────────────────

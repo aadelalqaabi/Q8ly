@@ -1,7 +1,7 @@
 import { useContext, useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Modal, TextInput, Alert, ActivityIndicator, KeyboardAvoidingView, Platform,
+  Modal, TextInput, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Switch,
 } from 'react-native';
 import { useDispatch } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +13,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { logout } from '../../store/slices/authSlice';
 import BottomMenu from '../../components/ui/BottomMenu';
 import { suggestionsAPI, usersAPI } from '../../services/api';
+import { useSelector } from 'react-redux';
 
 const THEME_OPTIONS = [
   { key: 'auto',  icon: 'phone-portrait-outline', labelKey: 'settings.themeAuto'  },
@@ -33,8 +34,38 @@ export default function SettingsScreen({ navigation }) {
   const restartApp = useContext(AppRestartContext);
   const { colors, scheme, setScheme } = useTheme();
   const styles = useMemo(() => makeStyles(colors, isRTL), [colors, isRTL]);
+  const { user: currentUser } = useSelector((s) => s.auth);
   const [logoutMenuVisible, setLogoutMenuVisible] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const defaultNotifSettings = currentUser?.notificationSettings || {
+    likes: true, comments: true, follows: true, mentions: true,
+  };
+  const allOn = Object.values(defaultNotifSettings).every(Boolean);
+  const [notifSettings, setNotifSettings] = useState(defaultNotifSettings);
+  const [notifAllOn, setNotifAllOn] = useState(allOn);
+
+  const handleNotifToggle = async (key, value) => {
+    const next = { ...notifSettings, [key]: value };
+    setNotifSettings(next);
+    try {
+      await usersAPI.updateNotificationSettings({ [key]: value });
+    } catch {
+      setNotifSettings(notifSettings); // revert on error
+    }
+  };
+
+  const handleNotifAllToggle = async (value) => {
+    setNotifAllOn(value);
+    const next = { likes: value, comments: value, follows: value, mentions: value };
+    setNotifSettings(next);
+    try {
+      await usersAPI.updateNotificationSettings(next);
+    } catch {
+      setNotifAllOn(!value);
+      setNotifSettings(notifSettings);
+    }
+  };
 
   const handleDeleteAccount = () => {
     Alert.alert(
@@ -189,6 +220,54 @@ export default function SettingsScreen({ navigation }) {
             </View>
             <Ionicons name={isRTL ? 'chevron-back' : 'chevron-forward'} size={18} color={colors.textMuted} />
           </TouchableOpacity>
+        </View>
+
+        {/* Notifications section */}
+        <SectionLabel label={t('settings.notifications')} colors={colors} isRTL={isRTL} />
+        <View style={styles.card}>
+          {/* Master toggle */}
+          <View style={styles.row}>
+            <View style={[styles.rowIcon, { backgroundColor: '#EEF2FA' }]}>
+              <Ionicons name="notifications-outline" size={22} color={colors.accent} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.rowLabel}>{t('settings.notifAll')}</Text>
+              <Text style={styles.rowSub}>{t('settings.notifAllSub')}</Text>
+            </View>
+            <Switch
+              value={notifAllOn}
+              onValueChange={handleNotifAllToggle}
+              trackColor={{ false: colors.separator, true: colors.accent }}
+              thumbColor="#fff"
+            />
+          </View>
+
+          {[
+            { key: 'likes',    icon: 'heart-outline',       labelKey: 'notifLikes',    subKey: 'notifLikesSub' },
+            { key: 'comments', icon: 'chatbubble-outline',  labelKey: 'notifComments', subKey: 'notifCommentsSub' },
+            { key: 'follows',  icon: 'person-add-outline',  labelKey: 'notifFollows',  subKey: 'notifFollowsSub' },
+            { key: 'mentions', icon: 'at-outline',          labelKey: 'notifMentions', subKey: 'notifMentionsSub' },
+          ].map(({ key, icon, labelKey, subKey }, i, arr) => (
+            <View key={key}>
+              <View style={styles.divider} />
+              <View style={[styles.row, !notifAllOn && { opacity: 0.4 }]}>
+                <View style={[styles.rowIcon, { backgroundColor: colors.fill }]}>
+                  <Ionicons name={icon} size={22} color={colors.textMuted} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.rowLabel}>{t(`settings.${labelKey}`)}</Text>
+                  <Text style={styles.rowSub}>{t(`settings.${subKey}`)}</Text>
+                </View>
+                <Switch
+                  value={notifSettings[key] && notifAllOn}
+                  onValueChange={(v) => handleNotifToggle(key, v)}
+                  disabled={!notifAllOn}
+                  trackColor={{ false: colors.separator, true: colors.accent }}
+                  thumbColor="#fff"
+                />
+              </View>
+            </View>
+          ))}
         </View>
 
         {/* Account section */}
