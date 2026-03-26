@@ -115,6 +115,29 @@ export default function PostDetailScreen({ navigation, route }) {
     }
   };
 
+  const handleDeleteComment = useCallback(async (commentId) => {
+    try {
+      await postsAPI.deleteComment(postId, commentId);
+      setComments((prev) => {
+        const filtered = prev.filter((c) => c._id !== commentId);
+        return filtered.map((c) =>
+          c.replies ? { ...c, replies: c.replies.filter((r) => r._id !== commentId) } : c
+        );
+      });
+    } catch (e) {
+      Alert.alert(t('common.error'), e.message || t('common.somethingWrong'));
+    }
+  }, [postId, t]);
+
+  const handleReportComment = useCallback(async (commentId) => {
+    try {
+      await postsAPI.reportComment(postId, commentId);
+      Alert.alert('', t('comment.reportedComment'));
+    } catch (e) {
+      Alert.alert(t('common.error'), e.message || t('common.somethingWrong'));
+    }
+  }, [postId, t]);
+
   const handleLikeComment = async (commentId) => {
     try {
       const res = await postsAPI.likeComment(postId, commentId);
@@ -188,7 +211,10 @@ export default function PostDetailScreen({ navigation, route }) {
               onLike={handleLikeComment}
               onReply={(c) => setReplyTo({ id: c._id, name: c.userId?.name })}
               onLoadReplies={handleLoadReplies}
+              onDelete={handleDeleteComment}
+              onReport={handleReportComment}
               navigation={navigation}
+              currentUserId={user?._id}
             />
           )}
           ListHeaderComponent={renderHeader}

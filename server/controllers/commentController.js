@@ -2,6 +2,7 @@ const Comment = require('../models/Comment');
 const Post = require('../models/Post');
 const Notification = require('../models/Notification');
 const User = require('../models/User');
+const Report = require('../models/Report');
 const { sendToUser } = require('../services/pushService');
 
 // @desc    Get comments for a post
@@ -193,4 +194,25 @@ const deleteComment = async (req, res, next) => {
   }
 };
 
-module.exports = { getComments, addComment, likeComment, deleteComment };
+// @desc    Report a comment
+// @route   POST /api/posts/:postId/comments/:id/report
+// @access  Private
+const reportComment = async (req, res, next) => {
+  try {
+    const comment = await Comment.findById(req.params.id);
+    if (!comment) return res.status(404).json({ success: false, message: 'Comment not found' });
+    const existing = await Report.findOne({ reporter: req.user._id, targetId: req.params.id, targetType: 'comment' });
+    if (existing) return res.status(400).json({ success: false, message: 'Already reported' });
+    await Report.create({
+      reporter: req.user._id,
+      targetType: 'comment',
+      targetId: req.params.id,
+      reason: req.body.reason || 'other',
+    });
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { getComments, addComment, likeComment, deleteComment, reportComment };

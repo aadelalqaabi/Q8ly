@@ -69,6 +69,7 @@ export const postsAPI = {
   addComment: (id, data) => api.post(`/posts/${id}/comments`, data),
   likeComment: (postId, id) => api.post(`/posts/${postId}/comments/${id}/like`),
   deleteComment: (postId, id) => api.delete(`/posts/${postId}/comments/${id}`),
+  reportComment: (postId, id, reason) => api.post(`/posts/${postId}/comments/${id}/report`, { reason }),
 };
 
 // ── Users ─────────────────────────────────────────────────────────────────────

@@ -8,7 +8,7 @@ const {
   toggleLike, repost, deletePost, reportPost, votePoll, searchPosts,
   toggleBookmark,
 } = require('../controllers/postController');
-const { getComments, addComment, likeComment, deleteComment } = require('../controllers/commentController');
+const { getComments, addComment, likeComment, deleteComment, reportComment } = require('../controllers/commentController');
 
 // Feed and discovery
 router.get('/feed', optionalAuth, getFeed);
@@ -53,5 +53,6 @@ router.post(
 );
 router.post('/:postId/comments/:id/like', protect, likeComment);
 router.delete('/:postId/comments/:id', protect, deleteComment);
+router.post('/:postId/comments/:id/report', protect, reportComment);
 
 module.exports = router;

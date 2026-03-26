@@ -5,6 +5,7 @@
     "close": "إغلاق",
     "back": "رجوع",
     "delete": "حذف",
+    "report": "إبلاغ",
     "ok": "حسناً",
     "error": "خطأ",
     "somethingWrong": "حدث خطأ ما",
@@ -70,7 +71,11 @@
 
   "comment": {
     "reply": "رد",
-    "viewReplies": "عرض {{count}} ردود"
+    "viewReplies": "عرض {{count}} ردود",
+    "deleteComment": "حذف التعليق",
+    "deleteCommentConfirm": "هل أنت متأكد أنك تريد حذف هذا التعليق؟",
+    "reportComment": "الإبلاغ عن التعليق",
+    "reportedComment": "تم الإبلاغ عن التعليق"
   },
 
   "profile": {
