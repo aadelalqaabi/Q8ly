@@ -1,6 +1,7 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, Alert } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import BottomMenu from '../ui/BottomMenu';
 import { useTranslation } from 'react-i18next';
 import { formatDistanceToNow } from 'date-fns';
 import { getDateLocale } from '../../i18n';
@@ -19,25 +20,16 @@ function ReplyRow({ comment, onLike, onDelete, onReport, navigation, currentUser
   const { colors: COLORS } = useTheme();
   const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
+  const [menuVisible, setMenuVisible] = useState(false);
   const author = comment.userId;
   const isOwn = author?._id === currentUserId || author === currentUserId;
   const timeAgo = comment.createdAt
     ? formatDistanceToNow(new Date(comment.createdAt), { addSuffix: false, locale: getDateLocale() })
     : '';
 
-  const showMenu = () => {
-    if (isOwn) {
-      Alert.alert('', t('comment.deleteComment'), [
-        { text: t('common.cancel'), style: 'cancel' },
-        { text: t('common.delete'), style: 'destructive', onPress: () => onDelete(comment._id) },
-      ]);
-    } else {
-      Alert.alert('', t('comment.reportComment'), [
-        { text: t('common.cancel'), style: 'cancel' },
-        { text: t('common.report'), style: 'destructive', onPress: () => onReport(comment._id) },
-      ]);
-    }
-  };
+  const menuOptions = isOwn
+    ? [{ label: t('comment.deleteComment'), destructive: true, onPress: () => onDelete(comment._id) }]
+    : [{ label: t('comment.reportComment'), destructive: true, onPress: () => onReport(comment._id) }];
 
   return (
     <View style={styles.replyRow}>
@@ -77,11 +69,17 @@ function ReplyRow({ comment, onLike, onDelete, onReport, navigation, currentUser
               </Text>
             )}
           </TouchableOpacity>
-          <TouchableOpacity onPress={showMenu} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <TouchableOpacity onPress={() => setMenuVisible(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Ionicons name="ellipsis-horizontal" size={14} color={COLORS.textMuted} />
           </TouchableOpacity>
         </View>
       </View>
+
+      <BottomMenu
+        visible={menuVisible}
+        onClose={() => setMenuVisible(false)}
+        options={menuOptions}
+      />
     </View>
   );
 }
@@ -90,6 +88,7 @@ export default function CommentItem({ comment, onLike, onReply, onLoadReplies, o
   const { t } = useTranslation();
   const { colors: COLORS } = useTheme();
   const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
+  const [menuVisible, setMenuVisible] = useState(false);
 
   const author = comment.userId;
   const isOwn = author?._id === currentUserId || author === currentUserId;
@@ -101,19 +100,9 @@ export default function CommentItem({ comment, onLike, onReply, onLoadReplies, o
     if (author?.username) navigation.navigate('ProfileDetail', { username: author.username });
   };
 
-  const showMenu = () => {
-    if (isOwn) {
-      Alert.alert('', t('comment.deleteComment'), [
-        { text: t('common.cancel'), style: 'cancel' },
-        { text: t('common.delete'), style: 'destructive', onPress: () => onDelete(comment._id) },
-      ]);
-    } else {
-      Alert.alert('', t('comment.reportComment'), [
-        { text: t('common.cancel'), style: 'cancel' },
-        { text: t('common.report'), style: 'destructive', onPress: () => onReport(comment._id) },
-      ]);
-    }
-  };
+  const menuOptions = isOwn
+    ? [{ label: t('comment.deleteComment'), destructive: true, onPress: () => onDelete(comment._id) }]
+    : [{ label: t('comment.reportComment'), destructive: true, onPress: () => onReport(comment._id) }];
 
   const hasReplies = (comment.repliesCount || 0) > 0;
   const repliesLoaded = Array.isArray(comment.replies);
@@ -167,12 +156,18 @@ export default function CommentItem({ comment, onLike, onReply, onLoadReplies, o
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={showMenu}
+            onPress={() => setMenuVisible(true)}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <Ionicons name="ellipsis-horizontal" size={16} color={COLORS.textMuted} />
           </TouchableOpacity>
         </View>
+
+        <BottomMenu
+          visible={menuVisible}
+          onClose={() => setMenuVisible(false)}
+          options={menuOptions}
+        />
 
         {/* Replies section */}
         {hasReplies && !repliesLoaded && (

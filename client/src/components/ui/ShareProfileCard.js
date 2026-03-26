@@ -17,31 +17,31 @@ import { useTranslation } from "react-i18next";
 
 const BLUE = "#0033A0";
 const GOLD = "#CBA052";
+const CARD_W  = 300;
+const CARD_H  = Math.round(CARD_W * (16 / 9)); // 533
+
+// Fixed section heights — no empty gaps anywhere
+const TOP_BAR_H  = 6;   // gold stripe
+const GOLD_SEP_H = 4;   // gold belt between blue and white
+const QR_H       = 182; // white QR panel
+const BLUE_H     = CARD_H - TOP_BAR_H - GOLD_SEP_H - QR_H; // 341
 
 const BADGE_LABELS_EN = {
   government: "OFFICIAL",
-  media: "MEDIA",
-  business: "BUSINESS",
+  media:      "MEDIA",
+  business:   "BUSINESS",
   influencer: "INFLUENCER",
-  founder: "FOUNDER",
+  founder:    "FOUNDER",
 };
 const BADGE_LABELS_AR = {
   government: "رسمي",
-  media: "إعلام",
-  business: "أعمال",
+  media:      "إعلام",
+  business:   "أعمال",
   influencer: "مؤثر",
-  founder: "مؤسس",
+  founder:    "مؤسس",
 };
 
-const PALETTE = [
-  "#1a3f8f",
-  "#0a5c2e",
-  "#7a2a10",
-  "#1a3a8f",
-  "#4a0a8a",
-  "#0a4a6b",
-  "#7a4a0a",
-];
+const PALETTE = ["#1a3f8f","#0a5c2e","#7a2a10","#1a3a8f","#4a0a8a","#0a4a6b","#7a4a0a"];
 function avatarBg(name) {
   if (!name) return PALETTE[0];
   let h = 0;
@@ -49,26 +49,17 @@ function avatarBg(name) {
   return PALETTE[Math.abs(h) % PALETTE.length];
 }
 
-const CARD_W = 300;
-const CARD_H = CARD_W * (16 / 9); // 9:16 → 533pt at 300pt wide
-
 export default function ShareProfileCard({ visible, onClose, profile }) {
   const { t, i18n } = useTranslation();
   const isArabic = i18n.language === "ar";
-  const shotRef = useRef();
+  const shotRef  = useRef();
   const [sharing, setSharing] = useState(false);
 
-  const profileUrl = `https://kuwai.app/profile/${profile?.username}`;
-  const badge =
-    profile?.verifiedBadge && profile.verifiedBadge !== "none"
-      ? profile.verifiedBadge
-      : null;
-  const isFounder = badge === "founder";
-  const tagline = isArabic
-    ? "اول منصة تواصل اجتماعي كويتية"
-    : "KUWAIT'S FIRST SOCIAL MEDIA APP";
+  const profileUrl  = `https://kuwai.app/profile/${profile?.username}`;
+  const badge       = profile?.verifiedBadge && profile.verifiedBadge !== "none"
+    ? profile.verifiedBadge
+    : null;
   const BADGE_LABELS = isArabic ? BADGE_LABELS_AR : BADGE_LABELS_EN;
-  const followText = isArabic ? "تابعني على التطبيق" : "Follow me on the app";
 
   const handleShare = async () => {
     if (sharing) return;
@@ -78,275 +69,455 @@ export default function ShareProfileCard({ visible, onClose, profile }) {
       await Share.share(
         Platform.OS === "ios"
           ? { url: uri }
-          : { message: profileUrl, title: profile?.name },
+          : { message: profileUrl, title: profile?.name }
       );
-    } catch {
-      /* silent */
-    } finally {
-      setSharing(false);
-    }
+    } catch { /* silent */ }
+    finally { setSharing(false); }
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={s.backdrop} onPress={onClose} />
       <View style={s.sheet}>
-        <ViewShot
-          ref={shotRef}
-          options={{ format: "png", quality: 1, pixelRatio: 1080 / CARD_W }}
-        >
-          <View style={{ width: CARD_W, height: CARD_H, overflow: "hidden" }}>
-            {/* ── TOP SECTION — blue ── */}
-            <View style={s.top}>
-              {/* Giant faded KUWAI watermark */}
-              <Text style={s.watermark}>KUWAI</Text>
 
-              {/* Decorative circles */}
-              <View style={s.circle1} />
-              <View style={s.circle2} />
+        <ViewShot ref={shotRef} options={{ format: "png", quality: 1, pixelRatio: 1080 / CARD_W }}>
+          <View style={s.card}>
 
-              {/* Avatar */}
-              <View style={s.avatarWrap}>
-                {profile?.profilePic ? (
-                  <Image
-                    source={{ uri: profile.profilePic }}
-                    style={s.avatar}
-                  />
-                ) : (
-                  <View
-                    style={[
-                      s.avatar,
-                      { backgroundColor: avatarBg(profile?.name) },
-                    ]}
-                  >
-                    <Text style={s.avatarInitial}>
-                      {profile?.name?.[0]?.toUpperCase() || "?"}
+            {/* ═════════════════════════════════
+                1 · GOLD TOP BAR — brand anchor
+            ═════════════════════════════════ */}
+            <View style={s.topBar} />
+
+            {/* ═════════════════════════════════
+                2 · BLUE SECTION
+            ═════════════════════════════════ */}
+            <View style={s.blueSection}>
+
+              {/* Background: diagonal gold hatch lines fill dead space */}
+              {[0,1,2,3,4,5].map(i => (
+                <View key={i} style={[s.hatch, { top: -30 + i * 68 }]} />
+              ))}
+
+              {/* Background: dual-tone KUWAI watermark — echoes the real logo */}
+              <View style={s.wmWrap}>
+                <Text style={s.wmTop}>KUWAI</Text>
+                <Text style={s.wmBot}>KUWAI</Text>
+              </View>
+
+              {/* Background: large decorative ring (blueprint feel) */}
+              <View style={s.ring} />
+
+              {/* ── HEADER — mirrors the logo: dark word + white word ── */}
+              <View style={s.header}>
+                <View style={s.logoStack}>
+                  <Text style={s.logoDark}>KUWAI</Text>
+                  <Text style={s.logoWhite}>KUWAI</Text>
+                </View>
+                <View style={s.goldRule} />
+                <Text style={[s.tagline, isArabic && { letterSpacing: 0 }]}>
+                  {isArabic
+                    ? "أول منصة تواصل اجتماعي كويتية"
+                    : "KUWAIT'S FIRST SOCIAL APP"}
+                </Text>
+              </View>
+
+              {/* ── PROFILE — fills the remaining blue space ── */}
+              <View style={s.profileSection}>
+
+                {/* Avatar: translucent white outer ring → solid gold ring */}
+                <View style={s.avatarOuter}>
+                  <View style={s.avatarGold}>
+                    {profile?.profilePic ? (
+                      <Image source={{ uri: profile.profilePic }} style={s.avatar} />
+                    ) : (
+                      <View style={[s.avatar, { backgroundColor: avatarBg(profile?.name) }]}>
+                        <Text style={s.avatarInitial}>
+                          {profile?.name?.[0]?.toUpperCase() || "?"}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+
+                <Text style={s.name} numberOfLines={2}>{profile?.name}</Text>
+
+                {!!badge && (
+                  <View style={s.badgePill}>
+                    {badge === "founder" && <Text style={s.badgeStar}>★ </Text>}
+                    <Text style={[s.badgeLabel, isArabic && { letterSpacing: 0 }]}>
+                      {BADGE_LABELS[badge]}
                     </Text>
+                    {badge === "founder" && <Text style={s.badgeStar}> ★</Text>}
                   </View>
                 )}
+
+                {!!profile?.username && (
+                  <Text style={s.username}>@{profile.username}</Text>
+                )}
               </View>
+            </View>
 
-              {/* Name */}
-              <Text style={s.name} numberOfLines={2}>
-                {profile?.name}
-              </Text>
+            {/* ═════════════════════════════════
+                3 · GOLD BELT — divides sections
+            ═════════════════════════════════ */}
+            <View style={s.goldBelt} />
 
-              {/* Badge */}
-              {!!badge && (
-                <View style={s.badgeRow}>
-                  {isFounder && <Text style={s.star}>★</Text>}
-                  <Text style={[s.badgeText, isArabic && { letterSpacing: 0 }]}>
-                    {BADGE_LABELS[badge]}
+            {/* ═════════════════════════════════
+                4 · WHITE QR PANEL — dense, no gaps
+            ═════════════════════════════════ */}
+            <View style={s.qrPanel}>
+              <View style={s.qrRow}>
+
+                {/* QR: blue-tinted inset box — on-brand */}
+                <View style={s.qrBox}>
+                  <QRCode
+                    value={profileUrl}
+                    size={88}
+                    color={BLUE}
+                    backgroundColor="transparent"
+                  />
+                </View>
+
+                {/* Branding column — packed tight */}
+                <View style={s.qrBranding}>
+                  <Text style={s.qrWordmark}>KUWAI</Text>
+                  <Text style={s.qrSub}>
+                    {isArabic ? "أول منصة\nكويتية" : "Kuwait's\nFirst Social App"}
                   </Text>
+                  <TouchableOpacity style={s.scanPill} activeOpacity={1}>
+                    <Text style={s.scanText}>
+                      {isArabic ? "امسح للمتابعة" : "Scan to Follow"}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
-              )}
 
-              {/* Tagline */}
-              <Text style={[s.tagline, !isArabic && { letterSpacing: 3 }]}>
-                {tagline}
-              </Text>
-            </View>
+              </View>
 
-            {/* ── BOTTOM SECTION — white ── */}
-            <View style={s.bottom}>
-              {/* Blue accent line */}
-              <View style={s.accentLine} />
-
-              <View style={s.bottomInner}>
-                {/* QR */}
-                <QRCode
-                  value={profileUrl}
-                  size={72}
-                  color={BLUE}
-                  backgroundColor="#fff"
-                />
-
-                {/* Right side text */}
-                <View style={s.bottomText}>
-                  <Text style={s.bottomWordmark}>KUWAI</Text>
-                  <View style={s.followBadge}>
-                    <Text style={s.followBadgeText}>{followText}</Text>
-                  </View>
-                </View>
+              {/* URL — always visible, keeps panel dense */}
+              <View style={s.urlRow}>
+                <View style={s.urlDot} />
+                <Text style={s.urlText} numberOfLines={1}>
+                  kuwai.app/profile/{profile?.username}
+                </Text>
+                <View style={s.urlDot} />
               </View>
             </View>
+
           </View>
         </ViewShot>
 
-        {/* Share button */}
+        {/* ── Sheet buttons ── */}
         <TouchableOpacity
           style={[s.shareBtn, sharing && { opacity: 0.6 }]}
           onPress={handleShare}
           activeOpacity={0.85}
           disabled={sharing}
         >
-          {sharing ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={s.shareBtnText}>{t("common.shareCard")}</Text>
-          )}
+          {sharing
+            ? <ActivityIndicator color="#fff" />
+            : <Text style={s.shareBtnText}>{t("common.shareCard")}</Text>
+          }
         </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={onClose}
-          activeOpacity={0.7}
-          style={s.cancelBtn}
-        >
+        <TouchableOpacity onPress={onClose} activeOpacity={0.7} style={s.cancelBtn}>
           <Text style={s.cancelText}>{t("common.cancel")}</Text>
         </TouchableOpacity>
+
       </View>
     </Modal>
   );
 }
 
 const s = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)" },
+
+  // ── Modal chrome ─────────────────────────────────────────────────
+  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)" },
   sheet: {
     backgroundColor: "#fff",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 20,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingTop: 24,
     paddingHorizontal: 20,
-    paddingBottom: 40,
+    paddingBottom: 44,
     alignItems: "center",
-    gap: 16,
+    gap: 14,
   },
 
-  // ── Card top (blue) ──
-  top: {
+  // ── Card shell ────────────────────────────────────────────────────
+  card: {
     width: CARD_W,
-    height: CARD_W * (16 / 9) * 0.68, // 68% of card height
-    backgroundColor: BLUE,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-    paddingHorizontal: 24,
+    height: CARD_H,
   },
-  watermark: {
+
+  // ── 1. Gold top bar ───────────────────────────────────────────────
+  topBar: {
+    width: CARD_W,
+    height: TOP_BAR_H,
+    backgroundColor: GOLD,
+  },
+
+  // ── 2. Blue section ───────────────────────────────────────────────
+  blueSection: {
+    width: CARD_W,
+    height: BLUE_H,
+    backgroundColor: BLUE,
+    overflow: "hidden",
+  },
+
+  // Diagonal hatch lines — fills negative space with subtle gold texture
+  hatch: {
     position: "absolute",
-    fontSize: 88,
+    left: -80,
+    right: -80,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: GOLD,
+    opacity: 0.09,
+    transform: [{ rotate: "-18deg" }],
+  },
+
+  // Giant dual-tone KUWAI echoing the actual app logo
+  wmWrap: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  wmTop: {
+    fontSize: 82,
+    fontWeight: "900",
+    color: "#000",
+    opacity: 0.12,
+    lineHeight: 82,
+    letterSpacing: -1,
+  },
+  wmBot: {
+    fontSize: 82,
     fontWeight: "900",
     color: "#fff",
-    opacity: 0.05,
-    letterSpacing: 12,
-    top: 16,
-    left: -8,
+    opacity: 0.06,
+    lineHeight: 82,
+    letterSpacing: -1,
+    marginTop: -10,
   },
-  circle1: {
+
+  // Blueprint decorative ring
+  ring: {
     position: "absolute",
-    width: 220,
-    height: 220,
-    borderRadius: 110,
+    width: 380,
+    height: 380,
+    borderRadius: 190,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)",
-    top: -60,
-    right: -60,
+    borderColor: "rgba(255,255,255,0.06)",
+    top: -120,
+    right: -110,
   },
-  circle2: {
-    position: "absolute",
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)",
-    bottom: -40,
-    left: -30,
+
+  // Header — replicates the brand logo mark
+  header: {
+    alignItems: "center",
+    paddingTop: 20,
+    paddingBottom: 12,
+    gap: 7,
+    zIndex: 1,
   },
-  avatarWrap: {
-    marginBottom: 14,
+  logoStack: {
+    alignItems: "center",
+  },
+  logoDark: {
+    fontSize: 24,
+    fontWeight: "900",
+    color: "rgba(0,12,80,0.35)",
+    letterSpacing: 0,
+    lineHeight: 26,
+  },
+  logoWhite: {
+    fontSize: 24,
+    fontWeight: "900",
+    color: "#fff",
+    letterSpacing: 0,
+    lineHeight: 26,
+    marginTop: -7,  // overlap creates the split-text brand mark
+  },
+  goldRule: {
+    width: 52,
+    height: 2.5,
+    backgroundColor: GOLD,
+    borderRadius: 2,
+  },
+  tagline: {
+    fontSize: 8,
+    fontWeight: "800",
+    color: GOLD,
+    letterSpacing: 2.5,
+    textTransform: "uppercase",
+    opacity: 0.9,
+  },
+
+  // Profile section
+  profileSection: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1,
+  },
+
+  // Avatar — white translucent outer ring + solid gold ring
+  avatarOuter: {
+    padding: 5,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.28)",
+    borderRadius: 100,
+    marginBottom: 16,
     shadowColor: "#000",
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.45,
     shadowRadius: 20,
     shadowOffset: { width: 0, height: 8 },
   },
-  avatar: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    borderWidth: 4,
+  avatarGold: {
+    padding: 3,
+    borderWidth: 3,
     borderColor: GOLD,
+    borderRadius: 100,
+  },
+  avatar: {
+    width: 102,
+    height: 102,
+    borderRadius: 51,
     justifyContent: "center",
     alignItems: "center",
   },
-  avatarInitial: { fontSize: 44, fontWeight: "800", color: "#fff" },
+  avatarInitial: {
+    fontSize: 40,
+    fontWeight: "800",
+    color: "#fff",
+  },
+
   name: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: "900",
     color: "#fff",
-    letterSpacing: -0.5,
+    letterSpacing: -0.3,
     textAlign: "center",
-    lineHeight: 33,
-    marginBottom: 8,
+    lineHeight: 31,
+    marginBottom: 10,
   },
-  badgeRow: {
+
+  // Badge: filled GOLD with dark text — pops hard on blue
+  badgePill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
-    marginBottom: 16,
+    backgroundColor: GOLD,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    marginBottom: 10,
   },
-  star: { color: GOLD, fontSize: 11 },
-  badgeText: {
-    color: "rgba(255,255,255,0.7)",
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 2,
+  badgeStar: {
+    color: "#2a1800",
+    fontSize: 10,
   },
-  tagline: {
+  badgeLabel: {
+    color: "#2a1800",
     fontSize: 11,
     fontWeight: "800",
-    color: GOLD,
-    opacity: 0.85,
-    textTransform: "uppercase",
+    letterSpacing: 1.8,
   },
 
-  // ── Card bottom (white) ──
-  bottom: {
-    width: CARD_W,
-    flex: 1,
-    backgroundColor: "#fff",
+  username: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.42)",
+    fontWeight: "500",
+    letterSpacing: 0.3,
   },
-  accentLine: {
-    width: "100%",
-    height: 3,
+
+  // ── 3. Gold belt ──────────────────────────────────────────────────
+  goldBelt: {
+    width: CARD_W,
+    height: GOLD_SEP_H,
     backgroundColor: GOLD,
   },
-  bottomInner: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
+
+  // ── 4. White QR panel ─────────────────────────────────────────────
+  qrPanel: {
+    width: CARD_W,
+    height: QR_H,
+    backgroundColor: "#fff",
     paddingHorizontal: 18,
-    gap: 16,
-  },
-  bottomText: { flex: 1 },
-  bottomWordmark: {
-    fontSize: 18,
-    fontWeight: "900",
-    color: BLUE,
-    letterSpacing: 4,
-    marginBottom: 4,
-  },
-  followBadge: {
-    backgroundColor: BLUE,
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    marginTop: 6,
-    alignSelf: "stretch",
-    alignItems: "center",
-  },
-  followBadgeText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#fff",
-    textAlign: "center",
+    paddingTop: 16,
+    paddingBottom: 14,
   },
 
-  // ── Sheet buttons ──
+  qrRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    flex: 1,
+  },
+
+  // QR inset box: light blue tint — ties back to brand color
+  qrBox: {
+    backgroundColor: "#EDF2FF",
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1.5,
+    borderColor: "rgba(0,51,160,0.12)",
+    alignSelf: "center",
+  },
+
+  qrBranding: {
+    flex: 1,
+  },
+  qrWordmark: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: BLUE,
+    letterSpacing: 0,
+    marginBottom: 3,
+  },
+  qrSub: {
+    fontSize: 10.5,
+    color: "#6C6C70",
+    lineHeight: 16,
+    marginBottom: 10,
+  },
+  scanPill: {
+    backgroundColor: BLUE,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    alignSelf: "flex-start",
+  },
+  scanText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.2,
+  },
+
+  urlRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: 10,
+  },
+  urlDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: GOLD,
+    opacity: 0.7,
+  },
+  urlText: {
+    fontSize: 9,
+    color: "#AEAEB2",
+    letterSpacing: 0.2,
+  },
+
+  // ── Sheet buttons ─────────────────────────────────────────────────
   shareBtn: {
     width: "100%",
     backgroundColor: BLUE,
@@ -354,7 +525,11 @@ const s = StyleSheet.create({
     paddingVertical: 16,
     alignItems: "center",
   },
-  shareBtnText: { color: "#fff", fontSize: 17, fontWeight: "700" },
+  shareBtnText: {
+    color: "#fff",
+    fontSize: 17,
+    fontWeight: "700",
+  },
   cancelBtn: { paddingVertical: 4 },
   cancelText: { fontSize: 16, color: "#6C6C70" },
 });
