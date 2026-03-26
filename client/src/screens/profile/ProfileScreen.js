@@ -464,7 +464,7 @@ export default function ProfileScreen({ navigation, route }) {
           onPress={() => navigation.navigate('HachiRoom', { roomId: room._id })}
           activeOpacity={0.7}
         >
-          <View style={[styles.circleDot, { backgroundColor: room.isActive ? '#34C759' : COLORS.separator }]} />
+          <View style={[styles.circleDot, { backgroundColor: COLORS.accent }]} />
           <View style={styles.circleInfo}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
               {isPinned && <Ionicons name="pin" size={11} color={COLORS.accent} />}
@@ -472,13 +472,7 @@ export default function ProfileScreen({ navigation, route }) {
             </View>
             <Text style={styles.circleMeta}>{room.memberCount || 1} {t('profile.membersLabel')} · {room.category}</Text>
           </View>
-          {room.isActive ? (
-            <View style={[styles.circleLiveBadge, { backgroundColor: '#34C75918' }]}>
-              <Text style={styles.circleLiveText}>{t('hachi.liveBadge')}</Text>
-            </View>
-          ) : (
-            <Text style={styles.circleEndedText}>{t('hachi.endedBadge')}</Text>
-          )}
+          <Text style={styles.circleMeta}>{room.memberCount || 1} {t('profile.membersLabel')}</Text>
         </TouchableOpacity>
       </Swipeable>
     );

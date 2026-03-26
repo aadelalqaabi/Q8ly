@@ -4,22 +4,20 @@ import {
   TextInput, KeyboardAvoidingView, Platform, ActivityIndicator,
   Image, Modal, Alert, Keyboard, Share,
 } from 'react-native';
-import BottomMenu from '../../components/ui/BottomMenu';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { formatDistanceToNow, differenceInMinutes } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 import {
-  fetchRoom, closeRoom,
+  fetchRoom,
   addMessageRealtime, updateMemberCount, updateReactions,
-  updateMessageReaction, addJoinRequest, removeJoinRequest,
-  setWaitingApproval, removeRoomRealtime, clearActiveRoom,
+  updateMessageReaction, clearActiveRoom,
   removeUserMessages, updatePinnedMessages,
 } from '../../store/slices/hachiSlice';
 import {
   getSocket, joinHachiRoom, leaveHachiRoom, sendHachiMessage,
-  sendHachiMessageReaction, sendHachiKick, sendHachiPin, approveHachiJoin, rejectHachiJoin,
+  sendHachiMessageReaction, sendHachiKick, sendHachiPin,
 } from '../../services/socket';
 import { getDateLocale } from '../../i18n';
 import { hachiAPI } from '../../services/api';
@@ -111,24 +109,18 @@ export default function HachiRoomScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
-  const { activeRoom, roomLoading, joinRequests, waitingApproval } = useSelector((s) => s.hachi);
+  const { activeRoom, roomLoading } = useSelector((s) => s.hachi);
   const { user: currentUser } = useSelector((s) => s.auth);
   const { colors: COLORS } = useTheme();
   const styles = useMemo(() => makeStyles(COLORS, isRTL), [COLORS, isRTL]);
   const flatRef = useRef(null);
   const [text, setText] = useState('');
-  const [endMenuVisible, setEndMenuVisible] = useState(false);
-  const [selectedMsg, setSelectedMsg] = useState(null); // message long-pressed
-  const [showRequests, setShowRequests] = useState(false); // join requests modal
-  const [isViewOnly, setIsViewOnly] = useState(false); // removed/blocked — can view but not send
+  const [selectedMsg, setSelectedMsg] = useState(null);
+  const [isViewOnly, setIsViewOnly] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
 
   const isCreator = activeRoom?.creator?._id === currentUser?._id
     || activeRoom?.creator === currentUser?._id;
-
-  const minsLeft = activeRoom?.expiresAt
-    ? differenceInMinutes(new Date(activeRoom.expiresAt), new Date())
-    : null;
 
   // Must be before any conditional returns (hooks rule)
   const pinnedMessages = useMemo(() => {
@@ -152,9 +144,6 @@ export default function HachiRoomScreen({ navigation, route }) {
     const onCount = (data) => {
       if (data.roomId === roomId) dispatch(updateMemberCount(data));
     };
-    const onClosed = (data) => {
-      if (data.roomId === roomId) dispatch(removeRoomRealtime({ roomId }));
-    };
     const onReaction = (data) => {
       if (data.roomId === roomId) dispatch(updateReactions(data));
     };
@@ -162,9 +151,7 @@ export default function HachiRoomScreen({ navigation, route }) {
       if (data.roomId === roomId) dispatch(updateMessageReaction(data));
     };
     const onKicked = (data) => {
-      if (data.roomId === roomId) {
-        setIsViewOnly(true);
-      }
+      if (data.roomId === roomId) setIsViewOnly(true);
     };
     const onMessagesRemoved = (data) => {
       if (data.roomId === roomId) {
@@ -174,63 +161,23 @@ export default function HachiRoomScreen({ navigation, route }) {
     const onPinUpdate = (data) => {
       if (data.roomId === roomId) dispatch(updatePinnedMessages(data));
     };
-    const onJoinRequest = (data) => {
-      if (data.roomId === roomId) dispatch(addJoinRequest(data));
-    };
-    const onJoinApproved = (data) => {
-      if (data.roomId === roomId) {
-        dispatch(setWaitingApproval(false));
-        dispatch(fetchRoom(roomId));
-        joinHachiRoom(roomId);
-      }
-    };
-    const onJoinRejected = (data) => {
-      if (data.roomId === roomId) {
-        Alert.alert('', t('hachi.joinRejected'), [
-          { text: t('common.ok'), onPress: () => navigation.goBack() },
-        ]);
-      }
-    };
-    const onWaiting = (data) => {
-      if (data.roomId === roomId) dispatch(setWaitingApproval(true));
-    };
-    const onError = (data) => {
-      // If this is a block/removal error, switch to view-only mode instead of navigating away
-      if (data.message?.includes('إزالتك') || data.message?.includes('إزالة')) {
-        setIsViewOnly(true);
-      } else {
-        Alert.alert('', data.message || t('common.error'));
-      }
-    };
 
     socket.on('hachiMessage', onMessage);
     socket.on('hachiMemberCount', onCount);
-    socket.on('hachiRoomClosed', onClosed);
     socket.on('hachiReactionUpdate', onReaction);
     socket.on('hachiMessageReaction', onMsgReaction);
     socket.on('hachiKicked', onKicked);
     socket.on('hachiMessagesRemoved', onMessagesRemoved);
     socket.on('hachiPinUpdate', onPinUpdate);
-    socket.on('hachiJoinRequest', onJoinRequest);
-    socket.on('hachiJoinApproved', onJoinApproved);
-    socket.on('hachiJoinRejected', onJoinRejected);
-    socket.on('hachiWaitingApproval', onWaiting);
-    socket.on('hachiError', onError);
 
     return () => {
       socket.off('hachiMessage', onMessage);
       socket.off('hachiMemberCount', onCount);
-      socket.off('hachiRoomClosed', onClosed);
       socket.off('hachiReactionUpdate', onReaction);
       socket.off('hachiMessageReaction', onMsgReaction);
       socket.off('hachiKicked', onKicked);
       socket.off('hachiMessagesRemoved', onMessagesRemoved);
       socket.off('hachiPinUpdate', onPinUpdate);
-      socket.off('hachiJoinRequest', onJoinRequest);
-      socket.off('hachiJoinApproved', onJoinApproved);
-      socket.off('hachiJoinRejected', onJoinRejected);
-      socket.off('hachiWaitingApproval', onWaiting);
-      socket.off('hachiError', onError);
     };
   }, [roomId]);
 
@@ -263,51 +210,18 @@ export default function HachiRoomScreen({ navigation, route }) {
     } catch { /* silent */ }
   };
 
-  const handleLeave = useCallback(() => {
-    Alert.alert(
-      t('profile.leaveCircle'),
-      t('profile.leaveCircleMsg'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('profile.leaveCircle'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await hachiAPI.leaveRoom(roomId);
-              navigation.goBack();
-            } catch (e) {
-              Alert.alert(t('common.error'), e.message || t('common.somethingWrong'));
-            }
-          },
-        },
-      ]
-    );
-  }, [roomId, navigation, t]);
-
   useEffect(() => {
     if (!activeRoom) return;
     navigation.setOptions({
       title: activeRoom.title,
       headerRight: () => (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          {!isCreator && activeRoom.isActive && (
-            <TouchableOpacity onPress={handleLeave} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ marginEnd: 4 }}>
-              <Text style={{ fontSize: 15, color: COLORS.error }}>{t('profile.leaveCircle')}</Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity onPress={handleShare} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="arrow-redo-outline" size={22} color={COLORS.accent} />
-          </TouchableOpacity>
-        </View>
-      ),
-      headerLeft: isCreator && activeRoom.isActive ? () => (
-        <TouchableOpacity onPress={() => setEndMenuVisible(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ marginStart: 4 }}>
-          <Text style={{ fontSize: 15, color: COLORS.error }}>{t('hachi.endHachi')}</Text>
+        <TouchableOpacity onPress={handleShare} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Ionicons name="arrow-redo-outline" size={22} color={COLORS.accent} />
         </TouchableOpacity>
-      ) : undefined,
+      ),
+      headerLeft: undefined,
     });
-  }, [activeRoom, isCreator, handleLeave]);
+  }, [activeRoom]);
 
   const handleSend = useCallback(() => {
     const trimmed = text.trim();
@@ -349,17 +263,6 @@ export default function HachiRoomScreen({ navigation, route }) {
     sendHachiPin(roomId, message._id);
   }, [roomId]);
 
-  const endMenuOptions = [
-    {
-      label: t('hachi.endHachi'),
-      destructive: true,
-      onPress: async () => {
-        await dispatch(closeRoom(roomId));
-        navigation.goBack();
-      },
-    },
-  ];
-
   // ── Loading ────────────────────────────────────────────────────────────────
   if (roomLoading && !activeRoom) {
     return (
@@ -370,7 +273,7 @@ export default function HachiRoomScreen({ navigation, route }) {
   }
 
   // ── Blocked / not found ────────────────────────────────────────────────────
-  if (!roomLoading && !activeRoom && !waitingApproval) {
+  if (!roomLoading && !activeRoom) {
     return (
       <View style={styles.center}>
         <View style={styles.summaryCard}>
@@ -385,71 +288,6 @@ export default function HachiRoomScreen({ navigation, route }) {
           </TouchableOpacity>
         </View>
       </View>
-    );
-  }
-
-  // ── Waiting for approval ────────────────────────────────────────────────────
-  if (waitingApproval) {
-    return (
-      <View style={styles.center}>
-        <View style={styles.summaryCard}>
-          <ActivityIndicator size="large" color={COLORS.accent} style={{ marginBottom: 16 }} />
-          <Text style={styles.summaryTitle}>{t('hachi.waitingApproval')}</Text>
-          <Text style={styles.waitingSubtitle}>{t('hachi.waitingApprovalMsg')}</Text>
-        </View>
-      </View>
-    );
-  }
-
-  // ── Closed room: summary banner + read-only message history ────────────────
-  if (activeRoom && !activeRoom.isActive) {
-    const s = activeRoom.summary;
-    const archivedMessages = activeRoom?.messages || [];
-    return (
-      <FlatList
-        data={archivedMessages}
-        keyExtractor={(item) => item._id?.toString() || Math.random().toString()}
-        renderItem={({ item }) => (
-          <MessageRow
-            message={item}
-            isMine={item.user?._id === currentUser?._id || item.user === currentUser?._id}
-            currentUserId={currentUser?._id}
-            onLongPress={() => {}}
-            onReact={() => {}}
-          />
-        )}
-        ListHeaderComponent={() => (
-          <View style={styles.archiveBanner}>
-            <View style={styles.archiveBannerIcon}>
-              <Ionicons name="checkmark-circle" size={22} color={COLORS.textMuted} />
-            </View>
-            <Text style={styles.archiveBannerTitle}>{t('hachi.ended')}</Text>
-            {s && (s.messageCount > 0 || s.participantCount > 0) ? (
-              <View style={styles.archiveStats}>
-                <Text style={styles.archiveStatItem}>
-                  <Text style={styles.archiveStatNum}>{s.messageCount}</Text>
-                  {'  '}{t('hachi.summaryMessages')}
-                </Text>
-                <Text style={styles.archiveSep}>·</Text>
-                <Text style={styles.archiveStatItem}>
-                  <Text style={styles.archiveStatNum}>{s.participantCount}</Text>
-                  {'  '}{t('hachi.summaryPeople')}
-                </Text>
-              </View>
-            ) : null}
-            {archivedMessages.length > 0 && (
-              <Text style={styles.archiveReadOnly}>{t('hachi.readOnly')}</Text>
-            )}
-          </View>
-        )}
-        ListEmptyComponent={
-          <View style={styles.emptyMessages}>
-            <Text style={styles.emptyText}>{t('hachi.noMessages')}</Text>
-          </View>
-        }
-        contentContainerStyle={{ padding: 12, paddingBottom: 40 }}
-        showsVerticalScrollIndicator={false}
-      />
     );
   }
 
@@ -475,25 +313,6 @@ export default function HachiRoomScreen({ navigation, route }) {
                 <Text style={styles.infoText}>{t('hachi.private')}</Text>
               </>
             )}
-            {minsLeft !== null && minsLeft > 0 && (
-              <>
-                <Text style={styles.infoDot}>·</Text>
-                <Ionicons name="time-outline" size={13} color={COLORS.textMuted} />
-                <Text style={styles.infoText}>
-                  {minsLeft < 60
-                    ? t('hachi.minutesLeft', { n: minsLeft })
-                    : t('hachi.hoursLeft', { n: Math.floor(minsLeft / 60) })}
-                </Text>
-              </>
-            )}
-
-            {/* Join requests badge (creator only) */}
-            {isCreator && joinRequests.length > 0 && (
-              <TouchableOpacity style={styles.joinReqBadge} onPress={() => setShowRequests(true)}>
-                <Text style={styles.joinReqText}>{t('hachi.joinReqCount', { count: joinRequests.length })}</Text>
-              </TouchableOpacity>
-            )}
-
           </View>
         )}
 
@@ -579,14 +398,6 @@ export default function HachiRoomScreen({ navigation, route }) {
         )}
       </KeyboardAvoidingView>
 
-      {/* End Hachi confirm */}
-      <BottomMenu
-        visible={endMenuVisible}
-        onClose={() => setEndMenuVisible(false)}
-        title={t('hachi.endMsg')}
-        options={endMenuOptions}
-      />
-
       {/* Message action sheet (emoji + kick) */}
       <Modal
         visible={!!selectedMsg}
@@ -656,55 +467,6 @@ export default function HachiRoomScreen({ navigation, route }) {
         </TouchableOpacity>
       </Modal>
 
-      {/* Join requests modal (creator) */}
-      <Modal
-        visible={showRequests}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowRequests(false)}
-      >
-        <View style={styles.reqModal}>
-          <View style={styles.reqHeader}>
-            <Text style={styles.reqTitle}>{t('hachi.joinReqTitle')}</Text>
-            <TouchableOpacity onPress={() => setShowRequests(false)}>
-              <Ionicons name="close" size={24} color={COLORS.text} />
-            </TouchableOpacity>
-          </View>
-          {joinRequests.length === 0 ? (
-            <Text style={styles.reqEmpty}>{t('hachi.noJoinRequests')}</Text>
-          ) : (
-            joinRequests.map((req) => (
-              <View key={req.user._id} style={styles.reqRow}>
-                <View style={[styles.reqAvatar, { backgroundColor: avatarBg(req.user.name) }]}>
-                  <Text style={styles.reqAvatarText}>{req.user.name?.[0]?.toUpperCase() || '?'}</Text>
-                </View>
-                <View style={styles.reqInfo}>
-                  <Text style={styles.reqName}>{req.user.name}</Text>
-                  <Text style={styles.reqUsername}>@{req.user.username}</Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.reqApprove}
-                  onPress={() => {
-                    approveHachiJoin(roomId, req.user._id);
-                    dispatch(removeJoinRequest({ userId: req.user._id }));
-                  }}
-                >
-                  <Text style={styles.reqApproveText}>{t('dm.accept')}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.reqReject}
-                  onPress={() => {
-                    rejectHachiJoin(roomId, req.user._id);
-                    dispatch(removeJoinRequest({ userId: req.user._id }));
-                  }}
-                >
-                  <Ionicons name="close" size={18} color={COLORS.textMuted} />
-                </TouchableOpacity>
-              </View>
-            ))
-          )}
-        </View>
-      </Modal>
     </>
   );
 }

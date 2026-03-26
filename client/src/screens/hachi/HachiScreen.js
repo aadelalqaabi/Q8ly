@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { formatDistanceToNow } from 'date-fns';
-import { fetchRooms, fetchArchivedRooms, createRoom, addRoomRealtime, removeRoomRealtime } from '../../store/slices/hachiSlice';
+import { fetchRooms, createRoom, addRoomRealtime } from '../../store/slices/hachiSlice';
 import { getSocket } from '../../services/socket';
 import { getDateLocale } from '../../i18n';
 import { useTheme } from '../../context/ThemeContext';
@@ -32,7 +32,7 @@ function dominantReaction(reactions) {
 }
 
 // ── RoomCard ───────────────────────────────────────────────────────────────────
-function RoomCard({ room, onPress, archived, isJoined }) {
+function RoomCard({ room, onPress }) {
   const { t } = useTranslation();
   const { colors: COLORS } = useTheme();
   const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
@@ -41,14 +41,6 @@ function RoomCard({ room, onPress, archived, isJoined }) {
     : '';
   const catEmoji = CATEGORY_EMOJIS[room.category] || '💬';
   const dom = dominantReaction(room.reactions);
-
-  const handleShare = async (e) => {
-    e.stopPropagation?.();
-    const url = `kuwai://circle/${room._id}`;
-    try {
-      await Share.share(Platform.OS === 'ios' ? { url } : { message: url });
-    } catch { /* silent */ }
-  };
 
   return (
     <TouchableOpacity
@@ -66,37 +58,13 @@ function RoomCard({ room, onPress, archived, isJoined }) {
           <Text style={styles.cardBy}>
             {room.creator?.name || t('hachi.someoneDefault')} · {created}
           </Text>
-          {isJoined && (
-            <View style={styles.joinedPill}>
-              <Text style={styles.joinedPillText}>{t('hachi.joined')}</Text>
-            </View>
-          )}
         </View>
       </View>
       <View style={styles.cardRight}>
-        {!archived && (
-          <View style={styles.liveBadge}>
-            <View style={styles.liveDot} />
-            <Text style={styles.liveBadgeText}>{t('hachi.liveBadge')}</Text>
-          </View>
-        )}
-        {!archived && (
-          <View style={styles.memberBadge}>
-            <Ionicons name="person" size={13} color={COLORS.accent} />
-            <Text style={styles.memberCount}>{room.memberCount || 1}</Text>
-          </View>
-        )}
-        {archived && (
-          <View style={styles.endedBadge}>
-            <Text style={styles.endedBadgeText}>{t('hachi.endedBadge')}</Text>
-          </View>
-        )}
-        {archived && room.summary?.messageCount > 0 && (
-          <View style={styles.archiveMsgCount}>
-            <Ionicons name="chatbubble-outline" size={13} color={COLORS.textMuted} />
-            <Text style={styles.archiveMsgCountText}>{room.summary.messageCount}</Text>
-          </View>
-        )}
+        <View style={styles.memberBadge}>
+          <Ionicons name="person" size={13} color={COLORS.accent} />
+          <Text style={styles.memberCount}>{room.memberCount || 1}</Text>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -155,7 +123,7 @@ export default function HachiScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
-  const { rooms, archivedRooms = [], isLoading, archivedLoading } = useSelector((s) => s.hachi);
+  const { rooms, isLoading } = useSelector((s) => s.hachi);
   const { user: currentUser } = useSelector((s) => s.auth);
   const { colors: COLORS } = useTheme();
   const styles = useMemo(() => makeStyles(COLORS, isRTL), [COLORS, isRTL]);
@@ -181,20 +149,14 @@ export default function HachiScreen({ navigation }) {
 
   useEffect(() => {
     dispatch(fetchRooms(activeCategory));
-    dispatch(fetchArchivedRooms(activeCategory));
   }, [activeCategory]);
 
   useEffect(() => {
     const socket = getSocket();
     if (!socket) return;
     const onNewRoom = (room) => dispatch(addRoomRealtime(room));
-    const onRemoveRoom = (data) => dispatch(removeRoomRealtime(data));
     socket.on('hachiNewRoom', onNewRoom);
-    socket.on('hachiRoomRemoved', onRemoveRoom);
-    return () => {
-      socket.off('hachiNewRoom', onNewRoom);
-      socket.off('hachiRoomRemoved', onRemoveRoom);
-    };
+    return () => { socket.off('hachiNewRoom', onNewRoom); };
   }, []);
 
   // Trending: categories with ≥2 active rooms, sorted by count
@@ -206,30 +168,15 @@ export default function HachiScreen({ navigation }) {
       .sort((a, b) => b[1] - a[1]);
   }, [rooms]);
 
-  const myId = currentUser?._id?.toString();
-
-  const isRoomJoined = useCallback((room) =>
-    myId && room.members?.some((m) => m?.toString() === myId),
-  [myId]);
-
-  // Active + archived merged: joined rooms first, then the rest, archived at end
   const filteredRooms = useMemo(() => {
-    const applyFilters = (list) => {
-      if (!searchQuery.trim()) return list;
-      const q = searchQuery.trim().toLowerCase();
-      return list.filter((r) =>
-        r.title.toLowerCase().includes(q) ||
-        (r.creator?.name && r.creator.name.toLowerCase().includes(q)) ||
-        (r.category && r.category.toLowerCase().includes(q))
-      );
-    };
-    const activeFiltered = applyFilters(rooms);
-    const sortedActive = [
-      ...activeFiltered.filter((r) => isRoomJoined(r)),
-      ...activeFiltered.filter((r) => !isRoomJoined(r)),
-    ];
-    return [...sortedActive, ...applyFilters(archivedRooms)];
-  }, [rooms, archivedRooms, searchQuery, isRoomJoined]);
+    if (!searchQuery.trim()) return rooms;
+    const q = searchQuery.trim().toLowerCase();
+    return rooms.filter((r) =>
+      r.title.toLowerCase().includes(q) ||
+      (r.creator?.name && r.creator.name.toLowerCase().includes(q)) ||
+      (r.category && r.category.toLowerCase().includes(q))
+    );
+  }, [rooms, searchQuery]);
 
   const handleCreate = useCallback(async () => {
     if (!newTitle.trim() || creating) return;
@@ -330,8 +277,6 @@ export default function HachiScreen({ navigation }) {
           renderItem={({ item }) => (
             <RoomCard
               room={item}
-              archived={!item.isActive}
-              isJoined={isRoomJoined(item)}
               onPress={() => guestGate(() => navigation.navigate('HachiRoom', { roomId: item._id, title: item.title }))}
             />
           )}
@@ -339,7 +284,7 @@ export default function HachiScreen({ navigation }) {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom + 24 }}
           refreshing={isLoading}
-          onRefresh={() => { dispatch(fetchRooms(activeCategory)); dispatch(fetchArchivedRooms(activeCategory)); }}
+          onRefresh={() => dispatch(fetchRooms(activeCategory))}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
         />
       )}
