@@ -138,11 +138,9 @@ export default function OtpScreen({ navigation, route }) {
         )}
 
         {/* Code boxes */}
-        <TouchableOpacity
-          activeOpacity={1}
-          onPress={() => inputRef.current?.focus()}
-          style={styles.boxRow}
-        >
+        <View style={styles.boxRow}>
+          {renderBoxes()}
+          {/* Input sits on top at full opacity — required for iOS OTP autofill banner */}
           <TextInput
             ref={inputRef}
             value={code}
@@ -152,11 +150,10 @@ export default function OtpScreen({ navigation, route }) {
             autoComplete="one-time-code"
             maxLength={CODE_LENGTH}
             autoFocus
-            style={styles.hiddenInput}
             caretHidden
+            style={styles.hiddenInput}
           />
-          {renderBoxes()}
-        </TouchableOpacity>
+        </View>
 
         {isLoading && (
           <View style={styles.verifyingRow}>
@@ -220,7 +217,7 @@ const makeStyles = (C, isDark) => StyleSheet.create({
   errorText: { fontSize: 14, color: C.error, flex: 1 },
 
   boxRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  hiddenInput: { position: 'absolute', opacity: 0.01, top: 0, left: 0, right: 0, bottom: 0, fontSize: 1, color: 'transparent' },
+  hiddenInput: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, color: 'transparent', backgroundColor: 'transparent', fontSize: 24 },
   box: {
     width: 46, height: 58, borderRadius: 14,
     backgroundColor: C.fill,
