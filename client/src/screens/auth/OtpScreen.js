@@ -34,7 +34,11 @@ export default function OtpScreen({ navigation, route }) {
 
   useEffect(() => {
     startCountdown();
+    // Delay focus so navigation animation finishes first — autoFocus alone
+    // can fire before the screen is fully visible, causing iOS to ignore it
+    const focusTimer = setTimeout(() => inputRef.current?.focus(), 400);
     return () => {
+      clearTimeout(focusTimer);
       clearInterval(timerRef.current);
       dispatch(clearError());
     };
@@ -149,7 +153,6 @@ export default function OtpScreen({ navigation, route }) {
             textContentType="oneTimeCode"
             autoComplete="one-time-code"
             maxLength={CODE_LENGTH}
-            autoFocus
             caretHidden
             style={styles.hiddenInput}
           />
