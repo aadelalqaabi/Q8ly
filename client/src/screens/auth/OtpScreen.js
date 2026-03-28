@@ -220,7 +220,7 @@ const makeStyles = (C, isDark) => StyleSheet.create({
   errorText: { fontSize: 14, color: C.error, flex: 1 },
 
   boxRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  hiddenInput: { position: 'absolute', opacity: 0, width: '100%', height: '100%' },
+  hiddenInput: { position: 'absolute', opacity: 0.01, top: 0, left: 0, right: 0, bottom: 0, fontSize: 1, color: 'transparent' },
   box: {
     width: 46, height: 58, borderRadius: 14,
     backgroundColor: C.fill,
