@@ -83,7 +83,7 @@ async function sendOtp(phone) {
   }
 
   try {
-    await verifyService.verifications.create({ to: normalized, channel: 'sms' });
+    await verifyService.verifications.create({ to: normalized, channel: 'sms', locale: 'en' });
     return { testMode: false };
   } catch (err) {
     console.error('[Twilio] sendOtp error:', err.code, err.status, err.message);

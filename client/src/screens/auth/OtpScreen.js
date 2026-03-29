@@ -207,8 +207,6 @@ export default function OtpScreen({ navigation, route }) {
                 keyboardType="number-pad"
                 textContentType="oneTimeCode"
                 maxLength={CODE_LENGTH}   // allow full paste on any box
-                selectTextOnFocus
-                caretHidden
                 style={[
                   styles.box,
                   isFocused && styles.boxActive,
