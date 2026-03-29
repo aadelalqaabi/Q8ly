@@ -131,7 +131,7 @@ export const POST_TYPES = ['text', 'photo', 'video', 'poll'];
 export const VERIFIED_BADGE_LABELS = {
   government: { label: 'Official',      color: '#0033A0' },
   media:      { label: 'Media',         color: '#D97706' },
-  influencer: { label: 'Public Figure', color: '#7C3AED' },
+  influencer: { label: 'Influencer', color: '#7C3AED' },
   business:   { label: 'Business',      color: '#16A34A' },
   none: null,
 };

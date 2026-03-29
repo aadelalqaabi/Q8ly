@@ -21,7 +21,7 @@
     "filterAll": "For You",
     "filterGovernment": "Official",
     "filterMedia": "Media",
-    "filterInfluencer": "Public Figure",
+    "filterInfluencer": "Influencer",
     "filterBusiness": "Business",
     "loadError": "Couldn't load posts",
     "loadErrorSub": "Check your connection and try again.",
@@ -329,7 +329,7 @@
     "official":   "Official",
     "media":      "Media",
     "business":   "Business",
-    "influencer": "Public Figure",
+    "influencer": "Influencer",
     "founder":    "Founder"
   },
   "dm": {
