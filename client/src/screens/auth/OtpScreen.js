@@ -154,15 +154,8 @@ export default function OtpScreen({ navigation, route }) {
             ref={inputRef}
             value={code}
             onChangeText={handleCodeChange}
-            onBlur={() => {
-              // Keep keyboard open while waiting for OTP — dismiss only after submit
-              if (!submittedRef.current) {
-                setTimeout(() => inputRef.current?.focus(), 100);
-              }
-            }}
             keyboardType="number-pad"
             textContentType="oneTimeCode"
-            autoComplete="one-time-code"
             maxLength={CODE_LENGTH}
             caretHidden
             style={styles.hiddenInput}
