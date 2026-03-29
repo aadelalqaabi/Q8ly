@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KUWAI — Kuwait's Social Pulse</title>
+  <meta name="description" content="KUWAI is Kuwait's home for real-time conversations, trending topics, and live voice circles. Built for Kuwaitis, by Kuwaitis." />
+  <meta property="og:title" content="KUWAI — Kuwait's Social Pulse" />
+  <meta property="og:description" content="Real-time conversations, trending topics, and live voice circles. Built for Kuwaitis." />
+  <meta property="og:image" content="/og-image.png" />
+  <meta name="theme-color" content="#0033A0" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230033A0'/><text y='72' x='50' text-anchor='middle' font-size='52' font-family='system-ui' font-weight='900' fill='white'>K</text></svg>" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:  #0033A0;
+      --blue2: #0041CC;
+      --gold:  #CBA052;
+      --gold2: #E8BE74;
+      --white: #FFFFFF;
+      --text:  #0A0A0A;
+      --muted: #6C6C70;
+      --sep:   #E5E5EA;
+      --fill:  #F2F2F7;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+      background: var(--white);
+      color: var(--text);
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── NAV ─────────────────────────────────────────────────────────── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      background: rgba(255,255,255,0.88);
+      backdrop-filter: saturate(180%) blur(20px);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      border-bottom: 1px solid rgba(0,0,0,0.07);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 48px;
+      height: 60px;
+    }
+    .nav-logo {
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: -1.5px;
+      color: var(--blue);
+      text-decoration: none;
+    }
+    .nav-flag { font-size: 18px; margin-left: 6px; }
+    .nav-right { display: flex; align-items: center; gap: 32px; }
+    .nav-link {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text);
+      text-decoration: none;
+      opacity: 0.75;
+      transition: opacity 0.15s;
+    }
+    .nav-link:hover { opacity: 1; }
+    .nav-cta {
+      background: var(--blue);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 9px 20px;
+      border-radius: 100px;
+      text-decoration: none;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .nav-cta:hover { background: var(--blue2); transform: translateY(-1px); }
+
+    /* ── HERO ────────────────────────────────────────────────────────── */
+    .hero {
+      min-height: 100vh;
+      background: var(--blue);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 120px 24px 80px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* background texture — subtle diagonal lines */
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: repeating-linear-gradient(
+        -45deg,
+        transparent,
+        transparent 28px,
+        rgba(255,255,255,0.03) 28px,
+        rgba(255,255,255,0.03) 29px
+      );
+    }
+
+    /* gold top stripe */
+    .hero::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 5px;
+      background: linear-gradient(90deg, var(--gold), var(--gold2), var(--gold));
+    }
+
+    .hero-content { position: relative; z-index: 1; max-width: 760px; }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(203,160,82,0.18);
+      border: 1px solid rgba(203,160,82,0.4);
+      border-radius: 100px;
+      padding: 6px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gold2);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 32px;
+    }
+
+    .hero-wordmark {
+      font-size: clamp(72px, 14vw, 140px);
+      font-weight: 900;
+      letter-spacing: -6px;
+      line-height: 0.88;
+      color: var(--white);
+      margin-bottom: 0;
+    }
+    .hero-wordmark span {
+      color: var(--gold);
+    }
+
+    .hero-tagline {
+      font-size: clamp(18px, 3vw, 24px);
+      font-weight: 400;
+      color: rgba(255,255,255,0.75);
+      margin-top: 28px;
+      margin-bottom: 52px;
+      line-height: 1.5;
+      letter-spacing: -0.3px;
+    }
+    .hero-tagline strong {
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .btn-appstore {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      background: #fff;
+      color: var(--blue);
+      border-radius: 16px;
+      padding: 14px 28px;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 16px;
+      letter-spacing: -0.3px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .btn-appstore:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.35);
+    }
+    .btn-appstore svg { flex-shrink: 0; }
+    .btn-appstore-label { display: flex; flex-direction: column; text-align: left; }
+    .btn-appstore-label small {
+      font-size: 11px;
+      font-weight: 500;
+      opacity: 0.65;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .btn-learn {
+      color: rgba(255,255,255,0.8);
+      font-size: 15px;
+      font-weight: 500;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: color 0.15s;
+    }
+    .btn-learn:hover { color: #fff; }
+
+    /* ── PHONE MOCKUP ────────────────────────────────────────────────── */
+    .phone-section {
+      background: var(--blue);
+      padding: 0 24px 100px;
+      display: flex;
+      justify-content: center;
+      position: relative;
+    }
+    .phone-wrap {
+      display: flex;
+      gap: 24px;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .phone {
+      width: 220px;
+      background: #000;
+      border-radius: 44px;
+      box-shadow: 0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.08);
+      overflow: hidden;
+      position: relative;
+      flex-shrink: 0;
+      transform: translateY(0);
+      transition: transform 0.3s;
+    }
+    .phone:hover { transform: translateY(-8px); }
+    .phone.center {
+      width: 240px;
+      transform: translateY(-20px);
+    }
+    .phone.center:hover { transform: translateY(-28px); }
+
+    .phone-notch {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90px;
+      height: 26px;
+      background: #000;
+      border-radius: 100px;
+      z-index: 10;
+    }
+    .phone-screen {
+      width: 100%;
+      padding-top: 177.78%; /* 9:16 */
+      background: var(--fill);
+      position: relative;
+    }
+
+    /* Screen 1 — Home feed */
+    .screen-home {
+      background: #fff;
+      position: absolute;
+      inset: 0;
+      padding: 48px 0 0;
+    }
+    .s-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px 10px;
+      border-bottom: 1px solid var(--sep);
+    }
+    .s-logo {
+      font-size: 17px;
+      font-weight: 900;
+      letter-spacing: -1px;
+      color: var(--blue);
+    }
+    .s-bell {
+      width: 28px; height: 28px;
+      background: var(--fill);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+    }
+    .s-post {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--sep);
+    }
+    .s-post-header { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+    .s-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .s-name { font-size: 11px; font-weight: 600; color: #000; }
+    .s-time { font-size: 10px; color: var(--muted); }
+    .s-text { font-size: 10px; color: #1c1c1e; line-height: 1.5; }
+    .s-img {
+      width: 100%;
+      height: 70px;
+      border-radius: 10px;
+      margin-top: 8px;
+      object-fit: cover;
+    }
+    .s-actions {
+      display: flex;
+      gap: 14px;
+      margin-top: 9px;
+    }
+    .s-action { font-size: 10px; color: var(--muted); display: flex; align-items: center; gap: 3px; }
+    .s-action.liked { color: var(--blue); }
+
+    /* Screen 2 — Circles */
+    .screen-circles {
+      background: #000;
+      position: absolute;
+      inset: 0;
+      padding: 48px 0 0;
+    }
+    .sc-header {
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid #1c1c1e;
+    }
+    .sc-title { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; color: #fff; }
+    .sc-live {
+      display: inline-block;
+      background: #ff3b30;
+      color: #fff;
+      font-size: 8px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      letter-spacing: 0.05em;
+      margin-bottom: 12px;
+      margin-left: 16px;
+      margin-top: 10px;
+    }
+    .sc-room {
+      margin: 0 12px 10px;
+      background: #1c1c1e;
+      border-radius: 16px;
+      padding: 14px;
+    }
+    .sc-room-title { font-size: 11px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+    .sc-room-title-ar { font-size: 11px; font-weight: 700; color: #fff; margin-bottom: 6px; text-align: right; direction: rtl; }
+    .sc-avatars { display: flex; gap: 4px; margin-bottom: 6px; }
+    .sc-av { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #000; }
+    .sc-meta { display: flex; align-items: center; justify-content: space-between; }
+    .sc-count { font-size: 9px; color: #8e8e93; }
+    .sc-fire { font-size: 14px; }
+
+    /* Screen 3 — Discover */
+    .screen-discover {
+      background: #fff;
+      position: absolute;
+      inset: 0;
+      padding: 48px 0 0;
+    }
+    .sd-header {
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid var(--sep);
+    }
+    .sd-title { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
+    .sd-search {
+      margin: 10px 16px;
+      background: var(--fill);
+      border-radius: 12px;
+      padding: 9px 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .sd-search-icon { font-size: 11px; opacity: 0.5; }
+    .sd-search-text { font-size: 10px; color: #aeaeb2; }
+    .sd-section { padding: 10px 16px 6px; }
+    .sd-section-label { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 10px; }
+    .sd-user { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .sd-uav { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; }
+    .sd-uname { font-size: 11px; font-weight: 600; }
+    .sd-ubio { font-size: 9px; color: var(--muted); }
+    .sd-follow {
+      margin-left: auto;
+      background: var(--blue);
+      color: #fff;
+      font-size: 9px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 100px;
+    }
+
+    /* gradient fade at bottom of screens */
+    .phone-screen::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 80px;
+      pointer-events: none;
+    }
+
+    /* ── FEATURES ────────────────────────────────────────────────────── */
+    .features {
+      padding: 120px 24px;
+      background: var(--white);
+    }
+    .section-eyebrow {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: clamp(36px, 5vw, 56px);
+      font-weight: 800;
+      letter-spacing: -2px;
+      line-height: 1.05;
+      color: var(--text);
+      max-width: 680px;
+    }
+    .section-title em { color: var(--blue); font-style: normal; }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 24px;
+      margin-top: 64px;
+      max-width: 1100px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .feature-card {
+      padding: 36px 32px;
+      border-radius: 24px;
+      background: var(--fill);
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s;
+    }
+    .feature-card:hover { transform: translateY(-4px); }
+    .feature-card.accent {
+      background: var(--blue);
+      color: #fff;
+    }
+    .feature-card.gold-card {
+      background: linear-gradient(135deg, #1a0e00, #2d1a00);
+    }
+
+    .feature-icon {
+      font-size: 36px;
+      margin-bottom: 20px;
+      display: block;
+    }
+    .feature-name {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 10px;
+    }
+    .feature-card.accent .feature-name { color: #fff; }
+    .feature-card.gold-card .feature-name { color: var(--gold2); }
+    .feature-desc {
+      font-size: 15px;
+      line-height: 1.65;
+      color: var(--muted);
+    }
+    .feature-card.accent .feature-desc { color: rgba(255,255,255,0.7); }
+    .feature-card.gold-card .feature-desc { color: rgba(232,190,116,0.75); }
+
+    /* ── STATS ───────────────────────────────────────────────────────── */
+    .stats {
+      background: var(--blue);
+      padding: 100px 24px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .stats::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: repeating-linear-gradient(
+        -45deg, transparent, transparent 28px,
+        rgba(255,255,255,0.03) 28px, rgba(255,255,255,0.03) 29px
+      );
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 48px;
+      max-width: 900px;
+      margin: 0 auto;
+      position: relative;
+    }
+    .stat-num {
+      font-size: 56px;
+      font-weight: 900;
+      letter-spacing: -3px;
+      color: #fff;
+      line-height: 1;
+    }
+    .stat-num span { color: var(--gold); }
+    .stat-label {
+      font-size: 15px;
+      color: rgba(255,255,255,0.6);
+      margin-top: 8px;
+      font-weight: 500;
+    }
+
+    /* ── TESTIMONIAL / ABOUT ─────────────────────────────────────────── */
+    .about {
+      padding: 120px 24px;
+      max-width: 760px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    .about-flag { font-size: 56px; margin-bottom: 24px; display: block; }
+    .about-quote {
+      font-size: clamp(22px, 3.5vw, 36px);
+      font-weight: 700;
+      letter-spacing: -1px;
+      line-height: 1.3;
+      color: var(--text);
+      margin-bottom: 24px;
+    }
+    .about-sub {
+      font-size: 17px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+    .about-sub strong { color: var(--text); }
+
+    /* ── DOWNLOAD CTA ────────────────────────────────────────────────── */
+    .download {
+      background: linear-gradient(160deg, #001880 0%, var(--blue) 50%, #0041CC 100%);
+      padding: 120px 24px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .download::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: repeating-linear-gradient(
+        -45deg, transparent, transparent 28px,
+        rgba(255,255,255,0.03) 28px, rgba(255,255,255,0.03) 29px
+      );
+    }
+    .download::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 5px;
+      background: linear-gradient(90deg, var(--gold), var(--gold2), var(--gold));
+    }
+    .download-content { position: relative; }
+    .download-wordmark {
+      font-size: 80px;
+      font-weight: 900;
+      letter-spacing: -5px;
+      color: rgba(255,255,255,0.12);
+      line-height: 1;
+      margin-bottom: -20px;
+      user-select: none;
+    }
+    .download-title {
+      font-size: clamp(36px, 6vw, 64px);
+      font-weight: 800;
+      letter-spacing: -2.5px;
+      color: #fff;
+      margin-bottom: 16px;
+    }
+    .download-sub {
+      font-size: 18px;
+      color: rgba(255,255,255,0.65);
+      margin-bottom: 52px;
+    }
+    .download-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+      background: #fff;
+      color: var(--blue);
+      border-radius: 20px;
+      padding: 18px 36px;
+      text-decoration: none;
+      font-weight: 800;
+      font-size: 18px;
+      letter-spacing: -0.5px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .download-btn:hover {
+      transform: translateY(-4px) scale(1.02);
+      box-shadow: 0 32px 80px rgba(0,0,0,0.5);
+    }
+    .download-btn-label { display: flex; flex-direction: column; text-align: left; }
+    .download-btn-label small {
+      font-size: 12px;
+      font-weight: 500;
+      opacity: 0.6;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .dl-note {
+      margin-top: 20px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.4);
+    }
+
+    /* ── FOOTER ──────────────────────────────────────────────────────── */
+    footer {
+      background: #000;
+      padding: 48px 48px 36px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .footer-logo {
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: -1px;
+      color: #fff;
+    }
+    .footer-logo span { color: var(--gold); }
+    .footer-links {
+      display: flex;
+      gap: 28px;
+      flex-wrap: wrap;
+    }
+    .footer-link {
+      font-size: 13px;
+      color: rgba(255,255,255,0.45);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .footer-link:hover { color: rgba(255,255,255,0.85); }
+    .footer-copy {
+      width: 100%;
+      font-size: 12px;
+      color: rgba(255,255,255,0.25);
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+
+    /* ── SCROLL ANIMATION ────────────────────────────────────────────── */
+    .fade-up {
+      opacity: 0;
+      transform: translateY(32px);
+      transition: opacity 0.7s cubic-bezier(.16,1,.3,1), transform 0.7s cubic-bezier(.16,1,.3,1);
+    }
+    .fade-up.visible {
+      opacity: 1;
+      transform: none;
+    }
+
+    /* ── RESPONSIVE ──────────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      nav { padding: 0 20px; }
+      .nav-right .nav-link { display: none; }
+      .phone-wrap .phone:first-child,
+      .phone-wrap .phone:last-child { display: none; }
+      .phone.center { width: 260px; transform: none; }
+      .features { padding: 80px 20px; }
+      .stats { padding: 80px 20px; }
+      .about { padding: 80px 20px; }
+      .download { padding: 80px 20px; }
+      footer { padding: 36px 20px 28px; flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <a href="/" class="nav-logo">KUWAI<span class="nav-flag">🇰🇼</span></a>
+    <div class="nav-right">
+      <a href="#features" class="nav-link">Features</a>
+      <a href="#about" class="nav-link">About</a>
+      <a href="/support.html" class="nav-link">Support</a>
+      <a href="#download" class="nav-cta">Download</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-content">
+      <div class="hero-badge">🇰🇼 Built for Kuwait</div>
+      <h1 class="hero-wordmark">KUW<span>AI</span></h1>
+      <p class="hero-tagline">
+        <strong>Kuwait's social pulse.</strong><br />
+        Real conversations. Trending topics. Live voice circles.
+      </p>
+      <div class="hero-actions">
+        <a href="#download" class="btn-appstore">
+          <svg width="24" height="28" viewBox="0 0 24 28" fill="none">
+            <path d="M19.665 14.863c-.032-3.17 2.596-4.708 2.714-4.78-1.481-2.163-3.779-2.458-4.593-2.489-1.952-.198-3.824 1.152-4.814 1.152-.99 0-2.512-1.13-4.133-1.097-2.123.033-4.09 1.237-5.182 3.127-2.217 3.844-.567 9.527 1.59 12.647 1.058 1.529 2.313 3.246 3.963 3.185 1.596-.065 2.193-1.027 4.116-1.027 1.923 0 2.472 1.027 4.148.992 1.716-.03 2.797-1.55 3.843-3.085a17.29 17.29 0 001.746-3.574c-.038-.015-3.36-1.286-3.394-5.051z" fill="#0033A0"/>
+            <path d="M16.395 5.14C17.257 4.09 17.84 2.652 17.677 1.2c-1.24.05-2.748.828-3.641 1.87-.8.926-1.503 2.413-1.315 3.832 1.386.107 2.81-.703 3.674-1.762z" fill="#0033A0"/>
+          </svg>
+          <div class="btn-appstore-label">
+            <small>Download on the</small>
+            App Store
+          </div>
+        </a>
+        <a href="#features" class="btn-learn">
+          See what's inside ↓
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- PHONE MOCKUPS -->
+  <section class="phone-section">
+    <div class="phone-wrap">
+
+      <!-- Phone 1: Home Feed -->
+      <div class="phone">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+          <div class="screen-home">
+            <div class="s-header">
+              <span class="s-logo">KUWAI</span>
+              <div class="s-bell">🔔</div>
+            </div>
+            <!-- post 1 -->
+            <div class="s-post">
+              <div class="s-post-header">
+                <div class="s-avatar" style="background:linear-gradient(135deg,#0033A0,#4D80FF)"></div>
+                <div>
+                  <div class="s-name">Ahmad Al-Rashidi</div>
+                  <div class="s-time">2m ago · Al Asimah</div>
+                </div>
+              </div>
+              <div class="s-text">الكويت دايمًا تفاجئنا بأحلى الأوقات 🇰🇼</div>
+              <div class="s-img" style="background:linear-gradient(135deg,#CBA052,#0033A0)"></div>
+              <div class="s-actions">
+                <div class="s-action liked">❤️ 142</div>
+                <div class="s-action">💬 28</div>
+                <div class="s-action">↗ Share</div>
+              </div>
+            </div>
+            <!-- post 2 -->
+            <div class="s-post">
+              <div class="s-post-header">
+                <div class="s-avatar" style="background:linear-gradient(135deg,#CBA052,#7C3AED)"></div>
+                <div>
+                  <div class="s-name">Sara Al-Mutairi</div>
+                  <div class="s-time">15m ago · Hawalli</div>
+                </div>
+              </div>
+              <div class="s-text">أحسن تطبيق كويتي شفته! 🔥</div>
+              <div class="s-actions">
+                <div class="s-action">🤍 89</div>
+                <div class="s-action">💬 14</div>
+                <div class="s-action">↗ Share</div>
+              </div>
+            </div>
+            <!-- post 3 -->
+            <div class="s-post">
+              <div class="s-post-header">
+                <div class="s-avatar" style="background:linear-gradient(135deg,#34C759,#007A3D)"></div>
+                <div>
+                  <div class="s-name">Fahad Al-Salem</div>
+                  <div class="s-time">1h ago · Ahmadi</div>
+                </div>
+              </div>
+              <div class="s-text">Traffic on the 6th ring road is insane today 😤</div>
+              <div class="s-actions">
+                <div class="s-action liked">❤️ 203</div>
+                <div class="s-action">💬 67</div>
+                <div class="s-action">↗ Share</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phone 2 (center): Circles -->
+      <div class="phone center">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+          <div class="screen-circles">
+            <div class="sc-header">
+              <div class="sc-title">Circles</div>
+            </div>
+            <div class="sc-live">🔴 LIVE NOW</div>
+            <div class="sc-room">
+              <div class="sc-room-title-ar">ليش الأسعار طارت؟ 📈</div>
+              <div class="sc-avatars">
+                <div class="sc-av" style="background:#0033A0"></div>
+                <div class="sc-av" style="background:#CBA052"></div>
+                <div class="sc-av" style="background:#7C3AED"></div>
+                <div class="sc-av" style="background:#34C759"></div>
+                <div class="sc-av" style="background:#FF6B35"></div>
+              </div>
+              <div class="sc-meta">
+                <span class="sc-count">🎙 847 listening</span>
+                <span class="sc-fire">🔥🔥</span>
+              </div>
+            </div>
+            <div class="sc-room">
+              <div class="sc-room-title">Kuwait Real Estate 2025</div>
+              <div class="sc-avatars">
+                <div class="sc-av" style="background:#FF6B35"></div>
+                <div class="sc-av" style="background:#0033A0"></div>
+                <div class="sc-av" style="background:#DB2777"></div>
+              </div>
+              <div class="sc-meta">
+                <span class="sc-count">🎙 312 listening</span>
+                <span class="sc-fire">👀</span>
+              </div>
+            </div>
+            <div class="sc-room">
+              <div class="sc-room-title-ar">كأس خليجي — توقعاتكم؟</div>
+              <div class="sc-avatars">
+                <div class="sc-av" style="background:#007A3D"></div>
+                <div class="sc-av" style="background:#CBA052"></div>
+                <div class="sc-av" style="background:#0891B2"></div>
+                <div class="sc-av" style="background:#C8102E"></div>
+              </div>
+              <div class="sc-meta">
+                <span class="sc-count">🎙 1.2k listening</span>
+                <span class="sc-fire">🔥💀</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phone 3: Discover -->
+      <div class="phone">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+          <div class="screen-discover">
+            <div class="sd-header">
+              <div class="sd-title">Discover</div>
+            </div>
+            <div class="sd-search">
+              <span class="sd-search-icon">🔍</span>
+              <span class="sd-search-text">Search people, topics...</span>
+            </div>
+            <div class="sd-section">
+              <div class="sd-section-label">Suggested for you</div>
+              <div class="sd-user">
+                <div class="sd-uav" style="background:linear-gradient(135deg,#0033A0,#CBA052)"></div>
+                <div>
+                  <div class="sd-uname">Kuwait Times ✓</div>
+                  <div class="sd-ubio">Official Media</div>
+                </div>
+                <div class="sd-follow">Follow</div>
+              </div>
+              <div class="sd-user">
+                <div class="sd-uav" style="background:linear-gradient(135deg,#7C3AED,#DB2777)"></div>
+                <div>
+                  <div class="sd-uname">Noura Al-Fares</div>
+                  <div class="sd-ubio">Influencer · Fashion</div>
+                </div>
+                <div class="sd-follow">Follow</div>
+              </div>
+              <div class="sd-user">
+                <div class="sd-uav" style="background:linear-gradient(135deg,#007A3D,#0033A0)"></div>
+                <div>
+                  <div class="sd-uname">MOI Kuwait ✓</div>
+                  <div class="sd-ubio">Government</div>
+                </div>
+                <div class="sd-follow">Follow</div>
+              </div>
+              <div class="sd-user">
+                <div class="sd-uav" style="background:linear-gradient(135deg,#FF6B35,#D97706)"></div>
+                <div>
+                  <div class="sd-uname">Faisal Al-Tamimi</div>
+                  <div class="sd-ubio">Tech · Business</div>
+                </div>
+                <div class="sd-follow">Follow</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="features" id="features">
+    <div style="max-width:1100px;margin:0 auto;">
+      <p class="section-eyebrow fade-up">What makes KUWAI different</p>
+      <h2 class="section-title fade-up">Built from the ground up<br />for <em>Kuwaitis</em>.</h2>
+
+      <div class="features-grid">
+        <div class="feature-card fade-up">
+          <span class="feature-icon">🏠</span>
+          <div class="feature-name">Local by Default</div>
+          <div class="feature-desc">Every post, every topic, every conversation — rooted in Kuwait. Filter by governorate to see what's happening in your neighborhood.</div>
+        </div>
+        <div class="feature-card accent fade-up">
+          <span class="feature-icon">🎙</span>
+          <div class="feature-name">Live Voice Circles</div>
+          <div class="feature-desc">Jump into live audio rooms on anything happening right now. Politics, real estate, sports — hear Kuwait's voice in real time.</div>
+        </div>
+        <div class="feature-card fade-up">
+          <span class="feature-icon">🔥</span>
+          <div class="feature-name">Trending Topics</div>
+          <div class="feature-desc">See what Kuwait is talking about this minute. Trending rooms, hot posts, and the pulse of the nation — all in one place.</div>
+        </div>
+        <div class="feature-card gold-card fade-up">
+          <span class="feature-icon">✓</span>
+          <div class="feature-name">Verified Identities</div>
+          <div class="feature-desc">Government, media, business, and influencer badges — so you always know who's talking.</div>
+        </div>
+        <div class="feature-card fade-up">
+          <span class="feature-icon">🌐</span>
+          <div class="feature-name">Arabic & English</div>
+          <div class="feature-desc">Fully bilingual — post, read, and interact in either language. The app speaks your language.</div>
+        </div>
+        <div class="feature-card fade-up">
+          <span class="feature-icon">📸</span>
+          <div class="feature-name">Rich Media Posts</div>
+          <div class="feature-desc">Share photos, videos, and thoughts. A clean, distraction-free feed that puts the content first.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STATS -->
+  <section class="stats">
+    <div class="stats-grid">
+      <div class="fade-up">
+        <div class="stat-num">6<span>+</span></div>
+        <div class="stat-label">Governorates covered</div>
+      </div>
+      <div class="fade-up">
+        <div class="stat-num">2</div>
+        <div class="stat-label">Languages — AR & EN</div>
+      </div>
+      <div class="fade-up">
+        <div class="stat-num">∞</div>
+        <div class="stat-label">Conversations happening</div>
+      </div>
+      <div class="fade-up">
+        <div class="stat-num">1<span>🇰🇼</span></div>
+        <div class="stat-label">Country. Ours.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ABOUT -->
+  <section class="about" id="about">
+    <span class="about-flag fade-up">🇰🇼</span>
+    <h2 class="about-quote fade-up">"شو الناس قايلين؟"</h2>
+    <p class="about-sub fade-up">
+      Kuwaitis are intensely tuned into their community — <strong>KUWAI</strong> was built to answer that question every time you open the app. No algorithm hiding what matters. No noise from the rest of the world. Just <strong>Kuwait's pulse, unfiltered</strong>.
+    </p>
+  </section>
+
+  <!-- DOWNLOAD CTA -->
+  <section class="download" id="download">
+    <div class="download-content">
+      <div class="download-wordmark">KUWAI</div>
+      <h2 class="download-title">Get the app.</h2>
+      <p class="download-sub">Free on the App Store. Kuwait inside.</p>
+      <a href="#" class="download-btn">
+        <svg width="28" height="34" viewBox="0 0 24 28" fill="none">
+          <path d="M19.665 14.863c-.032-3.17 2.596-4.708 2.714-4.78-1.481-2.163-3.779-2.458-4.593-2.489-1.952-.198-3.824 1.152-4.814 1.152-.99 0-2.512-1.13-4.133-1.097-2.123.033-4.09 1.237-5.182 3.127-2.217 3.844-.567 9.527 1.59 12.647 1.058 1.529 2.313 3.246 3.963 3.185 1.596-.065 2.193-1.027 4.116-1.027 1.923 0 2.472 1.027 4.148.992 1.716-.03 2.797-1.55 3.843-3.085a17.29 17.29 0 001.746-3.574c-.038-.015-3.36-1.286-3.394-5.051z" fill="#0033A0"/>
+          <path d="M16.395 5.14C17.257 4.09 17.84 2.652 17.677 1.2c-1.24.05-2.748.828-3.641 1.87-.8.926-1.503 2.413-1.315 3.832 1.386.107 2.81-.703 3.674-1.762z" fill="#0033A0"/>
+        </svg>
+        <div class="download-btn-label">
+          <small>Download on the</small>
+          App Store
+        </div>
+      </a>
+      <div class="dl-note">iOS 16.0 or later required</div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-logo">KUWAI <span>🇰🇼</span></div>
+    <div class="footer-links">
+      <a href="/privacy.html" class="footer-link">Privacy Policy</a>
+      <a href="/support.html" class="footer-link">Support</a>
+      <a href="mailto:support@kuwai.app" class="footer-link">Contact</a>
+    </div>
+    <div class="footer-copy">© 2025 KUWAI. Made with ❤️ in Kuwait 🇰🇼</div>
+  </footer>
+
+  <script>
+    // Scroll fade-in
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((e, i) => {
+        if (e.isIntersecting) {
+          setTimeout(() => e.target.classList.add('visible'), i * 80);
+          observer.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+
+    // Smooth nav hide/show on scroll
+    let lastY = 0;
+    const nav = document.querySelector('nav');
+    window.addEventListener('scroll', () => {
+      const y = window.scrollY;
+      nav.style.transform = y > lastY && y > 80 ? 'translateY(-100%)' : 'translateY(0)';
+      nav.style.transition = 'transform 0.3s ease';
+      lastY = y;
+    }, { passive: true });
+  </script>
+</body>
+</html>
