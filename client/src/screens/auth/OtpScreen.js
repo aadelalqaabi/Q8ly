@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { verifyOtp, clearError } from '../../store/slices/authSlice';
 import { authAPI } from '../../services/api';
 import { useTheme } from '../../context/ThemeContext';
+import { useFocusEffect } from '@react-navigation/native';
 
 const CODE_LENGTH = 6;
 const RESEND_SECONDS = 60;
@@ -34,15 +35,19 @@ export default function OtpScreen({ navigation, route }) {
 
   useEffect(() => {
     startCountdown();
-    // Delay focus so navigation animation finishes first — autoFocus alone
-    // can fire before the screen is fully visible, causing iOS to ignore it
-    const focusTimer = setTimeout(() => inputRef.current?.focus(), 400);
     return () => {
-      clearTimeout(focusTimer);
       clearInterval(timerRef.current);
       dispatch(clearError());
     };
   }, []);
+
+  // useFocusEffect ensures focus fires after the screen transition fully completes
+  useFocusEffect(
+    React.useCallback(() => {
+      const timer = setTimeout(() => inputRef.current?.focus(), 500);
+      return () => clearTimeout(timer);
+    }, [])
+  );
 
   const startCountdown = () => {
     setCountdown(RESEND_SECONDS);
@@ -149,6 +154,12 @@ export default function OtpScreen({ navigation, route }) {
             ref={inputRef}
             value={code}
             onChangeText={handleCodeChange}
+            onBlur={() => {
+              // Keep keyboard open while waiting for OTP — dismiss only after submit
+              if (!submittedRef.current) {
+                setTimeout(() => inputRef.current?.focus(), 100);
+              }
+            }}
             keyboardType="number-pad"
             textContentType="oneTimeCode"
             autoComplete="one-time-code"
