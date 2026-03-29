@@ -7,10 +7,10 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { useFocusEffect } from '@react-navigation/native';
 import { verifyOtp, clearError } from '../../store/slices/authSlice';
 import { authAPI } from '../../services/api';
 import { useTheme } from '../../context/ThemeContext';
-import { useFocusEffect } from '@react-navigation/native';
 
 const CODE_LENGTH = 6;
 const RESEND_SECONDS = 60;
@@ -23,13 +23,16 @@ export default function OtpScreen({ navigation, route }) {
   const isRTL = i18n.language === 'ar';
   const { colors: C, isDark } = useTheme();
   const { isLoading, error } = useSelector((s) => s.auth);
-
   const styles = useMemo(() => makeStyles(C, isDark), [C, isDark]);
 
-  const [code, setCode] = useState('');
+  // digits[0..5] — one character each
+  const [digits, setDigits] = useState(Array(CODE_LENGTH).fill(''));
+  const [focusedIndex, setFocusedIndex] = useState(0);
   const [countdown, setCountdown] = useState(RESEND_SECONDS);
   const [resending, setResending] = useState(false);
-  const inputRef = useRef(null);
+
+  // One ref per input box
+  const inputRefs = useRef([]);
   const timerRef = useRef(null);
   const submittedRef = useRef(false);
 
@@ -41,10 +44,10 @@ export default function OtpScreen({ navigation, route }) {
     };
   }, []);
 
-  // useFocusEffect ensures focus fires after the screen transition fully completes
+  // Focus first box after navigation animation finishes
   useFocusEffect(
     React.useCallback(() => {
-      const timer = setTimeout(() => inputRef.current?.focus(), 500);
+      const timer = setTimeout(() => inputRefs.current[0]?.focus(), 500);
       return () => clearTimeout(timer);
     }, [])
   );
@@ -62,46 +65,82 @@ export default function OtpScreen({ navigation, route }) {
 
   const handleResend = async () => {
     setResending(true);
-    try { await authAPI.sendOtp(phone); startCountdown(); } catch (_) {}
+    try {
+      await authAPI.sendOtp(phone);
+      startCountdown();
+      // Clear boxes and refocus first
+      setDigits(Array(CODE_LENGTH).fill(''));
+      inputRefs.current[0]?.focus();
+    } catch (_) {}
     setResending(false);
   };
 
-  const handleVerify = async (c = code) => {
-    if (c.length !== CODE_LENGTH || submittedRef.current) return;
+  const submit = async (code) => {
+    if (code.length !== CODE_LENGTH || submittedRef.current) return;
     submittedRef.current = true;
-    const result = await dispatch(verifyOtp({ phone, code: c }));
+    const result = await dispatch(verifyOtp({ phone, code }));
     if (result.meta.requestStatus === 'rejected') {
-      setCode('');
+      setDigits(Array(CODE_LENGTH).fill(''));
       submittedRef.current = false;
+      setTimeout(() => inputRefs.current[0]?.focus(), 100);
     }
   };
 
-  const handleCodeChange = (text) => {
-    const digits = text.replace(/\D/g, '').slice(0, CODE_LENGTH);
-    setCode(digits);
-    if (digits.length === CODE_LENGTH) handleVerify(digits);
+  const handleChange = (text, index) => {
+    if (submittedRef.current) return;
+    const cleaned = text.replace(/\D/g, '');
+
+    // ── Autofill / paste: full code arrives at once ──────────────────
+    if (cleaned.length > 1) {
+      const full = cleaned.slice(0, CODE_LENGTH);
+      const next = Array(CODE_LENGTH).fill('');
+      full.split('').forEach((ch, i) => { next[i] = ch; });
+      setDigits(next);
+      // Focus the last filled box
+      const lastIdx = Math.min(full.length - 1, CODE_LENGTH - 1);
+      inputRefs.current[lastIdx]?.focus();
+      if (full.length === CODE_LENGTH) submit(full);
+      return;
+    }
+
+    // ── Single digit typed ───────────────────────────────────────────
+    const next = [...digits];
+    next[index] = cleaned;
+    setDigits(next);
+
+    if (cleaned && index < CODE_LENGTH - 1) {
+      inputRefs.current[index + 1]?.focus();
+    }
+
+    const code = next.join('');
+    if (code.length === CODE_LENGTH && !next.includes('')) submit(code);
+  };
+
+  const handleKeyPress = ({ nativeEvent }, index) => {
+    if (nativeEvent.key === 'Backspace') {
+      if (digits[index]) {
+        // Clear current box
+        const next = [...digits];
+        next[index] = '';
+        setDigits(next);
+      } else if (index > 0) {
+        // Move back and clear previous
+        const next = [...digits];
+        next[index - 1] = '';
+        setDigits(next);
+        inputRefs.current[index - 1]?.focus();
+      }
+    }
   };
 
   const displayPhone = phone.replace('+965', '+965 ');
   const totalSteps = isNewUser ? 3 : 2;
 
-  const renderBoxes = () =>
-    Array.from({ length: CODE_LENGTH }).map((_, i) => {
-      const char = code[i] ?? '';
-      const isCurrent = code.length === i;
-      return (
-        <View
-          key={i}
-          style={[styles.box, isCurrent && styles.boxActive, !!char && styles.boxFilled]}
-        >
-          <Text style={styles.boxText}>{char}</Text>
-          {isCurrent && <View style={styles.cursor} />}
-        </View>
-      );
-    });
-
   return (
-    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView
+      style={styles.root}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <View style={[styles.inner, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 32 }]}>
 
         {/* Back */}
@@ -119,13 +158,19 @@ export default function OtpScreen({ navigation, route }) {
           {Array.from({ length: totalSteps }).map((_, i) => (
             <View
               key={i}
-              style={[styles.stepSeg, i < 2 ? styles.stepSegActive : styles.stepSegInactive, i < totalSteps - 1 && styles.stepGap]}
+              style={[
+                styles.stepSeg,
+                i < 2 ? styles.stepSegActive : styles.stepSegInactive,
+                i < totalSteps - 1 && styles.stepGap,
+              ]}
             />
           ))}
         </View>
 
         {/* Header */}
-        <Text style={[styles.title, { textAlign: isRTL ? 'right' : 'left' }]}>{t('auth.otpTitle')}</Text>
+        <Text style={[styles.title, { textAlign: isRTL ? 'right' : 'left' }]}>
+          {t('auth.otpTitle')}
+        </Text>
         <Text style={[styles.subtitle, { textAlign: isRTL ? 'right' : 'left' }]}>
           {t('auth.otpSub')}{' '}
           <Text style={styles.phoneHighlight}>{displayPhone}</Text>
@@ -138,7 +183,6 @@ export default function OtpScreen({ navigation, route }) {
           </View>
         )}
 
-        {/* Error */}
         {!!error && (
           <View style={styles.errorBox}>
             <Ionicons name="alert-circle" size={15} color={C.error} />
@@ -146,20 +190,33 @@ export default function OtpScreen({ navigation, route }) {
           </View>
         )}
 
-        {/* Code boxes */}
+        {/* ── 6 real TextInput boxes ── */}
         <View style={styles.boxRow}>
-          {renderBoxes()}
-          {/* Input sits on top at full opacity — required for iOS OTP autofill banner */}
-          <TextInput
-            ref={inputRef}
-            value={code}
-            onChangeText={handleCodeChange}
-            keyboardType="number-pad"
-            textContentType="oneTimeCode"
-            maxLength={CODE_LENGTH}
-            caretHidden
-            style={styles.hiddenInput}
-          />
+          {Array.from({ length: CODE_LENGTH }).map((_, i) => {
+            const isFocused = focusedIndex === i;
+            const isFilled = !!digits[i];
+            return (
+              <TextInput
+                key={i}
+                ref={(el) => { inputRefs.current[i] = el; }}
+                value={digits[i]}
+                onChangeText={(text) => handleChange(text, i)}
+                onKeyPress={(e) => handleKeyPress(e, i)}
+                onFocus={() => setFocusedIndex(i)}
+                onBlur={() => setFocusedIndex(-1)}
+                keyboardType="number-pad"
+                textContentType="oneTimeCode"
+                maxLength={CODE_LENGTH}   // allow full paste on any box
+                selectTextOnFocus
+                caretHidden
+                style={[
+                  styles.box,
+                  isFocused && styles.boxActive,
+                  isFilled && !isFocused && styles.boxFilled,
+                ]}
+              />
+            );
+          })}
         </View>
 
         {isLoading && (
@@ -223,13 +280,22 @@ const makeStyles = (C, isDark) => StyleSheet.create({
   },
   errorText: { fontSize: 14, color: C.error, flex: 1 },
 
-  boxRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  hiddenInput: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, color: 'transparent', backgroundColor: 'transparent', fontSize: 24 },
+  boxRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
   box: {
-    width: 46, height: 58, borderRadius: 14,
+    width: 46,
+    height: 58,
+    borderRadius: 14,
     backgroundColor: C.fill,
-    justifyContent: 'center', alignItems: 'center',
-    borderWidth: 1.5, borderColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+    fontSize: 24,
+    fontWeight: '700',
+    color: C.text,
+    textAlign: 'center',
   },
   boxActive: {
     borderColor: C.accent,
@@ -238,11 +304,6 @@ const makeStyles = (C, isDark) => StyleSheet.create({
   boxFilled: {
     backgroundColor: isDark ? 'rgba(0,51,160,0.15)' : '#EEF2FA',
     borderColor: C.accent + '50',
-  },
-  boxText: { fontSize: 24, fontWeight: '700', color: C.text },
-  cursor: {
-    position: 'absolute', bottom: 10,
-    width: 2, height: 20, borderRadius: 1, backgroundColor: C.accent,
   },
 
   verifyingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 20 },
