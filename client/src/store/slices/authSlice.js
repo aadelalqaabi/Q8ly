@@ -42,6 +42,9 @@ export const verifyOtp = createAsyncThunk('auth/verifyOtp', async ({ phone, code
     const response = await authAPI.verifyOtp(phone, code, name);
     await AsyncStorage.setItem('token', response.token);
     await AsyncStorage.setItem('user', JSON.stringify(response.user));
+    // Save into multi-account store
+    const { upsertCurrentAccount } = await import('../../components/ui/AccountSwitcherSheet');
+    await upsertCurrentAccount(response.token, response.user);
     await initSocket();
     return response;
   } catch (error) {
@@ -87,6 +90,14 @@ export const restoreSession = createAsyncThunk('auth/restoreSession', async (_, 
 export const logout = createAsyncThunk('auth/logout', async () => {
   await AsyncStorage.multiRemove(['token', 'user']);
   disconnectSocket();
+});
+
+export const switchToAccount = createAsyncThunk('auth/switchToAccount', async ({ token, user }) => {
+  await AsyncStorage.setItem('token', token);
+  await AsyncStorage.setItem('user', JSON.stringify(user));
+  disconnectSocket();
+  await initSocket();
+  return { token, user };
 });
 
 export const updateProfile = createAsyncThunk('auth/updateProfile', async (data, { rejectWithValue }) => {
@@ -214,6 +225,15 @@ const authSlice = createSlice({
       state.isGuest = true;
       state.user = null;
       state.token = null;
+    });
+
+    // Switch account
+    builder.addCase(switchToAccount.fulfilled, (state, action) => {
+      state.user = action.payload.user;
+      state.token = action.payload.token;
+      state.isAuthenticated = true;
+      state.isGuest = false;
+      state.needsName = false;
     });
 
     // Update profile
