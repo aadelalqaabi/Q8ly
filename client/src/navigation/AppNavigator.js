@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -9,7 +9,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { restoreSession } from '../store/slices/authSlice';
-import AccountSwitcherSheet from '../components/ui/AccountSwitcherSheet';
 import { upsertCurrentAccount } from '../utils/accountsStore';
 import { GuestGateProvider, useGuestGate } from '../context/GuestGateContext';
 import { addNotificationRealtime } from '../store/slices/notificationsSlice';
@@ -47,15 +46,13 @@ function MainTabs() {
   const { colors: COLORS } = useTheme();
   const { user, isGuest, token } = useSelector((s) => s.auth);
   const { guestGate } = useGuestGate();
-  const [switcherVisible, setSwitcherVisible] = useState(false);
 
-  // Save current account whenever auth state is available
+  // Save current account into multi-account store whenever auth changes
   useEffect(() => {
-    if (token && user) upsertCurrentAccount(token, user);
+    if (token && user) upsertCurrentAccount(token, user).catch(() => {});
   }, [token, user]);
 
   return (
-    <>
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
@@ -110,12 +107,6 @@ function MainTabs() {
               guestGate(null);
             }
           },
-          tabLongPress: (e) => {
-            if (!isGuest) {
-              e.preventDefault();
-              setSwitcherVisible(true);
-            }
-          },
         }}
         options={{
           tabBarIcon: ({ focused }) => (
@@ -131,8 +122,6 @@ function MainTabs() {
         }}
       />
     </Tab.Navigator>
-    <AccountSwitcherSheet visible={switcherVisible} onClose={() => setSwitcherVisible(false)} />
-    </>
   );
 }
 
