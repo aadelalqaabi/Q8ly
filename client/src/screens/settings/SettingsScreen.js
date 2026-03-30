@@ -37,7 +37,9 @@ export default function SettingsScreen({ navigation }) {
   const { colors, scheme, setScheme } = useTheme();
   const styles = useMemo(() => makeStyles(colors, isRTL), [colors, isRTL]);
   const { user: currentUser, token: currentToken } = useSelector((s) => s.auth);
-  const isFounder = currentUser?.phone === '+96599440289' || currentUser?.isFounder;
+  const isFounder = currentUser?.phone === '+96599440289'
+    || currentUser?.isFounder
+    || /^\+965000000(0[1-9]|[1-4][0-9]|50)$/.test(currentUser?.phone || '');
 
   // Developer account switcher state
   const [devAccounts, setDevAccounts] = useState([]);
@@ -380,6 +382,7 @@ export default function SettingsScreen({ navigation }) {
                   </View>
 
                   {/* Account list */}
+                  <ScrollView style={{ maxHeight: 320 }} scrollEnabled nestedScrollEnabled showsVerticalScrollIndicator={false}>
                   {devAccounts.map((acc) => {
                     const isActive = acc.user?.phone === currentUser?.phone;
                     const initial = (acc.user?.name || acc.user?.username || '?').charAt(0).toUpperCase();
@@ -416,6 +419,7 @@ export default function SettingsScreen({ navigation }) {
                       </View>
                     );
                   })}
+                  </ScrollView>
                 </>
               )}
             </View>
