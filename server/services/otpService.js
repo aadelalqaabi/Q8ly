@@ -28,6 +28,12 @@ const DEMO_NUMBERS = new Set(
     .filter(Boolean)
 );
 
+// Founder dummy accounts: +96500000001–+96500000050 always bypass OTP (code: 123456)
+// Only usable from the founder's own phone session — these numbers are not real SIM cards.
+function isDummyAccount(normalized) {
+  return /^\+96500000(0[1-9]|[1-4][0-9]|50)$/.test(normalized);
+}
+
 const otpStore = new Map(); // phone → { otp, expires, attempts }
 
 let verifyService = null;
@@ -69,6 +75,13 @@ function normalizePhone(raw) {
 async function sendOtp(phone) {
   const normalized = normalizePhone(phone);
 
+  // Dummy founder accounts (+96500000001–+96500000050) bypass OTP
+  if (isDummyAccount(normalized)) {
+    otpStore.set(normalized, { otp: TEST_OTP, expires: Date.now() + OTP_EXPIRY_MS, attempts: 0 });
+    console.log(`[OTP DUMMY] Founder dummy account ${normalized} — code: ${TEST_OTP}`);
+    return { testMode: true };
+  }
+
   // Demo numbers bypass OTP entirely — used for app store reviewer accounts
   if (DEMO_NUMBERS.has(normalized)) {
     otpStore.set(normalized, { otp: TEST_OTP, expires: Date.now() + OTP_EXPIRY_MS, attempts: 0 });
@@ -108,6 +121,16 @@ async function sendOtp(phone) {
 
 async function verifyOtp(phone, code) {
   const normalized = normalizePhone(phone);
+
+  // Dummy founder accounts
+  if (isDummyAccount(normalized)) {
+    const stored = otpStore.get(normalized);
+    if (!stored) return { valid: false, reason: 'No code was sent to this number' };
+    if (Date.now() > stored.expires) { otpStore.delete(normalized); return { valid: false, reason: 'Code has expired' }; }
+    if (stored.otp !== String(code)) return { valid: false, reason: 'Incorrect code' };
+    otpStore.delete(normalized);
+    return { valid: true };
+  }
 
   // Demo numbers always accept the test OTP
   if (DEMO_NUMBERS.has(normalized)) {
