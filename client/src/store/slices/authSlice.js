@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authAPI } from '../../services/api';
 import { initSocket, disconnectSocket } from '../../services/socket';
+import { upsertCurrentAccount } from '../../utils/accountsStore';
 
 // ── Async Thunks ──────────────────────────────────────────────────────────────
 
@@ -43,7 +44,6 @@ export const verifyOtp = createAsyncThunk('auth/verifyOtp', async ({ phone, code
     await AsyncStorage.setItem('token', response.token);
     await AsyncStorage.setItem('user', JSON.stringify(response.user));
     // Save into multi-account store
-    const { upsertCurrentAccount } = await import('../../components/ui/AccountSwitcherSheet');
     await upsertCurrentAccount(response.token, response.user);
     await initSocket();
     return response;

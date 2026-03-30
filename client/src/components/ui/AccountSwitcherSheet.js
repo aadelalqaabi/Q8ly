@@ -10,38 +10,20 @@ import {
   View, Text, Modal, Animated, TouchableOpacity, TouchableWithoutFeedback,
   StyleSheet, Image, ScrollView, ActivityIndicator,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { switchToAccount } from '../../store/slices/authSlice';
 import { authAPI } from '../../services/api';
+import { loadAccounts, saveAccounts, upsertCurrentAccount } from '../../utils/accountsStore';
 
-const ACCOUNTS_KEY = '@kuwai_accounts';
+export { upsertCurrentAccount };
+
 const FOUNDER_PHONE = '+96599440289';
 const DUMMY_PHONES = Array.from({ length: 50 }, (_, i) =>
   `+965000000${String(i + 1).padStart(2, '0')}`
 );
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-async function loadAccounts() {
-  const raw = await AsyncStorage.getItem(ACCOUNTS_KEY);
-  return raw ? JSON.parse(raw) : [];
-}
-
-async function saveAccounts(accounts) {
-  await AsyncStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
-}
-
-export async function upsertCurrentAccount(token, user) {
-  const accounts = await loadAccounts();
-  const idx = accounts.findIndex((a) => a.user?.phone === user?.phone);
-  if (idx >= 0) accounts[idx] = { token, user };
-  else accounts.unshift({ token, user });
-  await saveAccounts(accounts);
-}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 

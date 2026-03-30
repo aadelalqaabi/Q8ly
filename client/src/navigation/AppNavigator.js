@@ -9,7 +9,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { restoreSession } from '../store/slices/authSlice';
-import AccountSwitcherSheet, { upsertCurrentAccount } from '../components/ui/AccountSwitcherSheet';
+import AccountSwitcherSheet from '../components/ui/AccountSwitcherSheet';
+import { upsertCurrentAccount } from '../utils/accountsStore';
 import { GuestGateProvider, useGuestGate } from '../context/GuestGateContext';
 import { addNotificationRealtime } from '../store/slices/notificationsSlice';
 // import { addRealtimeMessage, updateConversationAccepted } from '../store/slices/dmSlice'; // DMs disabled
