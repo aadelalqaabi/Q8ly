@@ -1,7 +1,7 @@
-import { useContext, useState, useMemo, useEffect } from 'react';
+import { useContext, useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Modal, TextInput, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Switch, Image,
+  Modal, TextInput, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Switch,
 } from 'react-native';
 import { useDispatch } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,10 +10,8 @@ import { useTranslation } from 'react-i18next';
 import { changeAppLanguage } from '../../i18n';
 import { AppRestartContext } from '../../context/AppRestartContext';
 import { useTheme } from '../../context/ThemeContext';
-import { logout, switchToAccount } from '../../store/slices/authSlice';
+import { logout } from '../../store/slices/authSlice';
 import BottomMenu from '../../components/ui/BottomMenu';
-import { loadAccounts, saveAccounts, upsertCurrentAccount } from '../../utils/accountsStore';
-import { authAPI } from '../../services/api';
 import { suggestionsAPI, usersAPI } from '../../services/api';
 import { useSelector } from 'react-redux';
 
@@ -36,68 +34,10 @@ export default function SettingsScreen({ navigation }) {
   const restartApp = useContext(AppRestartContext);
   const { colors, scheme, setScheme } = useTheme();
   const styles = useMemo(() => makeStyles(colors, isRTL), [colors, isRTL]);
-  const { user: currentUser, token: currentToken } = useSelector((s) => s.auth);
+  const { user: currentUser } = useSelector((s) => s.auth);
   const isFounder = currentUser?.phone === '+96599440289'
     || currentUser?.isFounder
     || /^\+965000000(0[1-9]|[1-4][0-9]|50)$/.test(currentUser?.phone || '');
-
-  // Developer account switcher state
-  const [devAccounts, setDevAccounts] = useState([]);
-  const [devExpanded, setDevExpanded] = useState(false);
-  const [devAdding, setDevAdding] = useState(false);
-  const [devProgress, setDevProgress] = useState({ done: 0, total: 0 });
-
-  const DUMMY_PHONES = useMemo(() =>
-    Array.from({ length: 50 }, (_, i) => `+965000000${String(i + 1).padStart(2, '0')}`),
-  []);
-
-  useEffect(() => {
-    if (!isFounder) return;
-    if (currentToken && currentUser) upsertCurrentAccount(currentToken, currentUser).catch(() => {});
-    loadAccounts().then(setDevAccounts).catch(() => {});
-  }, [isFounder]);
-
-  const handleDevSwitch = async (account) => {
-    if (account.user?.phone === currentUser?.phone) return;
-    try {
-      await dispatch(switchToAccount({ token: account.token, user: account.user }));
-      navigation.goBack();
-    } catch (_) {}
-  };
-
-  const handleAddAllDummy = async () => {
-    setDevAdding(true);
-    try {
-      setDevProgress({ done: 0, total: DUMMY_PHONES.length });
-      let done = 0;
-
-      // Authenticate all 50 sequentially to avoid AsyncStorage race conditions
-      const results = [];
-      for (const phone of DUMMY_PHONES) {
-        try {
-          await authAPI.sendOtp(phone);
-          const res = await authAPI.verifyOtp(phone, '123456');
-          if (res?.token && res?.user) {
-            results.push({ token: res.token, user: res.user });
-          }
-        } catch (_) {}
-        done++;
-        setDevProgress({ done, total: DUMMY_PHONES.length });
-      }
-
-      // Single write — merge all results into the accounts list at once
-      const existing = await loadAccounts();
-      const merged = [...existing];
-      for (const entry of results) {
-        const idx = merged.findIndex((a) => a.user?.phone === entry.user?.phone);
-        if (idx >= 0) merged[idx] = entry;
-        else merged.push(entry);
-      }
-      await saveAccounts(merged);
-      setDevAccounts(merged);
-    } catch (_) {}
-    setDevAdding(false);
-  };
 
   const [logoutMenuVisible, setLogoutMenuVisible] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -334,15 +274,14 @@ export default function SettingsScreen({ navigation }) {
           ))}
         </View>
 
-        {/* Developer: account switcher — founder only */}
+        {/* Developer — founder & dummy accounts only */}
         {isFounder && (
           <>
             <SectionLabel label="Developer" colors={colors} isRTL={isRTL} />
             <View style={styles.card}>
-              {/* Header row */}
               <TouchableOpacity
                 style={styles.row}
-                onPress={() => setDevExpanded((v) => !v)}
+                onPress={() => navigation.navigate('DeveloperAccounts')}
                 activeOpacity={0.7}
               >
                 <View style={[styles.rowIcon, { backgroundColor: '#1c1c1e' }]}>
@@ -350,80 +289,10 @@ export default function SettingsScreen({ navigation }) {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.rowLabel}>Dummy Accounts</Text>
-                  <Text style={styles.rowSub}>{devAccounts.length} saved · tap to switch</Text>
+                  <Text style={styles.rowSub}>Switch between test accounts</Text>
                 </View>
-                <Ionicons
-                  name={devExpanded ? 'chevron-up' : 'chevron-down'}
-                  size={18}
-                  color={colors.textMuted}
-                />
+                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
               </TouchableOpacity>
-
-              {devExpanded && (
-                <>
-                  {/* Add all button */}
-                  <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
-                    {devAdding ? (
-                      <View style={styles.devProgressRow}>
-                        <ActivityIndicator size="small" color={colors.accent} />
-                        <Text style={styles.devProgressText}>
-                          Adding… {devProgress.done}/{devProgress.total}
-                        </Text>
-                      </View>
-                    ) : DUMMY_PHONES.filter((p) => !devAccounts.find((a) => a.user?.phone === p)).length > 0 ? (
-                      <TouchableOpacity
-                        style={styles.devAddBtn}
-                        onPress={handleAddAllDummy}
-                        activeOpacity={0.8}
-                      >
-                        <Text style={styles.devAddBtnText}>
-                          Add All 50 Dummy Accounts
-                        </Text>
-                      </TouchableOpacity>
-                    ) : null}
-                  </View>
-
-                  {/* Account list */}
-                  <ScrollView style={{ maxHeight: 320 }} scrollEnabled nestedScrollEnabled showsVerticalScrollIndicator={false}>
-                  {devAccounts.map((acc) => {
-                    const isActive = acc.user?.phone === currentUser?.phone;
-                    const initial = (acc.user?.name || acc.user?.username || '?').charAt(0).toUpperCase();
-                    return (
-                      <View key={acc.user?.phone}>
-                        <View style={styles.divider} />
-                        <TouchableOpacity
-                          style={[styles.row, isActive && styles.devRowActive]}
-                          onPress={() => handleDevSwitch(acc)}
-                          activeOpacity={0.7}
-                        >
-                          {acc.user?.profilePic ? (
-                            <Image
-                              source={{ uri: acc.user.profilePic }}
-                              style={styles.devAvatar}
-                            />
-                          ) : (
-                            <View style={[styles.devAvatar, { backgroundColor: colors.accent, justifyContent: 'center', alignItems: 'center' }]}>
-                              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>{initial}</Text>
-                            </View>
-                          )}
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.rowLabel} numberOfLines={1}>
-                              {acc.user?.name || acc.user?.username}
-                            </Text>
-                            <Text style={styles.rowSub} numberOfLines={1}>
-                              @{acc.user?.username} · {acc.user?.phone}
-                            </Text>
-                          </View>
-                          {isActive && (
-                            <Ionicons name="checkmark-circle" size={20} color={colors.accent} />
-                          )}
-                        </TouchableOpacity>
-                      </View>
-                    );
-                  })}
-                  </ScrollView>
-                </>
-              )}
             </View>
           </>
         )}
@@ -610,17 +479,6 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
     backgroundColor: '#EEF2FA', justifyContent: 'center', alignItems: 'center',
   },
   rowLabelDestructive: { flex: 1, fontSize: 15, color: C.error, textAlign: isRTL ? 'right' : 'left' },
-
-  // Developer switcher
-  devRowActive: { backgroundColor: C.fill },
-  devAvatar: { width: 36, height: 36, borderRadius: 18 },
-  devAddBtn: {
-    backgroundColor: C.accent, borderRadius: 12,
-    paddingVertical: 11, alignItems: 'center',
-  },
-  devAddBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
-  devProgressRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11, justifyContent: 'center' },
-  devProgressText: { fontSize: 14, color: C.textMuted },
 
   // Suggestion modal
   modalHeader: {

@@ -33,6 +33,7 @@ import CreatePostScreen from '../screens/post/CreatePostScreen';
 import HachiScreen from '../screens/hachi/HachiScreen';
 import HachiRoomScreen from '../screens/hachi/HachiRoomScreen';
 import SettingsScreen from '../screens/settings/SettingsScreen';
+import DeveloperAccountsScreen from '../screens/dev/DeveloperAccountsScreen';
 import MediaViewerScreen from '../screens/media/MediaViewerScreen';
 // DMs disabled — kept for future feature
 // import DMListScreen from '../screens/dm/DMListScreen';
@@ -157,6 +158,7 @@ function AppStack() {
       <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Discover" component={DiscoverScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="DeveloperAccounts" component={DeveloperAccountsScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Terms" component={TermsScreen} options={{ headerShown: false, presentation: 'modal' }} />
       {/* DMConversation hidden — future feature */}
       <Stack.Screen
