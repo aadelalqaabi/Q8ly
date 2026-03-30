@@ -68,31 +68,33 @@ export default function SettingsScreen({ navigation }) {
   const handleAddAllDummy = async () => {
     setDevAdding(true);
     try {
-      const existing = await loadAccounts();
-      const existingPhones = new Set(existing.map((a) => a.user?.phone));
-      const toAdd = DUMMY_PHONES.filter((p) => !existingPhones.has(p));
-      setDevProgress({ done: 0, total: toAdd.length });
+      setDevProgress({ done: 0, total: DUMMY_PHONES.length });
       let done = 0;
-      for (let i = 0; i < toAdd.length; i += 5) {
-        const batch = toAdd.slice(i, i + 5);
-        await Promise.all(batch.map(async (phone) => {
-          try {
-            await authAPI.sendOtp(phone);
-            const res = await authAPI.verifyOtp(phone, '123456');
-            if (res?.token && res?.user) {
-              const all = await loadAccounts();
-              const idx = all.findIndex((a) => a.user?.phone === phone);
-              if (idx >= 0) all[idx] = { token: res.token, user: res.user };
-              else all.push({ token: res.token, user: res.user });
-              await saveAccounts(all);
-            }
-          } catch (_) {}
-          done++;
-          setDevProgress({ done, total: toAdd.length });
-        }));
+
+      // Authenticate all 50 sequentially to avoid AsyncStorage race conditions
+      const results = [];
+      for (const phone of DUMMY_PHONES) {
+        try {
+          await authAPI.sendOtp(phone);
+          const res = await authAPI.verifyOtp(phone, '123456');
+          if (res?.token && res?.user) {
+            results.push({ token: res.token, user: res.user });
+          }
+        } catch (_) {}
+        done++;
+        setDevProgress({ done, total: DUMMY_PHONES.length });
       }
-      const final = await loadAccounts();
-      setDevAccounts(final);
+
+      // Single write — merge all results into the accounts list at once
+      const existing = await loadAccounts();
+      const merged = [...existing];
+      for (const entry of results) {
+        const idx = merged.findIndex((a) => a.user?.phone === entry.user?.phone);
+        if (idx >= 0) merged[idx] = entry;
+        else merged.push(entry);
+      }
+      await saveAccounts(merged);
+      setDevAccounts(merged);
     } catch (_) {}
     setDevAdding(false);
   };
