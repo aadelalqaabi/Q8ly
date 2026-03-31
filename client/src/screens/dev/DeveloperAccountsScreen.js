@@ -13,7 +13,7 @@ import { authAPI } from '../../services/api';
 
 const STORAGE_KEY = '@kuwai_dev_accounts';
 
-const DUMMY_PHONES = Array.from({ length: 50 }, (_, i) =>
+const DUMMY_PHONES = Array.from({ length: 20 }, (_, i) =>
   `+965000000${String(i + 1).padStart(2, '0')}`
 );
 
@@ -167,14 +167,14 @@ export default function DeveloperAccountsScreen({ navigation }) {
       {/* Stats + Generate button */}
       <View style={[styles.banner, { backgroundColor: '#0033A0' }]}>
         <View>
-          <Text style={styles.bannerNum}>{totalSessions}<Text style={styles.bannerOf}>/50</Text></Text>
+          <Text style={styles.bannerNum}>{totalSessions}<Text style={styles.bannerOf}>/20</Text></Text>
           <Text style={styles.bannerLabel}>Sessions ready</Text>
         </View>
 
         {generating ? (
           <View style={styles.genProgress}>
             <ActivityIndicator color="#fff" />
-            <Text style={styles.genProgressText}>{progress}/50</Text>
+            <Text style={styles.genProgressText}>{progress}/20</Text>
           </View>
         ) : (
           <TouchableOpacity

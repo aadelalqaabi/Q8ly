@@ -31,7 +31,7 @@ const DEMO_NUMBERS = new Set(
 // Founder dummy accounts: +96500000001–+96500000050 always bypass OTP (code: 123456)
 // Only usable from the founder's own phone session — these numbers are not real SIM cards.
 function isDummyAccount(normalized) {
-  return /^\+965000000(0[1-9]|[1-4][0-9]|50)$/.test(normalized);
+  return /^\+965000000(0[1-9]|1[0-9]|20)$/.test(normalized);
 }
 
 const otpStore = new Map(); // phone → { otp, expires, attempts }

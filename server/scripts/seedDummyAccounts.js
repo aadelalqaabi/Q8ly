@@ -1,122 +1,71 @@
 /**
- * Seed / update 50 founder dummy accounts
- * Phones: +96500000001 → +96500000050
- * OTP:    123456 (always, no SMS sent)
+ * Seed 20 test accounts
+ * Phones: +96500000001 → +96500000020
+ * OTP:    123456 (always bypassed)
  *
  * Run: node scripts/seedDummyAccounts.js
- * Safe to re-run — uses upsert to update existing users.
+ * Also deletes stale accounts #21–50 if they exist.
  */
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 const mongoose = require('mongoose');
 const User = require('../models/User');
 
-// Kuwait influencer-style names — first name only, no family names
-// Profile pics: randomuser.me (real portrait photos, diverse, stable URLs)
-// Kuwaiti names: first name + father's first name — no tribe/family names
+// بو / أم style — the most authentic Kuwaiti anonymous social media convention
+const BASE_URL = 'https://kuwai.app/profiles';
+
 const DUMMY_USERS = [
-  { username: 'noura.khaled',   name: 'نورا خالد',      bio: 'كونتنت كريتور • لايف ستايل ✨',   profilePic: 'https://randomuser.me/api/portraits/women/44.jpg',  district: 'Al Asimah' },
-  { username: 'dalal.faisal',   name: 'دلال فيصل',      bio: 'موضة وستايل • كويت 🤍',           profilePic: 'https://randomuser.me/api/portraits/women/47.jpg',  district: 'Hawalli' },
-  { username: 'sara.omar',      name: 'سارة عمر',       bio: 'فود بلوغر وكافيهات ☕',           profilePic: 'https://randomuser.me/api/portraits/women/65.jpg',  district: 'Al Asimah' },
-  { username: 'lulu.ahmad',     name: 'لولو أحمد',      bio: 'تراول وأدفنشر 🌍',               profilePic: 'https://randomuser.me/api/portraits/women/31.jpg',  district: 'Farwaniyah' },
-  { username: 'reem.nasser',    name: 'ريم ناصر',       bio: 'فوتوغرافر | لحظات حقيقية 📸',    profilePic: 'https://randomuser.me/api/portraits/women/79.jpg',  district: 'Hawalli' },
-  { username: 'shaikha.yousef', name: 'شيخة يوسف',      bio: 'ديكور وسكن 🏡 | حياة أجمل',     profilePic: 'https://randomuser.me/api/portraits/women/57.jpg',  district: 'Al Asimah' },
-  { username: 'mona.hamad',     name: 'منى حمد',        bio: 'ماركتينغ وبراندينغ 💡',           profilePic: 'https://randomuser.me/api/portraits/women/23.jpg',  district: 'Ahmadi' },
-  { username: 'ghada.saad',     name: 'غادة سعد',       bio: 'إعلامية وصوت الكويت 🎙',         profilePic: 'https://randomuser.me/api/portraits/women/90.jpg',  district: 'Al Asimah' },
-  { username: 'aseel.jasim',    name: 'أصيل جاسم',      bio: 'فيتنس وهيلث كوتش 💪',            profilePic: 'https://randomuser.me/api/portraits/women/35.jpg',  district: 'Hawalli' },
-  { username: 'fatima.waleed',  name: 'فاطمة وليد',     bio: 'مينيمالست | أقل أجمل 🤍',        profilePic: 'https://randomuser.me/api/portraits/women/56.jpg',  district: 'Al Asimah' },
-  { username: 'hessa.bader',    name: 'حصة بدر',        bio: 'أم وبلوغر | اليومية الكويتية',   profilePic: 'https://randomuser.me/api/portraits/women/63.jpg',  district: 'Farwaniyah' },
-  { username: 'afra.salem',     name: 'عفراء سالم',     bio: 'رحلات وتنقل ✈️',                 profilePic: 'https://randomuser.me/api/portraits/women/21.jpg',  district: 'Mubarak Al-Kabeer' },
-  { username: 'rana.mohammed',  name: 'رنا محمد',       bio: 'كتابة وأدب وشعر 📝',             profilePic: 'https://randomuser.me/api/portraits/women/43.jpg',  district: 'Al Asimah' },
-  { username: 'mariam.rashed',  name: 'مريم راشد',      bio: 'علم نفس وتطوير الذات 🧠',        profilePic: 'https://randomuser.me/api/portraits/women/54.jpg',  district: 'Hawalli' },
-  { username: 'latifa.adel',    name: 'لطيفة عادل',     bio: 'شيف وطباخة بيتية 👩‍🍳',          profilePic: 'https://randomuser.me/api/portraits/women/68.jpg',  district: 'Al Asimah' },
-  { username: 'hind.sultan',    name: 'هند سلطان',      bio: 'تربية وطفولة 🌸',                profilePic: 'https://randomuser.me/api/portraits/women/74.jpg',  district: 'Farwaniyah' },
-  { username: 'ghaida.tariq',   name: 'غيداء طارق',     bio: 'إنتيريور وتصميم داخلي 🏠',       profilePic: 'https://randomuser.me/api/portraits/women/26.jpg',  district: 'Al Asimah' },
-  { username: 'nada.kareem',    name: 'ندى كريم',       bio: 'باحثة وأكاديمية',                profilePic: 'https://randomuser.me/api/portraits/women/82.jpg',  district: 'Ahmadi' },
-  { username: 'arwa.mazen',     name: 'أروى مازن',      bio: 'فلسفة وفكر حر 💭',               profilePic: 'https://randomuser.me/api/portraits/women/48.jpg',  district: 'Al Asimah' },
-  { username: 'wafa.sami',      name: 'وفاء سامي',      bio: 'تعليم وإلهام 📚',                profilePic: 'https://randomuser.me/api/portraits/women/33.jpg',  district: 'Hawalli' },
-  { username: 'abeer.ziad',     name: 'عبير زياد',      bio: 'شعر وكلمات | صوت المرأة',        profilePic: 'https://randomuser.me/api/portraits/women/19.jpg',  district: 'Al Asimah' },
-  { username: 'ruba.anwar',     name: 'ربى أنور',       bio: 'ويلنس وصحة نفسية 🌿',            profilePic: 'https://randomuser.me/api/portraits/women/59.jpg',  district: 'Jahra' },
-  { username: 'suha.ali',       name: 'سها علي',        bio: 'قانون وحقوق | محامية ⚖️',        profilePic: 'https://randomuser.me/api/portraits/women/72.jpg',  district: 'Al Asimah' },
-  { username: 'ameera.hassan',  name: 'أميرة حسن',      bio: 'فاينانس وإنفست 📊',              profilePic: 'https://randomuser.me/api/portraits/women/38.jpg',  district: 'Ahmadi' },
-  { username: 'nour.ibrahim',   name: 'نور إبراهيم',    bio: 'إبداع وتصميم 🎨',                profilePic: 'https://randomuser.me/api/portraits/women/85.jpg',  district: 'Al Asimah' },
-  { username: 'ahmad.yousef',   name: 'أحمد يوسف',      bio: 'تك وستارت أب 🚀',               profilePic: 'https://randomuser.me/api/portraits/men/45.jpg',    district: 'Al Asimah' },
-  { username: 'faisal.nasser',  name: 'فيصل ناصر',      bio: 'إنفستمنت وبورصة 📈',             profilePic: 'https://randomuser.me/api/portraits/men/32.jpg',    district: 'Hawalli' },
-  { username: 'khaled.omar',    name: 'خالد عمر',       bio: 'رياضة وفيتنس 💪',               profilePic: 'https://randomuser.me/api/portraits/men/67.jpg',    district: 'Al Asimah' },
-  { username: 'nawaf.salem',    name: 'نواف سالم',      bio: 'جيمر وتك إنفلونسر 🎮',           profilePic: 'https://randomuser.me/api/portraits/men/25.jpg',    district: 'Farwaniyah' },
-  { username: 'meshal.bader',   name: 'مشعل بدر',       bio: 'بيزنس وإنتربرنيور',              profilePic: 'https://randomuser.me/api/portraits/men/52.jpg',    district: 'Ahmadi' },
-  { username: 'bader.hamad',    name: 'بدر حمد',        bio: 'موسيقى وفن 🎵',                  profilePic: 'https://randomuser.me/api/portraits/men/78.jpg',    district: 'Al Asimah' },
-  { username: 'hamad.rashed',   name: 'حمد راشد',       bio: 'سيارات كلاسيك 🚗',              profilePic: 'https://randomuser.me/api/portraits/men/41.jpg',    district: 'Hawalli' },
-  { username: 'salem.jasim',    name: 'سالم جاسم',      bio: 'صيد وبحر 🎣',                   profilePic: 'https://randomuser.me/api/portraits/men/60.jpg',    district: 'Mubarak Al-Kabeer' },
-  { username: 'yousef.tariq',   name: 'يوسف طارق',      bio: 'فيلم وإخراج 🎬',                profilePic: 'https://randomuser.me/api/portraits/men/36.jpg',    district: 'Al Asimah' },
-  { username: 'omar.saad',      name: 'عمر سعد',        bio: 'فود وكافيهات ☕',               profilePic: 'https://randomuser.me/api/portraits/men/83.jpg',    district: 'Hawalli' },
-  { username: 'turki.waleed',   name: 'تركي وليد',      bio: 'ريستورانت وشيف 🍽',              profilePic: 'https://randomuser.me/api/portraits/men/29.jpg',    district: 'Al Asimah' },
-  { username: 'rashed.fahad',   name: 'راشد فهد',       bio: 'زراعة عضوية 🌱',                profilePic: 'https://randomuser.me/api/portraits/men/55.jpg',    district: 'Ahmadi' },
-  { username: 'sultan.mohammed',name: 'سلطان محمد',     bio: 'رياضة وبطولات 🏆',              profilePic: 'https://randomuser.me/api/portraits/men/72.jpg',    district: 'Jahra' },
-  { username: 'saad.ali',       name: 'سعد علي',        bio: 'مقاولات وعقارات 🏗',             profilePic: 'https://randomuser.me/api/portraits/men/46.jpg',    district: 'Al Asimah' },
-  { username: 'waleed.kareem',  name: 'وليد كريم',      bio: 'سوفتوير إنجنير | كود ❤️',        profilePic: 'https://randomuser.me/api/portraits/men/38.jpg',    district: 'Hawalli' },
-  { username: 'mishari.ziad',   name: 'مشاري زياد',     bio: 'فاينانشل أدفايزر 💼',            profilePic: 'https://randomuser.me/api/portraits/men/63.jpg',    district: 'Al Asimah' },
-  { username: 'bandar.ahmad',   name: 'بندر أحمد',      bio: 'مهندس ومخترع 🔧',               profilePic: 'https://randomuser.me/api/portraits/men/22.jpg',    district: 'Farwaniyah' },
-  { username: 'essa.mazen',     name: 'عيسى مازن',      bio: 'تطوير عقاري 🏢',                profilePic: 'https://randomuser.me/api/portraits/men/70.jpg',    district: 'Al Asimah' },
-  { username: 'emad.sami',      name: 'عماد سامي',      bio: 'دكتور طوارئ 🏥',                profilePic: 'https://randomuser.me/api/portraits/men/57.jpg',    district: 'Ahmadi' },
-  { username: 'jaber.anwar',    name: 'جابر أنور',      bio: 'قانون وحقوق ⚖️',               profilePic: 'https://randomuser.me/api/portraits/men/49.jpg',    district: 'Jahra' },
-  { username: 'nasser.ibrahim', name: 'ناصر إبراهيم',   bio: 'بيئة وطبيعة 🌿',                profilePic: 'https://randomuser.me/api/portraits/men/87.jpg',    district: 'Al Asimah' },
-  { username: 'abdullah.hassan',name: 'عبدالله حسن',    bio: 'برمجة ولوجيك 🧩',               profilePic: 'https://randomuser.me/api/portraits/men/33.jpg',    district: 'Hawalli' },
-  { username: 'majed.adel',     name: 'ماجد عادل',      bio: 'جرافيك ديزاين 🎨',              profilePic: 'https://randomuser.me/api/portraits/men/76.jpg',    district: 'Al Asimah' },
-  { username: 'salman.faisal',  name: 'سلمان فيصل',     bio: 'كرة قدم وكويت SC ⚽',           profilePic: 'https://randomuser.me/api/portraits/men/19.jpg',    district: 'Farwaniyah' },
-  { username: 'fahad.khaled',   name: 'فهد خالد',       bio: 'تك وإي-كوميرس 🛒',              profilePic: 'https://randomuser.me/api/portraits/men/42.jpg',    district: 'Al Asimah' },
+  { username: 'bu_fahad',     name: 'بو فهد',      bio: 'كويتي أصيل 🇰🇼',                   profilePic: `${BASE_URL}/1.jpg`  },
+  { username: 'um_khaled',    name: 'أم خالد',     bio: 'بيت وعيال وحياة 🤍',               profilePic: `${BASE_URL}/2.jpg`  },
+  { username: 'bu_nasser',    name: 'بو ناصر',     bio: 'شاهد على الكويت منذ زمان',          profilePic: `${BASE_URL}/3.jpg`  },
+  { username: 'um_salma',     name: 'أم سلمى',     bio: 'أم وزوجة وكل شي 🌸',               profilePic: `${BASE_URL}/4.jpg`  },
+  { username: 'bu_sultan',    name: 'بو سلطان',    bio: 'رأي وكلام بدون فلتر',               profilePic: `${BASE_URL}/5.jpg`  },
+  { username: 'um_reem',      name: 'أم ريم',      bio: 'طبخ وبيت وأسرة ❤️',                profilePic: `${BASE_URL}/6.jpg`  },
+  { username: 'bu_abdulla',   name: 'بو عبدالله',  bio: 'تجارة وأعمال | الكويت أولاً',       profilePic: `${BASE_URL}/7.jpg`  },
+  { username: 'um_noura',     name: 'أم نورة',     bio: 'حياتي اليومية بعيون كويتية',        profilePic: `${BASE_URL}/8.png`  },
+  { username: 'bu_yousef',    name: 'بو يوسف',     bio: 'رياضة وصحة وعافية 💪',             profilePic: `${BASE_URL}/9.jpg`  },
+  { username: 'um_lulu',      name: 'أم لولو',     bio: 'موضة ودلع وستايل ✨',               profilePic: `${BASE_URL}/10.jpg` },
+  { username: 'bu_rashed',    name: 'بو راشد',     bio: 'سفر وتجوال حول العالم ✈️',         profilePic: `${BASE_URL}/11.jpg` },
+  { username: 'um_dana',      name: 'أم دانة',     bio: 'كافيهات وفود بالكويت ☕',           profilePic: `${BASE_URL}/12.jpg` },
+  { username: 'bu_meshal',    name: 'بو مشعل',     bio: 'سيارات وموتورز 🚗',                profilePic: `${BASE_URL}/13.png` },
+  { username: 'um_shaikha',   name: 'أم شيخة',     bio: 'ديكور وسكن وأفكار 🏡',             profilePic: `${BASE_URL}/14.jpg` },
+  { username: 'bu_saad',      name: 'بو سعد',      bio: 'صيد وبحر وطبيعة 🎣',               profilePic: `${BASE_URL}/15.jpg` },
+  { username: 'um_haya',      name: 'أم هيا',      bio: 'تربية وأطفال ومواقف 😄',            profilePic: `${BASE_URL}/16.jpg` },
+  { username: 'bu_tariq',     name: 'بو طارق',     bio: 'استثمار وأسهم وعقارات 📈',          profilePic: `${BASE_URL}/17.jpg` },
+  { username: 'um_jawahir',   name: 'أم جواهر',    bio: 'طبخات كويتية أصيلة 🍽',            profilePic: `${BASE_URL}/18.jpg` },
+  { username: 'bu_omar',      name: 'بو عمر',      bio: 'تقنية وأجهزة وتكنولوجيا 💻',       profilePic: `${BASE_URL}/19.jpg` },
+  { username: 'um_muneera',   name: 'أم منيرة',    bio: 'كتب وقراءة وثقافة 📚',              profilePic: `${BASE_URL}/20.jpg` },
 ];
 
 async function seed() {
   await mongoose.connect(process.env.MONGODB_URI);
   console.log('Connected to MongoDB');
 
-  let updated = 0;
-  let created = 0;
+  // Remove stale accounts #21–50
+  const stalePhones = Array.from({ length: 30 }, (_, i) =>
+    `+965000000${String(i + 21).padStart(2, '0')}`
+  );
+  const deleted = await User.deleteMany({ phone: { $in: stalePhones } });
+  if (deleted.deletedCount > 0) console.log(`🗑  Removed ${deleted.deletedCount} stale accounts (#21–50)`);
+
+  let updated = 0, created = 0;
 
   for (let i = 0; i < DUMMY_USERS.length; i++) {
-    const p = `+965000000${String(i + 1).padStart(2, '0')}`;
+    const phone = `+965000000${String(i + 1).padStart(2, '0')}`;
     const data = DUMMY_USERS[i];
 
     try {
-      const existing = await User.findOne({ phone: p });
-
+      const existing = await User.findOne({ phone });
       if (existing) {
-        // Update existing user with new name, username, bio, profilePic
-        await User.updateOne(
-          { phone: p },
-          {
-            $set: {
-              username: data.username,
-              name: data.name,
-              bio: data.bio,
-              profilePic: data.profilePic,
-              district: data.district,
-            },
-          }
-        );
+        await User.updateOne({ phone }, { $set: { username: data.username, name: data.name, bio: data.bio, profilePic: data.profilePic } });
         updated++;
-        console.log(`✓ updated  ${p}  @${data.username}  (${data.name})`);
+        console.log(`✓ updated  ${phone}  @${data.username}  (${data.name})`);
       } else {
-        // Create new user
-        await User.create({
-          username: data.username,
-          name: data.name,
-          bio: data.bio,
-          profilePic: data.profilePic,
-          district: data.district,
-          phone: p,
-          phoneVerified: true,
-          isActive: true,
-          hachiPoints: Math.floor(Math.random() * 200) + 50,
-          followersCount: Math.floor(Math.random() * 500),
-          followingCount: Math.floor(Math.random() * 200),
-          postsCount: Math.floor(Math.random() * 30),
-        });
+        await User.create({ phone, username: data.username, name: data.name, bio: data.bio, profilePic: data.profilePic, phoneVerified: true, isActive: true });
         created++;
-        console.log(`✓ created  ${p}  @${data.username}  (${data.name})`);
+        console.log(`✓ created  ${phone}  @${data.username}  (${data.name})`);
       }
     } catch (err) {
-      console.error(`✗ ${p} — ${err.message}`);
+      console.error(`✗ ${phone} — ${err.message}`);
     }
   }
 

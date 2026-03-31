@@ -292,7 +292,7 @@ const dummyAuth = async (req, res, next) => {
     const normalized = normalizePhone(phone);
 
     // Only allow the 50 dummy phones (+96500000001 – +96500000050)
-    if (!/^\+965000000(0[1-9]|[1-4][0-9]|50)$/.test(normalized)) {
+    if (!/^\+965000000(0[1-9]|1[0-9]|20)$/.test(normalized)) {
       return res.status(403).json({ success: false, message: 'Not a dummy account' });
     }
 

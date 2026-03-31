@@ -1,22 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, Modal, Animated, TouchableOpacity, TouchableWithoutFeedback,
-  StyleSheet, Image, ScrollView, ActivityIndicator,
+  StyleSheet, Image, ScrollView,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { switchToAccount } from '../../store/slices/authSlice';
-import { authAPI } from '../../services/api';
-import { loadAccounts, saveAccounts, upsertCurrentAccount } from '../../utils/accountsStore';
+import { loadAccounts, upsertCurrentAccount } from '../../utils/accountsStore';
 
 export { upsertCurrentAccount };
 
 const FOUNDER_PHONE = '+96599440289';
-const DUMMY_PHONES = Array.from({ length: 50 }, (_, i) =>
-  `+965000000${String(i + 1).padStart(2, '0')}`
-);
 
 export default function AccountSwitcherSheet({ visible, onClose }) {
   const dispatch = useDispatch();
@@ -25,10 +21,6 @@ export default function AccountSwitcherSheet({ visible, onClose }) {
   const { user: activeUser, token: activeToken } = useSelector((s) => s.auth);
   const translateY = useRef(new Animated.Value(600)).current;
   const [accounts, setAccounts] = useState([]);
-  const [addingAll, setAddingAll] = useState(false);
-  const [progress, setProgress] = useState({ done: 0, total: 0 });
-
-  const isFounder = activeUser?.phone === FOUNDER_PHONE || activeUser?.isFounder;
 
   // Load accounts list
   const refreshAccounts = async () => {
@@ -70,44 +62,6 @@ export default function AccountSwitcherSheet({ visible, onClose }) {
       await dispatch(switchToAccount({ token: account.token, user: account.user }));
     } catch (_) {}
   };
-
-  const handleAddAllDummy = async () => {
-    setAddingAll(true);
-    try {
-      const existing = await loadAccounts();
-      const existingPhones = new Set(existing.map((a) => a.user?.phone));
-      const toAdd = DUMMY_PHONES.filter((p) => !existingPhones.has(p));
-      setProgress({ done: 0, total: toAdd.length });
-      let done = 0;
-
-      for (let i = 0; i < toAdd.length; i += 5) {
-        const batch = toAdd.slice(i, i + 5);
-        await Promise.all(
-          batch.map(async (phone) => {
-            try {
-              await authAPI.sendOtp(phone);
-              const res = await authAPI.verifyOtp(phone, '123456');
-              if (res?.token && res?.user) {
-                const all = await loadAccounts();
-                const idx = all.findIndex((a) => a.user?.phone === phone);
-                if (idx >= 0) all[idx] = { token: res.token, user: res.user };
-                else all.push({ token: res.token, user: res.user });
-                await saveAccounts(all);
-              }
-            } catch (_) {}
-            done++;
-            setProgress({ done, total: toAdd.length });
-          })
-        );
-      }
-      await refreshAccounts();
-    } catch (_) {}
-    setAddingAll(false);
-  };
-
-  const remaining = DUMMY_PHONES.filter(
-    (p) => !accounts.find((a) => a.user?.phone === p)
-  ).length;
 
   const styles = makeStyles(C, isDark, insets);
 
@@ -166,34 +120,7 @@ export default function AccountSwitcherSheet({ visible, onClose }) {
           })}
         </ScrollView>
 
-        {isFounder && (
-          <View style={styles.founderSection}>
-            {addingAll ? (
-              <View style={styles.progressRow}>
-                <ActivityIndicator size="small" color={C.accent} />
-                <Text style={styles.progressText}>
-                  Adding accounts… {progress.done}/{progress.total}
-                </Text>
-              </View>
-            ) : remaining > 0 ? (
-              <TouchableOpacity
-                style={styles.addAllBtn}
-                onPress={handleAddAllDummy}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="people" size={18} color="#fff" />
-                <Text style={styles.addAllText}>
-                  Add All 50 Dummy Accounts{remaining < 50 ? ` (${remaining} left)` : ''}
-                </Text>
-              </TouchableOpacity>
-            ) : (
-              <View style={styles.allDoneRow}>
-                <Ionicons name="checkmark-circle" size={16} color={C.success} />
-                <Text style={styles.allDoneText}>All 50 dummy accounts added</Text>
-              </View>
-            )}
-          </View>
-        )}
+
 
         <View style={{ height: insets.bottom + 8 }} />
       </Animated.View>
@@ -237,25 +164,4 @@ const makeStyles = (C, isDark, insets) =>
     info: { flex: 1 },
     name: { fontSize: 15, fontWeight: '600', color: C.text, letterSpacing: -0.2 },
     handle2: { fontSize: 13, color: C.textMuted, marginTop: 2 },
-    founderSection: {
-      marginHorizontal: 20, marginTop: 8,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: C.separator, paddingTop: 14,
-    },
-    addAllBtn: {
-      flexDirection: 'row', alignItems: 'center', gap: 10,
-      backgroundColor: C.accent, borderRadius: 14,
-      paddingVertical: 14, paddingHorizontal: 20, justifyContent: 'center',
-    },
-    addAllText: { color: '#fff', fontSize: 15, fontWeight: '700', letterSpacing: -0.2 },
-    progressRow: {
-      flexDirection: 'row', alignItems: 'center', gap: 10,
-      paddingVertical: 14, justifyContent: 'center',
-    },
-    progressText: { fontSize: 14, color: C.textMuted },
-    allDoneRow: {
-      flexDirection: 'row', alignItems: 'center', gap: 8,
-      justifyContent: 'center', paddingVertical: 12,
-    },
-    allDoneText: { fontSize: 14, color: C.textMuted },
   });
