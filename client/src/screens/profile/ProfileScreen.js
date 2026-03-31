@@ -310,12 +310,6 @@ export default function ProfileScreen({ navigation, route }) {
         <Text style={styles.name}>{profile?.name}</Text>
         <VerifiedBadge badge={profile?.verifiedBadge} />
         {!!profile?.bio && <Text style={styles.bio}>{profile.bio}</Text>}
-        {!!profile?.district && (
-          <View style={styles.location}>
-            <Ionicons name="location-outline" size={12} color={COLORS.textMuted} />
-            <Text style={styles.locationText}>{profile.district}</Text>
-          </View>
-        )}
       </View>
 
       {/* Stats */}

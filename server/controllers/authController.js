@@ -274,11 +274,45 @@ const verifyOtp = async (req, res, next) => {
       isNewUser,
       message: isNewUser ? 'Account created' : 'Login successful',
       token,
-      user: user.toPublicProfile(),
+      user: { ...user.toPublicProfile(), phone: user.phone },
     });
   } catch (error) {
     next(error);
   }
 };
 
-module.exports = { register, login, getMe, updatePassword, updatePushToken, sendOtp, verifyOtp };
+// @desc    Direct login for founder dummy accounts (no OTP store dependency)
+// @route   POST /api/dev/dummy-auth
+// @access  Public (but restricted to dummy phone range server-side)
+const dummyAuth = async (req, res, next) => {
+  try {
+    const { phone } = req.body;
+    if (!phone) return res.status(400).json({ success: false, message: 'Phone required' });
+
+    const normalized = normalizePhone(phone);
+
+    // Only allow the 50 dummy phones (+96500000001 – +96500000050)
+    if (!/^\+965000000(0[1-9]|[1-4][0-9]|50)$/.test(normalized)) {
+      return res.status(403).json({ success: false, message: 'Not a dummy account' });
+    }
+
+    const user = await User.findOne({ phone: normalized });
+    if (!user) return res.status(404).json({ success: false, message: 'Dummy account not seeded' });
+
+    if (!user.isActive) return res.status(401).json({ success: false, message: 'Account deactivated' });
+
+    user.lastSeen = Date.now();
+    await user.save({ validateBeforeSave: false });
+
+    const token = generateToken(user._id);
+    res.json({
+      success: true,
+      token,
+      user: { ...user.toPublicProfile(), phone: user.phone },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { register, login, getMe, updatePassword, updatePushToken, sendOtp, verifyOtp, dummyAuth };

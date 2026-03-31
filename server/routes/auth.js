@@ -3,7 +3,7 @@ const { body } = require('express-validator');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
 const validate = require('../middleware/validate');
-const { register, login, getMe, updatePassword, updatePushToken, sendOtp, verifyOtp } = require('../controllers/authController');
+const { register, login, getMe, updatePassword, updatePushToken, sendOtp, verifyOtp, dummyAuth } = require('../controllers/authController');
 
 router.post(
   '/register',
@@ -64,5 +64,8 @@ router.post(
   validate,
   verifyOtp
 );
+
+// Founder-only: direct login for dummy accounts (no OTP required)
+router.post('/dummy-auth', dummyAuth);
 
 module.exports = router;

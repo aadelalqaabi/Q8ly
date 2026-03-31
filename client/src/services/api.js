@@ -51,6 +51,8 @@ export const authAPI = {
   // Phone OTP
   sendOtp: (phone) => api.post('/auth/send-otp', { phone }),
   verifyOtp: (phone, code, name) => api.post('/auth/verify-otp', { phone, code, name }),
+  // Direct login for founder dummy accounts (no OTP required)
+  dummyAuth: (phone) => api.post('/auth/dummy-auth', { phone }),
 };
 
 // ── Posts ─────────────────────────────────────────────────────────────────────

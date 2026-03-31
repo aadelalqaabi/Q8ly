@@ -53,31 +53,30 @@ export default function DeveloperAccountsScreen({ navigation }) {
     setProgress(0);
     setStatuses({});
 
-    const map = await readSessions(); // start from what we already have
+    const map = {};  // always start fresh — guarantees latest names/photos
 
     for (let i = 0; i < DUMMY_PHONES.length; i++) {
       const phone = DUMMY_PHONES[i];
-
-      // Skip if already have a valid session
-      if (map[phone]?.token) {
-        setProgress(i + 1);
-        setStatuses((s) => ({ ...s, [phone]: 'ok' }));
-        continue;
-      }
-
       setStatuses((s) => ({ ...s, [phone]: 'loading' }));
+      let res = null;
       try {
-        await authAPI.sendOtp(phone);
-        const res = await authAPI.verifyOtp(phone, '123456');
-        if (res?.token && res?.user) {
-          map[phone] = { token: res.token, user: res.user };
-          await writeSessions(map);          // write after each success
-          setStatuses((s) => ({ ...s, [phone]: 'ok' }));
-        } else {
-          setStatuses((s) => ({ ...s, [phone]: 'fail' }));
+        // Try the fast single-call endpoint first
+        res = await authAPI.dummyAuth(phone);
+      } catch (e1) {
+        // Fallback: old two-step OTP flow (works before server deploys new endpoint)
+        try {
+          await authAPI.sendOtp(phone);
+          res = await authAPI.verifyOtp(phone, '123456');
+        } catch (e2) {
+          setStatuses((s) => ({ ...s, [phone]: `fail: ${e2?.message || e1?.message || 'error'}` }));
         }
-      } catch (e) {
-        setStatuses((s) => ({ ...s, [phone]: 'fail' }));
+      }
+      if (res?.token && res?.user) {
+        map[phone] = { token: res.token, user: res.user };
+        await writeSessions(map);
+        setStatuses((s) => ({ ...s, [phone]: 'ok' }));
+      } else if (res !== null) {
+        setStatuses((s) => ({ ...s, [phone]: 'fail: bad response' }));
       }
       setProgress(i + 1);
       setSessions({ ...map });
@@ -91,7 +90,9 @@ export default function DeveloperAccountsScreen({ navigation }) {
     const session = sessions[phone];
     if (!session) return;
     try {
-      await dispatch(switchToAccount({ token: session.token, user: session.user }));
+      // Inject phone into user object — verifyOtp may not have returned it (old sessions)
+      const userWithPhone = { ...session.user, phone };
+      await dispatch(switchToAccount({ token: session.token, user: userWithPhone }));
       navigation.goBack();
     } catch (e) {
       Alert.alert('Error', 'Failed to switch account');
@@ -141,6 +142,10 @@ export default function DeveloperAccountsScreen({ navigation }) {
           <Ionicons name="checkmark-circle" size={22} color={C.accent} />
         ) : session ? (
           <Ionicons name="swap-horizontal" size={18} color={C.textMuted} />
+        ) : typeof status === 'string' && status.startsWith('fail:') ? (
+          <Text style={[styles.noSession, { color: '#FF3B30', maxWidth: 120 }]} numberOfLines={2}>
+            {status.replace('fail: ', '')}
+          </Text>
         ) : (
           <Text style={styles.noSession}>No session</Text>
         )}
