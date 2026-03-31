@@ -137,13 +137,14 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// Stricter limiter for auth (10 attempts per 15 min)
+// Stricter limiter for auth (10 attempts per 15 min) — skip dummy-auth endpoint
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
   message: 'Too many auth attempts, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.path === '/dummy-auth',
 });
 app.use('/api/auth', authLimiter);
 

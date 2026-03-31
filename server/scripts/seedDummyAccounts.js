@@ -10,30 +10,30 @@ require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') }
 const mongoose = require('mongoose');
 const User = require('../models/User');
 
-// بو / أم style — the most authentic Kuwaiti anonymous social media convention
+// Authentic Kuwaiti social media pseudonyms — neighborhood, identity, and slang-based
 const BASE_URL = 'https://kuwai.app/profiles';
 
 const DUMMY_USERS = [
-  { username: 'bu_fahad',     name: 'بو فهد',      bio: 'كويتي أصيل 🇰🇼',                   profilePic: `${BASE_URL}/1.jpg`  },
-  { username: 'um_khaled',    name: 'أم خالد',     bio: 'بيت وعيال وحياة 🤍',               profilePic: `${BASE_URL}/2.jpg`  },
-  { username: 'bu_nasser',    name: 'بو ناصر',     bio: 'شاهد على الكويت منذ زمان',          profilePic: `${BASE_URL}/3.jpg`  },
-  { username: 'um_salma',     name: 'أم سلمى',     bio: 'أم وزوجة وكل شي 🌸',               profilePic: `${BASE_URL}/4.jpg`  },
-  { username: 'bu_sultan',    name: 'بو سلطان',    bio: 'رأي وكلام بدون فلتر',               profilePic: `${BASE_URL}/5.jpg`  },
-  { username: 'um_reem',      name: 'أم ريم',      bio: 'طبخ وبيت وأسرة ❤️',                profilePic: `${BASE_URL}/6.jpg`  },
-  { username: 'bu_abdulla',   name: 'بو عبدالله',  bio: 'تجارة وأعمال | الكويت أولاً',       profilePic: `${BASE_URL}/7.jpg`  },
-  { username: 'um_noura',     name: 'أم نورة',     bio: 'حياتي اليومية بعيون كويتية',        profilePic: `${BASE_URL}/8.png`  },
-  { username: 'bu_yousef',    name: 'بو يوسف',     bio: 'رياضة وصحة وعافية 💪',             profilePic: `${BASE_URL}/9.jpg`  },
-  { username: 'um_lulu',      name: 'أم لولو',     bio: 'موضة ودلع وستايل ✨',               profilePic: `${BASE_URL}/10.jpg` },
-  { username: 'bu_rashed',    name: 'بو راشد',     bio: 'سفر وتجوال حول العالم ✈️',         profilePic: `${BASE_URL}/11.jpg` },
-  { username: 'um_dana',      name: 'أم دانة',     bio: 'كافيهات وفود بالكويت ☕',           profilePic: `${BASE_URL}/12.jpg` },
-  { username: 'bu_meshal',    name: 'بو مشعل',     bio: 'سيارات وموتورز 🚗',                profilePic: `${BASE_URL}/13.png` },
-  { username: 'um_shaikha',   name: 'أم شيخة',     bio: 'ديكور وسكن وأفكار 🏡',             profilePic: `${BASE_URL}/14.jpg` },
-  { username: 'bu_saad',      name: 'بو سعد',      bio: 'صيد وبحر وطبيعة 🎣',               profilePic: `${BASE_URL}/15.jpg` },
-  { username: 'um_haya',      name: 'أم هيا',      bio: 'تربية وأطفال ومواقف 😄',            profilePic: `${BASE_URL}/16.jpg` },
-  { username: 'bu_tariq',     name: 'بو طارق',     bio: 'استثمار وأسهم وعقارات 📈',          profilePic: `${BASE_URL}/17.jpg` },
-  { username: 'um_jawahir',   name: 'أم جواهر',    bio: 'طبخات كويتية أصيلة 🍽',            profilePic: `${BASE_URL}/18.jpg` },
-  { username: 'bu_omar',      name: 'بو عمر',      bio: 'تقنية وأجهزة وتكنولوجيا 💻',       profilePic: `${BASE_URL}/19.jpg` },
-  { username: 'um_muneera',   name: 'أم منيرة',    bio: 'كتب وقراءة وثقافة 📚',              profilePic: `${BASE_URL}/20.jpg` },
+  { username: 'ibn_shuwaikh',   name: 'ابن الشويخ',       bio: 'من الشويخ بكل فخر 🇰🇼',           profilePic: `${BASE_URL}/1.jpg`  },
+  { username: 'bnt_salmiya',    name: 'بنت السالمية',      bio: 'السالمية هي الدنيا ✨',             profilePic: `${BASE_URL}/2.jpg`  },
+  { username: 'q8_proud',       name: 'كويتي وأفتخر',      bio: 'رأي وكلام بدون فلتر',              profilePic: `${BASE_URL}/3.jpg`  },
+  { username: 'wld_asima',      name: 'ولد العاصمة',       bio: 'من قلب الكويت 🏙',                 profilePic: `${BASE_URL}/4.jpg`  },
+  { username: 'almsahri',       name: 'المسهري',           bio: 'سهران على الكويت كل ليلة 🌙',      profilePic: `${BASE_URL}/5.jpg`  },
+  { username: 'ibn_fahaheel',   name: 'ابن الفحيحيل',      bio: 'الجنوب أصل وفصل',                  profilePic: `${BASE_URL}/6.jpg`  },
+  { username: 'aldirah_q8',     name: 'الديرة القديمة',    bio: 'ذكريات وأصالة من الكويت القديمة',  profilePic: `${BASE_URL}/7.jpg`  },
+  { username: 'shari_mbrk',     name: 'شاري المباركية',    bio: 'سواليف وحكايات من الديرة ☕',      profilePic: `${BASE_URL}/8.png`  },
+  { username: 'sahib_dawain',   name: 'صاحب الدواوين',     bio: 'الديوانية مدرسة الحياة',            profilePic: `${BASE_URL}/9.jpg`  },
+  { username: 'bnt_rawdah',     name: 'بنت الروضة',        bio: 'موضة وستايل وكويت 🤍',             profilePic: `${BASE_URL}/10.jpg` },
+  { username: 'aljahrawi',      name: 'الجهراوي',          bio: 'الجهراء أصل العرب 🦅',              profilePic: `${BASE_URL}/11.jpg` },
+  { username: 'am_bu_nasser',   name: 'عم بو ناصر',        bio: 'نصايح مجانية وسواليف مفيدة 😄',   profilePic: `${BASE_URL}/12.jpg` },
+  { username: 'thrthar_q8',     name: 'ثرثار الكويت',      bio: 'أتكلم وأتكلم وما أسكت 🗣',         profilePic: `${BASE_URL}/13.png` },
+  { username: 'q8_night',       name: 'الكويت بالليل',     bio: 'الكويت أجمل في الليل 🌃',          profilePic: `${BASE_URL}/14.jpg` },
+  { username: 'ibn_ahmadi',     name: 'ابن الأحمدي',       bio: 'من أرض النفط والتاريخ 🛢',         profilePic: `${BASE_URL}/15.jpg` },
+  { username: 'bu_khamsa',      name: 'بو خمسة وخميسة',   bio: 'أب وبس | الحياة تمشي 😅',          profilePic: `${BASE_URL}/16.jpg` },
+  { username: 'hamra_naym',     name: 'الحمراء نايم',      bio: 'مسترخي ومشاهد الأحداث 👀',         profilePic: `${BASE_URL}/17.jpg` },
+  { username: 'saqr_alkhaleej', name: 'صقر الخليج',        bio: 'فخر خليجي وأصالة كويتية 🦅',       profilePic: `${BASE_URL}/18.jpg` },
+  { username: 'q8_nostalgia',   name: 'نوستالجيا كويت',    bio: 'زمان كان أحلى 🌴',                 profilePic: `${BASE_URL}/19.jpg` },
+  { username: 'wld_aldirah',    name: 'ولد الديرة',         bio: 'من الديرة وللديرة دايمًا 🇰🇼',    profilePic: `${BASE_URL}/20.jpg` },
 ];
 
 async function seed() {
