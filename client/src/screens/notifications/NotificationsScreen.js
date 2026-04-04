@@ -147,7 +147,7 @@ export default function NotificationsScreen({ navigation }) {
 const makeStyles = (C, isRTL) => StyleSheet.create({
   container: { flex: 1, backgroundColor: C.white },
   header: {
-    flexDirection: 'row', alignItems: 'center',
+    flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center',
     paddingHorizontal: 16, paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.separator,
   },
@@ -156,7 +156,7 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
   markAll: { fontSize: 13, color: C.accent, fontWeight: '500' },
   loader: { marginTop: 60 },
   row: {
-    flexDirection: 'row', alignItems: 'center',
+    flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center',
     paddingHorizontal: 16, paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.separator, gap: 12,
   },
@@ -164,14 +164,14 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
   avatarWrap: { width: 42, height: 42, flexShrink: 0 },
   avatar: { width: 42, height: 42, borderRadius: 21 },
   typeBadge: {
-    position: 'absolute', bottom: -2, right: -2,
+    position: 'absolute', bottom: -2, end: -2,
     width: 20, height: 20, borderRadius: 10,
     justifyContent: 'center', alignItems: 'center',
     borderWidth: 2, borderColor: C.white,
   },
   iconCircle: { width: 42, height: 42, borderRadius: 21, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
   textBlock: { flex: 1 },
-  message: { fontSize: 15, color: C.text, lineHeight: 21 },
+  message: { fontSize: 15, color: C.text, lineHeight: 21, textAlign: isRTL ? 'right' : 'left' },
   messageUnread: { fontWeight: '600' },
   preview: { fontSize: 13, color: C.textMuted, marginTop: 2 },
   emoji: { fontSize: 20, marginTop: 2 },

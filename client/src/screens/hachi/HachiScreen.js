@@ -209,7 +209,7 @@ export default function HachiScreen({ navigation }) {
   const { colors: C, isDark } = useTheme();
   const { guestGate } = useGuestGate();
 
-  const styles = useMemo(() => makeStyles(C, isDark), [C, isDark]);
+  const styles = useMemo(() => makeStyles(C, isDark, isRTL), [C, isDark, isRTL]);
 
   const hachiPoints = currentUser?.hachiPoints || 0;
   const hasBadge    = currentUser?.verifiedBadge && currentUser.verifiedBadge !== 'none';
@@ -531,12 +531,12 @@ export default function HachiScreen({ navigation }) {
 
 // ── makeStyles ─────────────────────────────────────────────────────────────────
 
-const makeStyles = (C, isDark) => StyleSheet.create({
+const makeStyles = (C, isDark, isRTL = false) => StyleSheet.create({
   container: { flex: 1, backgroundColor: C.white },
 
   // Header
   header: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -572,7 +572,7 @@ const makeStyles = (C, isDark) => StyleSheet.create({
 
   // Section headers
   sectionHeader: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
+    flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 6,
     paddingHorizontal: 16, paddingTop: 20, paddingBottom: 10,
   },
   sectionEmoji: { fontSize: 16 },
@@ -617,7 +617,7 @@ const makeStyles = (C, isDark) => StyleSheet.create({
 
   // Room rows
   row: {
-    flexDirection: 'row', alignItems: 'center',
+    flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center',
     paddingHorizontal: 16, paddingVertical: 14, gap: 12,
   },
   rowIcon: {
@@ -625,8 +625,8 @@ const makeStyles = (C, isDark) => StyleSheet.create({
     justifyContent: 'center', alignItems: 'center', flexShrink: 0,
   },
   rowBody: { flex: 1, gap: 2 },
-  rowTitle: { fontSize: 15, fontWeight: '600', letterSpacing: -0.2, color: C.text },
-  rowSub: { fontSize: 13, color: C.textMuted, lineHeight: 17 },
+  rowTitle: { fontSize: 15, fontWeight: '600', letterSpacing: -0.2, color: C.text, textAlign: isRTL ? 'right' : 'left' },
+  rowSub: { fontSize: 13, color: C.textMuted, lineHeight: 17, textAlign: isRTL ? 'right' : 'left' },
   rowMeta: { alignItems: 'flex-end', gap: 1, flexShrink: 0 },
   rowMetaNum: { fontSize: 15, fontWeight: '700', color: C.text },
   rowMetaLabel: { fontSize: 11, color: C.textMuted },
@@ -646,8 +646,8 @@ const makeStyles = (C, isDark) => StyleSheet.create({
     elevation: 4,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: isDark ? C.separator : 'rgba(0,0,0,0.04)',
-    borderLeftWidth: 3,
-    borderLeftColor: C.accent,
+    borderStartWidth: 3,
+    borderStartColor: C.accent,
   },
   momentTop: {
     flexDirection: 'row',
@@ -726,7 +726,7 @@ const makeStyles = (C, isDark) => StyleSheet.create({
   // Modals
   modalContainer: { flex: 1, backgroundColor: C.white },
   modalHeader: {
-    flexDirection: 'row', alignItems: 'center',
+    flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center',
     paddingHorizontal: 16, paddingBottom: 14,
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.separator,
   },
@@ -759,8 +759,8 @@ const makeStyles = (C, isDark) => StyleSheet.create({
     marginHorizontal: 20, marginTop: 24, marginBottom: 32,
     backgroundColor: C.fill, borderRadius: 14, padding: 16,
   },
-  rulesHeader: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 12 },
+  rulesHeader: { flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 7, marginBottom: 12 },
   rulesTitle: { fontSize: 14, fontWeight: '700', color: C.text },
-  ruleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 9, paddingVertical: 5 },
+  ruleRow: { flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'flex-start', gap: 9, paddingVertical: 5 },
   ruleText: { flex: 1, fontSize: 13, color: C.textMuted, lineHeight: 19 },
 });

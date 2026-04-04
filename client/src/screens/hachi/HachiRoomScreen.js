@@ -780,7 +780,7 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
 
   // Circle identity bar
   infoBar: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     gap: 8,
     paddingHorizontal: 16,
@@ -790,7 +790,7 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
     backgroundColor: C.accent + '06',
   },
   infoCatPill: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     gap: 4,
     backgroundColor: C.accent + '12',
@@ -840,7 +840,7 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
   },
   msgAvatarText: { fontSize: 13, fontWeight: '700', color: '#fff' },
   msgHeader: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     gap: 6,
     marginBottom: 3,
@@ -886,7 +886,7 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
   playBtn: {
     width: 50, height: 50, borderRadius: 25,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center', alignItems: 'center', paddingLeft: 3,
+    justifyContent: 'center', alignItems: 'center', paddingStart: 3,
   },
   msgText: { fontSize: 16, color: C.text, lineHeight: 22, writingDirection: 'auto' },
   msgTextMine: { color: '#fff' },
@@ -921,7 +921,7 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
 
   // Input
   inputBar: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'flex-end',
     paddingHorizontal: 8,
     paddingTop: 6,

@@ -93,7 +93,7 @@ export default function ProfileScreen({ navigation, route }) {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
   const { colors: COLORS } = useTheme();
-  const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
+  const styles = useMemo(() => makeStyles(COLORS, isRTL), [COLORS, isRTL]);
   const { guestGate } = useGuestGate();
 
   const username = route.params?.username || currentUser?.username;
@@ -670,13 +670,13 @@ export default function ProfileScreen({ navigation, route }) {
   );
 }
 
-const makeStyles = (C) => StyleSheet.create({
+const makeStyles = (C, isRTL = false) => StyleSheet.create({
   container: { flex: 1, backgroundColor: C.white },
   loader: { flex: 1, backgroundColor: C.white, justifyContent: 'center', alignItems: 'center' },
 
-  navRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 12, paddingBottom: 4 },
+  navRow: { flexDirection: isRTL ? 'row-reverse' : 'row', justifyContent: 'space-between', paddingHorizontal: 12, paddingBottom: 4 },
   navBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
-  notifBadge: { position: 'absolute', top: 4, right: 4, backgroundColor: '#FF3B30', borderRadius: 9, minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4 },
+  notifBadge: { position: 'absolute', top: 4, end: 4, backgroundColor: '#FF3B30', borderRadius: 9, minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4 },
   notifBadgeText: { fontSize: 10, fontWeight: '700', color: '#fff' },
 
   avatarSection: { alignItems: 'center', paddingTop: 8, paddingBottom: 16 },
@@ -687,7 +687,7 @@ const makeStyles = (C) => StyleSheet.create({
   name: { fontSize: 24, fontWeight: '800', color: C.text, textAlign: 'center', letterSpacing: -0.5 },
   bio: { fontSize: 14, color: C.text, lineHeight: 20, textAlign: 'center', marginTop: 6 },
 
-  statsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingBottom: 20, gap: 16 },
+  statsRow: { flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', justifyContent: 'center', paddingBottom: 20, gap: 16 },
   stat: { alignItems: 'center', gap: 2, minWidth: 60 },
   statNum: { fontSize: 17, fontWeight: '700', color: C.text, textAlign: 'center' },
   statLabel: { fontSize: 11, color: C.textMuted, fontWeight: '400', textAlign: 'center' },
@@ -714,7 +714,7 @@ const makeStyles = (C) => StyleSheet.create({
 
   // ── Circle row ────────────────────────────────────────────────────────────
   circleRow: {
-    flexDirection: 'row', alignItems: 'center',
+    flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center',
     paddingHorizontal: 16, paddingVertical: 14, gap: 12,
     backgroundColor: C.white,
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.separator,
@@ -725,8 +725,8 @@ const makeStyles = (C) => StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
   circleInfo: { flex: 1 },
-  circleTitle: { fontSize: 15, fontWeight: '600', color: C.text },
-  circleMeta: { fontSize: 12, color: C.textMuted, marginTop: 2 },
+  circleTitle: { fontSize: 15, fontWeight: '600', color: C.text, textAlign: isRTL ? 'right' : 'left' },
+  circleMeta: { fontSize: 12, color: C.textMuted, marginTop: 2, textAlign: isRTL ? 'right' : 'left' },
   statusChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   statusLive: { backgroundColor: '#34C75920' },
   statusEnded: { backgroundColor: C.fill },
