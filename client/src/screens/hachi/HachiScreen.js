@@ -300,7 +300,6 @@ export default function HachiScreen({ navigation }) {
         {hasMoments && (
           <>
             <View style={styles.sectionHeader}>
-              <Ionicons name="pin" size={14} color={C.accent} />
               <Text style={styles.sectionTitle}>{t('hachi.moments')}</Text>
             </View>
             <ScrollView
