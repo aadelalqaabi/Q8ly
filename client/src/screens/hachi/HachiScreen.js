@@ -304,7 +304,7 @@ export default function HachiScreen({ navigation }) {
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.hotScroll}
+              contentContainerStyle={[styles.hotScroll, isRTL && { flexDirection: 'row-reverse' }]}
               decelerationRate="fast"
               snapToInterval={HOT_CARD_W + 12}
               snapToAlignment="start"
