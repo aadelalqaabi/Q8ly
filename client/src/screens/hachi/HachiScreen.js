@@ -329,7 +329,6 @@ export default function HachiScreen({ navigation }) {
         {hasHot && (
           <>
             <View style={[styles.sectionHeader, hasMoments && { marginTop: 8 }]}>
-              <Text style={styles.sectionEmoji}>🔥</Text>
               <Text style={styles.sectionTitle}>{t('hachi.mostActive')}</Text>
             </View>
             <ScrollView
