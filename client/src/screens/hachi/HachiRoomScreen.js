@@ -88,11 +88,18 @@ function MessageRow({ message, isMine, onLongPress, currentUserId, onReact, onUs
       delayLongPress={300}
       activeOpacity={0.85}
     >
-      {/* Avatar — only for others */}
+      {/* Others: avatar on left */}
       {!isMine && (
         <TouchableOpacity onPress={() => onUserPress(user)} activeOpacity={0.7} style={styles.msgAvatarWrap}>
           {avatarEl}
         </TouchableOpacity>
+      )}
+
+      {/* Mine: avatar first in DOM so row-reverse places it on the right */}
+      {isMine && (
+        <View style={styles.msgAvatarWrap}>
+          {avatarEl}
+        </View>
       )}
 
       {/* Content column */}
@@ -145,13 +152,6 @@ function MessageRow({ message, isMine, onLongPress, currentUserId, onReact, onUs
           onPress={(emoji) => onReact(message._id, emoji)}
         />
       </View>
-
-      {/* Mine: avatar on right */}
-      {isMine && (
-        <View style={styles.msgAvatarWrap}>
-          {avatarEl}
-        </View>
-      )}
     </TouchableOpacity>
   );
 }
