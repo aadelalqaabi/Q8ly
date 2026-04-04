@@ -238,16 +238,15 @@ export default function HachiScreen({ navigation }) {
     label: t(`hachi.cat${key.charAt(0).toUpperCase()}${key.slice(1)}`),
   }));
 
-  const [activeCategory, setActiveCategory] = useState('all');
-  const [showCreate,     setShowCreate]     = useState(false);
-  const [showLocked,     setShowLocked]     = useState(false);
-  const [newTitle,       setNewTitle]       = useState('');
-  const [newCategory,    setNewCategory]    = useState('general');
-  const [creating,       setCreating]       = useState(false);
+  const [showCreate,  setShowCreate]  = useState(false);
+  const [showLocked,  setShowLocked]  = useState(false);
+  const [newTitle,    setNewTitle]    = useState('');
+  const [newCategory, setNewCategory] = useState('general');
+  const [creating,    setCreating]    = useState(false);
 
   useEffect(() => {
-    dispatch(fetchRooms(activeCategory));
-  }, [activeCategory]);
+    dispatch(fetchRooms());
+  }, []);
 
   useEffect(() => {
     dispatch(fetchMoments());
@@ -392,31 +391,6 @@ export default function HachiScreen({ navigation }) {
         </View>
       </View>
 
-      {/* ── Category tabs ── */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.tabsRow}
-        style={styles.tabsScroll}
-      >
-        {CATEGORIES.map((cat) => {
-          const active = activeCategory === cat.key;
-          return (
-            <TouchableOpacity
-              key={cat.key}
-              style={[styles.tab, active && styles.tabActive]}
-              onPress={() => setActiveCategory(cat.key)}
-              activeOpacity={0.75}
-            >
-              <Ionicons name={cat.icon} size={14} color={active ? '#fff' : C.textMuted} />
-              <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>
-                {cat.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-
       {/* ── Room list ── */}
       {isLoading && !rooms.length ? (
         <ActivityIndicator size="large" color={C.accent} style={{ marginTop: 60 }} />
@@ -432,7 +406,7 @@ export default function HachiScreen({ navigation }) {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom + 24 }}
           refreshing={isLoading}
-          onRefresh={() => { dispatch(fetchRooms(activeCategory)); dispatch(fetchMoments()); }}
+          onRefresh={() => { dispatch(fetchRooms()); dispatch(fetchMoments()); }}
           ItemSeparatorComponent={() => <View style={styles.sep} />}
         />
       )}
@@ -570,23 +544,6 @@ const makeStyles = (C, isDark, isRTL = false) => StyleSheet.create({
     justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3,
   },
   notifBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800', lineHeight: 11 },
-
-  // Category tabs
-  tabsScroll: {
-    flexGrow: 0,
-    flexShrink: 0,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: C.separator,
-  },
-  tabsRow: { flexDirection: 'row', paddingHorizontal: 14, paddingVertical: 10, gap: 7 },
-  tab: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: 14, paddingVertical: 8,
-    borderRadius: 20, backgroundColor: C.fill,
-  },
-  tabActive: { backgroundColor: C.accent },
-  tabLabel: { fontSize: 13, fontWeight: '600', color: C.textMuted },
-  tabLabelActive: { color: '#fff', fontWeight: '700' },
 
   // Section headers
   sectionHeader: {
