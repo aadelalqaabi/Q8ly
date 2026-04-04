@@ -93,10 +93,6 @@ function HotCard({ room, onPress, styles, C, t }) {
           <Ionicons name="chatbubble" size={10} color={C.textMuted} />
           <Text style={styles.hotStatText}>{msgCount}</Text>
         </View>
-        <View style={styles.hotStatItem}>
-          <Ionicons name="people" size={10} color={C.textMuted} />
-          <Text style={styles.hotStatText}>{room.memberCount || 1}</Text>
-        </View>
       </View>
     </TouchableOpacity>
   );
@@ -113,8 +109,8 @@ function RoomRow({ room, onPress, styles, C, t }) {
 
   return (
     <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
-      <View style={[styles.rowIcon, { backgroundColor: heat ? heat + '12' : C.fill }]}>
-        <Ionicons name={catIcon} size={20} color={heat || C.textMuted} />
+      <View style={[styles.rowIcon, { backgroundColor: C.fill }]}>
+        <Ionicons name={catIcon} size={20} color={C.textMuted} />
       </View>
       <View style={styles.rowBody}>
         <Text style={styles.rowTitle} numberOfLines={1}>{room.title}</Text>
@@ -125,9 +121,9 @@ function RoomRow({ room, onPress, styles, C, t }) {
           <Ionicons name="chatbubble" size={10} color={C.textMuted} />
           <Text style={styles.rowStatText}>{msgCount}</Text>
         </View>
-        <View style={[styles.rowBadge, heat && { backgroundColor: heat + '12' }]}>
-          {heat && <View style={[styles.liveDot, { backgroundColor: heat }]} />}
-          <Text style={[styles.rowBadgeNum, { color: heat || C.textMuted }]}>
+        <View style={styles.rowBadge}>
+          <Ionicons name="person" size={10} color={C.textMuted} />
+          <Text style={[styles.rowBadgeNum, { color: C.textMuted }]}>
             {room.memberCount || 1}
           </Text>
         </View>

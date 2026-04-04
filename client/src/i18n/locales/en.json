@@ -9,7 +9,8 @@
     "ok": "OK",
     "error": "Error",
     "somethingWrong": "Something went wrong",
-    "shareCard": "Share Card"
+    "shareCard": "Share Card",
+    "uploading": "Sending…"
   },
 
   "home": {

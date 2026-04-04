@@ -60,19 +60,18 @@ function ReactionPills({ reactions, currentUserId, onPress }) {
   );
 }
 
-// ── Single message row ─────────────────────────────────────────────────────────
+// ── Single message row (feed/thread style) ──────────────────────────────────────
 function MessageRow({ message, isMine, onLongPress, currentUserId, onReact, onUserPress }) {
   const { t } = useTranslation();
   const { colors: COLORS } = useTheme();
   const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
-  const { user, text, image, video, videoThumbnail, reactions, createdAt } = message;
+  const { user, text, image, video, videoThumbnail, reactions, createdAt, _uploading } = message;
 
   const timeStr = createdAt
     ? new Date(createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : '';
 
   const hasMedia = !!(image || video);
-  const isMediaOnly = hasMedia && !text;
 
   const avatarEl = user?.profilePic ? (
     <Image source={{ uri: user.profilePic }} style={styles.msgAvatar} />
@@ -83,52 +82,77 @@ function MessageRow({ message, isMine, onLongPress, currentUserId, onReact, onUs
   );
 
   return (
-    <View style={[styles.msgRow, isMine && styles.msgRowMine]}>
+    <TouchableOpacity
+      style={[styles.msgRow, isMine && styles.msgRowMine]}
+      onLongPress={() => onLongPress(message)}
+      delayLongPress={300}
+      activeOpacity={0.85}
+    >
+      {/* Avatar — only for others */}
       {!isMine && (
-        <TouchableOpacity onPress={() => onUserPress(user)} activeOpacity={0.7}>
+        <TouchableOpacity onPress={() => onUserPress(user)} activeOpacity={0.7} style={styles.msgAvatarWrap}>
           {avatarEl}
         </TouchableOpacity>
       )}
+
+      {/* Content column */}
       <View style={[styles.msgCol, isMine && styles.msgColMine]}>
-        <TouchableOpacity
-          onLongPress={() => onLongPress(message)}
-          delayLongPress={300}
-          activeOpacity={0.9}
-        >
-          <View style={[
-            styles.msgBubble,
-            isMine && styles.msgBubbleMine,
-            isMediaOnly && styles.msgBubbleMedia,
-          ]}>
-            {!isMine && (
-              <TouchableOpacity onPress={() => onUserPress(user)} activeOpacity={0.7}>
-                <Text style={styles.msgAuthor}>{user?.name || t('hachi.someoneDefault')}</Text>
-              </TouchableOpacity>
-            )}
-            {image && (
-              <Image source={{ uri: image }} style={styles.msgImage} resizeMode="cover" />
-            )}
-            {video && (
-              <TouchableOpacity activeOpacity={0.9}>
-                <Image source={{ uri: videoThumbnail || video }} style={styles.msgImage} resizeMode="cover" />
-                <View style={styles.playOverlay}>
-                  <View style={styles.playBtn}>
-                    <Ionicons name="play" size={22} color="#fff" />
-                  </View>
+        {/* Header: name + time */}
+        <View style={[styles.msgHeader, isMine && styles.msgHeaderMine]}>
+          {!isMine && (
+            <TouchableOpacity onPress={() => onUserPress(user)} activeOpacity={0.7}>
+              <Text style={styles.msgAuthor}>{user?.name || t('hachi.someoneDefault')}</Text>
+            </TouchableOpacity>
+          )}
+          <Text style={[styles.msgTime, isMine && styles.msgTimeMine]}>{timeStr}</Text>
+        </View>
+
+        {/* Bubble / content */}
+        <View style={[
+          styles.msgBubble,
+          isMine && styles.msgBubbleMine,
+          hasMedia && !text && styles.msgBubbleMedia,
+          _uploading && styles.msgBubbleUploading,
+        ]}>
+          {image && (
+            <Image source={{ uri: image }} style={styles.msgImage} resizeMode="cover" />
+          )}
+          {video && (
+            <TouchableOpacity activeOpacity={0.9}>
+              <Image source={{ uri: videoThumbnail || video }} style={styles.msgImage} resizeMode="cover" />
+              <View style={styles.playOverlay}>
+                <View style={styles.playBtn}>
+                  <Ionicons name="play" size={22} color="#fff" />
                 </View>
-              </TouchableOpacity>
-            )}
-            {!!text && <Text style={[styles.msgText, isMine && styles.msgTextMine]}>{text}</Text>}
-            <Text style={[styles.msgTime, isMine && styles.msgTimeMine]}>{timeStr}</Text>
-          </View>
-        </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          )}
+          {_uploading && !image && !video && (
+            <ActivityIndicator size="small" color={isMine ? 'rgba(255,255,255,0.7)' : COLORS.accent} />
+          )}
+          {!!text && <Text style={[styles.msgText, isMine && styles.msgTextMine]}>{text}</Text>}
+          {_uploading && (
+            <Text style={[styles.msgUploadingText, isMine && { color: 'rgba(255,255,255,0.6)' }]}>
+              {t('common.uploading') || 'Sending…'}
+            </Text>
+          )}
+        </View>
+
+        {/* Reactions */}
         <ReactionPills
           reactions={reactions}
           currentUserId={currentUserId}
           onPress={(emoji) => onReact(message._id, emoji)}
         />
       </View>
-    </View>
+
+      {/* Mine: avatar on right */}
+      {isMine && (
+        <View style={styles.msgAvatarWrap}>
+          {avatarEl}
+        </View>
+      )}
+    </TouchableOpacity>
   );
 }
 
@@ -148,6 +172,7 @@ export default function HachiRoomScreen({ navigation, route }) {
   const [isViewOnly, setIsViewOnly] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const isCreator = (activeRoom?.creator?._id || activeRoom?.creator)?.toString() === currentUser?._id?.toString();
 
@@ -300,13 +325,17 @@ export default function HachiRoomScreen({ navigation, route }) {
     navigation.navigate('ProfileDetail', { username: user.username });
   }, [navigation]);
 
-  const handleDeleteOwnMessage = useCallback((message) => {
+  const handleDeleteOwnMessage = useCallback(() => {
+    if (!selectedMsg) return;
+    const msgId = selectedMsg._id?.toString();
     setSelectedMsg(null);
+    setConfirmDelete(false);
     const socket = getSocket();
-    if (socket) socket.emit('hachiDeleteMessage', { roomId, messageId: message._id?.toString() });
-  }, [roomId]);
+    if (socket) socket.emit('hachiDeleteMessage', { roomId, messageId: msgId });
+  }, [roomId, selectedMsg]);
 
   const handlePickMedia = useCallback(async () => {
+    let tempId = null;
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images', 'videos'],
@@ -321,9 +350,6 @@ export default function HachiRoomScreen({ navigation, route }) {
       const isVideo = asset.type === 'video';
       const ext = asset.uri.split('.').pop()?.toLowerCase() || (isVideo ? 'mp4' : 'jpg');
 
-      // Use asset.mimeType if available (expo-image-picker provides it).
-      // Fallback: map common extensions to correct MIME types so the server's
-      // fileFilter doesn't reject HEIC images or QuickTime .MOV videos.
       let mimeType = asset.mimeType;
       if (!mimeType) {
         if (isVideo) {
@@ -332,7 +358,6 @@ export default function HachiRoomScreen({ navigation, route }) {
           mimeType = (ext === 'heic' || ext === 'heif') ? 'image/jpeg' : `image/${ext}`;
         }
       }
-      // iOS QuickTime videos come through as video/quicktime regardless of extension
       if (isVideo && mimeType === 'video/mov') mimeType = 'video/quicktime';
 
       formData.append(isVideo ? 'video' : 'images', {
@@ -341,20 +366,43 @@ export default function HachiRoomScreen({ navigation, route }) {
         type: mimeType,
       });
 
+      // Optimistic placeholder so the user sees the media immediately while uploading
+      tempId = `uploading_${Date.now()}`;
+      dispatch(addOptimisticMessage({
+        roomId,
+        message: {
+          _id: tempId,
+          _uploading: true,
+          ...(isVideo ? { video: asset.uri } : { image: asset.uri }),
+          createdAt: new Date().toISOString(),
+          reactions: [],
+          user: {
+            _id: currentUser?._id,
+            name: currentUser?.name,
+            username: currentUser?.username,
+            profilePic: currentUser?.profilePic,
+          },
+        },
+      }));
+
       if (isVideo) {
         const res = await uploadAPI.video(formData);
+        dispatch(deleteMessage({ roomId, messageId: tempId }));
         sendHachiVideo(roomId, res.url, res.thumbnail);
       } else {
         const res = await uploadAPI.images(formData);
         const url = res.urls?.[0] || res.url;
+        dispatch(deleteMessage({ roomId, messageId: tempId }));
         sendHachiImage(roomId, url);
       }
     } catch (e) {
+      // Remove optimistic placeholder on failure
+      if (tempId) dispatch(deleteMessage({ roomId, messageId: tempId }));
       Alert.alert(t('common.error'), e.message || t('common.somethingWrong'));
     } finally {
       setUploading(false);
     }
-  }, [roomId, t]);
+  }, [roomId, t, currentUser, dispatch]);
 
   const handleKick = useCallback((userId, userName) => {
     setSelectedMsg(null);
@@ -546,81 +594,109 @@ export default function HachiRoomScreen({ navigation, route }) {
         )}
       </KeyboardAvoidingView>
 
-      {/* Message action sheet (emoji + kick) */}
+      {/* Message action sheet (emoji + kick / delete confirmation) */}
       <Modal
         visible={!!selectedMsg}
         transparent
         animationType="fade"
-        onRequestClose={() => setSelectedMsg(null)}
+        onRequestClose={() => { setSelectedMsg(null); setConfirmDelete(false); }}
       >
         <TouchableOpacity
           style={styles.actionOverlay}
           activeOpacity={1}
-          onPress={() => setSelectedMsg(null)}
+          onPress={() => { setSelectedMsg(null); setConfirmDelete(false); }}
         >
-          <View style={styles.actionSheet}>
-            {/* Emoji quick-react row */}
-            <View style={styles.emojiRow}>
-              {QUICK_EMOJIS.map((emoji) => (
+          {confirmDelete ? (
+            /* ── Delete confirmation step ── */
+            <View style={styles.actionSheet} onStartShouldSetResponder={() => true}>
+              <View style={styles.confirmDeleteWrap}>
+                <View style={styles.confirmDeleteIcon}>
+                  <Ionicons name="trash-outline" size={28} color="#FF3B30" />
+                </View>
+                <Text style={styles.confirmDeleteTitle}>{t('hachi.deleteMessage')}</Text>
+                <Text style={styles.confirmDeleteSub}>{t('hachi.deleteMessageConfirm')}</Text>
+              </View>
+              <View style={styles.confirmDeleteBtns}>
                 <TouchableOpacity
-                  key={emoji}
-                  style={styles.emojiBtn}
-                  onPress={() => {
-                    handleReact(selectedMsg._id, emoji);
-                    setSelectedMsg(null);
-                  }}
+                  style={[styles.confirmBtn, styles.confirmBtnCancel]}
+                  onPress={() => setConfirmDelete(false)}
                 >
-                  <Text style={styles.emojiPickerEmoji}>{emoji}</Text>
+                  <Text style={styles.confirmBtnCancelText}>{t('common.cancel')}</Text>
                 </TouchableOpacity>
-              ))}
+                <TouchableOpacity
+                  style={[styles.confirmBtn, styles.confirmBtnDelete]}
+                  onPress={handleDeleteOwnMessage}
+                >
+                  <Text style={styles.confirmBtnDeleteText}>{t('common.delete')}</Text>
+                </TouchableOpacity>
+              </View>
             </View>
+          ) : (
+            /* ── Normal action sheet ── */
+            <View style={styles.actionSheet} onStartShouldSetResponder={() => true}>
+              {/* Emoji quick-react row */}
+              <View style={styles.emojiRow}>
+                {QUICK_EMOJIS.map((emoji) => (
+                  <TouchableOpacity
+                    key={emoji}
+                    style={styles.emojiBtn}
+                    onPress={() => {
+                      handleReact(selectedMsg._id, emoji);
+                      setSelectedMsg(null);
+                    }}
+                  >
+                    <Text style={styles.emojiPickerEmoji}>{emoji}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
 
-            {/* Message actions */}
-            <View style={styles.modActions}>
-              {/* Delete own message */}
-              {selectedMsgIsMine && (
-                <TouchableOpacity
-                  style={styles.modRow}
-                  onPress={() => handleDeleteOwnMessage(selectedMsg)}
-                >
-                  <Ionicons name="trash-outline" size={17} color="#FF3B30" />
-                  <Text style={styles.kickText}>{t('common.delete')}</Text>
-                </TouchableOpacity>
-              )}
-
-              {/* Creator: Pin / Unpin */}
-              {isCreator && selectedMsg?.text && (() => {
-                const isPinned = activeRoom?.pinnedMessages?.some(
-                  (p) => p?.toString() === selectedMsg._id?.toString()
-                );
-                return (
+              {/* Message actions */}
+              <View style={styles.modActions}>
+                {/* Delete own message → show confirmation */}
+                {selectedMsgIsMine && (
                   <TouchableOpacity
                     style={styles.modRow}
-                    onPress={() => handlePin(selectedMsg)}
+                    onPress={() => setConfirmDelete(true)}
                   >
-                    <Ionicons name="pin-outline" size={17} color={COLORS.accent} />
-                    <Text style={[styles.modText, { color: COLORS.accent }]}>
-                      {isPinned ? t('hachi.unpinMessage') : t('hachi.pinMessage')}
-                    </Text>
+                    <Ionicons name="trash-outline" size={17} color="#FF3B30" />
+                    <Text style={styles.kickText}>{t('common.delete')}</Text>
                   </TouchableOpacity>
-                );
-              })()}
+                )}
 
-              {/* Creator: Kick (other users only) */}
-              {isCreator && selectedMsgIsOther && (
-                <TouchableOpacity
-                  style={styles.modRow}
-                  onPress={() => handleKick(
-                    selectedMsg.user?._id || selectedMsg.user,
-                    selectedMsg.user?.name || t('hachi.someoneDefault')
-                  )}
-                >
-                  <Ionicons name="person-remove-outline" size={17} color="#FF3B30" />
-                  <Text style={styles.kickText}>{t('hachi.kickTitle')}</Text>
-                </TouchableOpacity>
-              )}
+                {/* Creator: Pin / Unpin */}
+                {isCreator && selectedMsg?.text && (() => {
+                  const isPinned = activeRoom?.pinnedMessages?.some(
+                    (p) => p?.toString() === selectedMsg._id?.toString()
+                  );
+                  return (
+                    <TouchableOpacity
+                      style={styles.modRow}
+                      onPress={() => handlePin(selectedMsg)}
+                    >
+                      <Ionicons name="pin-outline" size={17} color={COLORS.accent} />
+                      <Text style={[styles.modText, { color: COLORS.accent }]}>
+                        {isPinned ? t('hachi.unpinMessage') : t('hachi.pinMessage')}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })()}
+
+                {/* Creator: Kick (other users only) */}
+                {isCreator && selectedMsgIsOther && (
+                  <TouchableOpacity
+                    style={styles.modRow}
+                    onPress={() => handleKick(
+                      selectedMsg.user?._id || selectedMsg.user,
+                      selectedMsg.user?.name || t('hachi.someoneDefault')
+                    )}
+                  >
+                    <Ionicons name="person-remove-outline" size={17} color="#FF3B30" />
+                    <Text style={styles.kickText}>{t('hachi.kickTitle')}</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
-          </View>
+          )}
         </TouchableOpacity>
       </Modal>
 
@@ -742,25 +818,41 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
   msgRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    marginBottom: 3,
-    paddingHorizontal: 4,
-    gap: 7,
+    marginBottom: 2,
+    paddingHorizontal: 12,
+    gap: 8,
   },
   msgRowMine: { flexDirection: 'row-reverse' },
-  msgCol: { maxWidth: '80%', alignItems: 'flex-start' },
+  msgAvatarWrap: { alignSelf: 'flex-end', marginBottom: 2 },
+  msgCol: { flex: 1, maxWidth: '78%', alignItems: 'flex-start' },
   msgColMine: { alignItems: 'flex-end' },
   msgAvatar: {
-    width: 28, height: 28, borderRadius: 14,
+    width: 32, height: 32, borderRadius: 16,
     justifyContent: 'center', alignItems: 'center', flexShrink: 0,
   },
-  msgAvatarText: { fontSize: 11, fontWeight: '700', color: '#fff' },
+  msgAvatarText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  msgHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 3,
+    paddingHorizontal: 2,
+  },
+  msgHeaderMine: { flexDirection: 'row-reverse' },
+  msgAuthor: { fontSize: 12, fontWeight: '700', color: C.accent },
+  msgTime: { fontSize: 10, color: C.textMuted, letterSpacing: -0.1 },
+  msgTimeMine: { color: C.textMuted },
   msgBubble: {
     backgroundColor: C.fill,
     borderRadius: 18,
     borderBottomLeftRadius: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    paddingBottom: 6,
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   msgBubbleMine: {
     backgroundColor: C.accent,
@@ -768,38 +860,37 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
     borderBottomRightRadius: 4,
   },
   msgBubbleMedia: {
-    paddingHorizontal: 4,
-    paddingTop: 4,
-    paddingBottom: 6,
+    paddingHorizontal: 3,
+    paddingTop: 3,
+    paddingBottom: 3,
     overflow: 'hidden',
+    backgroundColor: 'transparent',
+    shadowOpacity: 0,
+    elevation: 0,
   },
-  msgAuthor: { fontSize: 12, fontWeight: '700', color: C.accent, marginBottom: 2 },
-  msgImage: { width: 240, height: 180, borderRadius: 14, marginBottom: 2 },
+  msgBubbleUploading: { opacity: 0.6 },
+  msgImage: { width: 220, height: 165, borderRadius: 15, marginBottom: 0 },
   playOverlay: {
-    position: 'absolute', top: 0, left: 0, right: 0, bottom: 2,
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
     justifyContent: 'center', alignItems: 'center',
-    borderRadius: 14,
+    borderRadius: 15,
   },
   playBtn: {
-    width: 48, height: 48, borderRadius: 24,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    width: 50, height: 50, borderRadius: 25,
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center', alignItems: 'center', paddingLeft: 3,
   },
   msgText: { fontSize: 16, color: C.text, lineHeight: 22, writingDirection: 'auto' },
   msgTextMine: { color: '#fff' },
-  msgTime: {
-    fontSize: 10, color: C.textMuted + 'AA', marginTop: 3,
-    alignSelf: 'flex-end',
-  },
-  msgTimeMine: { color: 'rgba(255,255,255,0.55)' },
+  msgUploadingText: { fontSize: 11, color: C.textMuted, marginTop: 3 },
 
   // Reaction pills
   pillsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 4,
-    marginTop: 3,
-    marginHorizontal: 2,
+    marginTop: 4,
+    paddingHorizontal: 2,
   },
   pill: {
     flexDirection: 'row',
@@ -904,6 +995,41 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
   },
   modText: { fontSize: 15, fontWeight: '600' },
   kickText: { fontSize: 15, fontWeight: '600', color: '#FF3B30' },
+
+  // Delete confirmation
+  confirmDeleteWrap: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+  },
+  confirmDeleteIcon: {
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: '#FFF0F0',
+    justifyContent: 'center', alignItems: 'center',
+    marginBottom: 12,
+  },
+  confirmDeleteTitle: {
+    fontSize: 17, fontWeight: '700', color: C.text,
+    marginBottom: 6,
+  },
+  confirmDeleteSub: {
+    fontSize: 14, color: C.textMuted,
+    textAlign: 'center', lineHeight: 20,
+  },
+  confirmDeleteBtns: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  confirmBtn: {
+    flex: 1, paddingVertical: 14, borderRadius: 14,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  confirmBtnCancel: { backgroundColor: C.fill },
+  confirmBtnDelete: { backgroundColor: '#FF3B30' },
+  confirmBtnCancelText: { fontSize: 15, fontWeight: '600', color: C.text },
+  confirmBtnDeleteText: { fontSize: 15, fontWeight: '700', color: '#fff' },
 
   // Pinned messages banner
   pinnedBanner: {
