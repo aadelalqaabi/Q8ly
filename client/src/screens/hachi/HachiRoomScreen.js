@@ -601,6 +601,7 @@ export default function HachiRoomScreen({ navigation, route }) {
         animationType="fade"
         onRequestClose={() => { setSelectedMsg(null); setConfirmDelete(false); }}
       >
+        {/* Dark overlay — tap anywhere outside sheet to close */}
         <TouchableOpacity
           style={styles.actionOverlay}
           activeOpacity={1}
@@ -608,94 +609,99 @@ export default function HachiRoomScreen({ navigation, route }) {
         >
           {confirmDelete ? (
             /* ── Delete confirmation step ── */
-            <View style={styles.actionSheet} onStartShouldSetResponder={() => true}>
-              <View style={styles.confirmDeleteWrap}>
-                <View style={styles.confirmDeleteIcon}>
-                  <Ionicons name="trash-outline" size={28} color="#FF3B30" />
+            /* Inner TouchableOpacity absorbs taps so they don't reach the backdrop */
+            <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+              <View style={styles.actionSheet}>
+                <View style={styles.confirmDeleteWrap}>
+                  <View style={styles.confirmDeleteIcon}>
+                    <Ionicons name="trash-outline" size={28} color="#FF3B30" />
+                  </View>
+                  <Text style={styles.confirmDeleteTitle}>{t('hachi.deleteMessage')}</Text>
+                  <Text style={styles.confirmDeleteSub}>{t('hachi.deleteMessageConfirm')}</Text>
                 </View>
-                <Text style={styles.confirmDeleteTitle}>{t('hachi.deleteMessage')}</Text>
-                <Text style={styles.confirmDeleteSub}>{t('hachi.deleteMessageConfirm')}</Text>
+                <View style={styles.confirmDeleteBtns}>
+                  <TouchableOpacity
+                    style={[styles.confirmBtn, styles.confirmBtnCancel]}
+                    onPress={() => setConfirmDelete(false)}
+                  >
+                    <Text style={styles.confirmBtnCancelText}>{t('common.cancel')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.confirmBtn, styles.confirmBtnDelete]}
+                    onPress={handleDeleteOwnMessage}
+                  >
+                    <Text style={styles.confirmBtnDeleteText}>{t('common.delete')}</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-              <View style={styles.confirmDeleteBtns}>
-                <TouchableOpacity
-                  style={[styles.confirmBtn, styles.confirmBtnCancel]}
-                  onPress={() => setConfirmDelete(false)}
-                >
-                  <Text style={styles.confirmBtnCancelText}>{t('common.cancel')}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.confirmBtn, styles.confirmBtnDelete]}
-                  onPress={handleDeleteOwnMessage}
-                >
-                  <Text style={styles.confirmBtnDeleteText}>{t('common.delete')}</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+            </TouchableOpacity>
           ) : (
             /* ── Normal action sheet ── */
-            <View style={styles.actionSheet} onStartShouldSetResponder={() => true}>
-              {/* Emoji quick-react row */}
-              <View style={styles.emojiRow}>
-                {QUICK_EMOJIS.map((emoji) => (
-                  <TouchableOpacity
-                    key={emoji}
-                    style={styles.emojiBtn}
-                    onPress={() => {
-                      handleReact(selectedMsg._id, emoji);
-                      setSelectedMsg(null);
-                    }}
-                  >
-                    <Text style={styles.emojiPickerEmoji}>{emoji}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+            <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+              <View style={styles.actionSheet}>
+                {/* Emoji quick-react row */}
+                <View style={styles.emojiRow}>
+                  {QUICK_EMOJIS.map((emoji) => (
+                    <TouchableOpacity
+                      key={emoji}
+                      style={styles.emojiBtn}
+                      onPress={() => {
+                        handleReact(selectedMsg._id, emoji);
+                        setSelectedMsg(null);
+                      }}
+                    >
+                      <Text style={styles.emojiPickerEmoji}>{emoji}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
 
-              {/* Message actions */}
-              <View style={styles.modActions}>
-                {/* Delete own message → show confirmation */}
-                {selectedMsgIsMine && (
-                  <TouchableOpacity
-                    style={styles.modRow}
-                    onPress={() => setConfirmDelete(true)}
-                  >
-                    <Ionicons name="trash-outline" size={17} color="#FF3B30" />
-                    <Text style={styles.kickText}>{t('common.delete')}</Text>
-                  </TouchableOpacity>
-                )}
-
-                {/* Creator: Pin / Unpin */}
-                {isCreator && selectedMsg?.text && (() => {
-                  const isPinned = activeRoom?.pinnedMessages?.some(
-                    (p) => p?.toString() === selectedMsg._id?.toString()
-                  );
-                  return (
+                {/* Message actions */}
+                <View style={styles.modActions}>
+                  {/* Delete own message → show confirmation */}
+                  {selectedMsgIsMine && (
                     <TouchableOpacity
                       style={styles.modRow}
-                      onPress={() => handlePin(selectedMsg)}
+                      onPress={() => setConfirmDelete(true)}
                     >
-                      <Ionicons name="pin-outline" size={17} color={COLORS.accent} />
-                      <Text style={[styles.modText, { color: COLORS.accent }]}>
-                        {isPinned ? t('hachi.unpinMessage') : t('hachi.pinMessage')}
-                      </Text>
+                      <Ionicons name="trash-outline" size={17} color="#FF3B30" />
+                      <Text style={styles.kickText}>{t('common.delete')}</Text>
                     </TouchableOpacity>
-                  );
-                })()}
+                  )}
 
-                {/* Creator: Kick (other users only) */}
-                {isCreator && selectedMsgIsOther && (
-                  <TouchableOpacity
-                    style={styles.modRow}
-                    onPress={() => handleKick(
-                      selectedMsg.user?._id || selectedMsg.user,
-                      selectedMsg.user?.name || t('hachi.someoneDefault')
-                    )}
-                  >
-                    <Ionicons name="person-remove-outline" size={17} color="#FF3B30" />
-                    <Text style={styles.kickText}>{t('hachi.kickTitle')}</Text>
-                  </TouchableOpacity>
-                )}
+                  {/* Creator: Pin / Unpin */}
+                  {isCreator && selectedMsg?.text && (() => {
+                    const isPinned = activeRoom?.pinnedMessages?.some(
+                      (p) => p?.toString() === selectedMsg._id?.toString()
+                    );
+                    return (
+                      <TouchableOpacity
+                        style={styles.modRow}
+                        onPress={() => handlePin(selectedMsg)}
+                      >
+                        <Ionicons name="pin-outline" size={17} color={COLORS.accent} />
+                        <Text style={[styles.modText, { color: COLORS.accent }]}>
+                          {isPinned ? t('hachi.unpinMessage') : t('hachi.pinMessage')}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })()}
+
+                  {/* Creator: Kick (other users only) */}
+                  {isCreator && selectedMsgIsOther && (
+                    <TouchableOpacity
+                      style={styles.modRow}
+                      onPress={() => handleKick(
+                        selectedMsg.user?._id || selectedMsg.user,
+                        selectedMsg.user?.name || t('hachi.someoneDefault')
+                      )}
+                    >
+                      <Ionicons name="person-remove-outline" size={17} color="#FF3B30" />
+                      <Text style={styles.kickText}>{t('hachi.kickTitle')}</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
-            </View>
+            </TouchableOpacity>
           )}
         </TouchableOpacity>
       </Modal>
