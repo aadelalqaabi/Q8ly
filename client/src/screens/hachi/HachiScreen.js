@@ -52,16 +52,20 @@ function relTime(date) {
 
 // ── HotCard ────────────────────────────────────────────────────────────────────
 
-function HotCard({ room, onPress, styles, C, t }) {
+function HotCard({ room, onPress, styles, C, t, isRTL }) {
   const heat   = heatColor(room.memberCount || 1);
   const heatBg = heat ? heat + '15' : C.fill;
   const catIcon = CATEGORY_ICONS[room.category] || 'chatbubbles-outline';
   const msgCount = room.messageCount || 0;
 
   return (
-    <TouchableOpacity style={styles.hotCard} onPress={onPress} activeOpacity={0.78}>
+    <TouchableOpacity
+      style={[styles.hotCard, isRTL && { transform: [{ scaleX: -1 }] }]}
+      onPress={onPress}
+      activeOpacity={0.78}
+    >
       {/* Top row: category + member count */}
-      <View style={styles.hotTop}>
+      <View style={[styles.hotTop, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
         <View style={styles.hotCatBadge}>
           <Ionicons name={catIcon} size={12} color={C.textMuted} />
           <Text style={[styles.hotCatLabel, { color: C.textMuted }]}>
@@ -304,7 +308,8 @@ export default function HachiScreen({ navigation }) {
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={[styles.hotScroll, isRTL && { flexDirection: 'row-reverse' }]}
+              contentContainerStyle={styles.hotScroll}
+              style={isRTL && { transform: [{ scaleX: -1 }] }}
               decelerationRate="fast"
               snapToInterval={HOT_CARD_W + 12}
               snapToAlignment="start"
@@ -317,6 +322,7 @@ export default function HachiScreen({ navigation }) {
                   styles={styles}
                   C={C}
                   t={t}
+                  isRTL={isRTL}
                 />
               ))}
             </ScrollView>
