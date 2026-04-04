@@ -211,11 +211,6 @@ export default function DiscoverScreen({ navigation }) {
                 <Ionicons name={icon} size={24} color={color} />
               </View>
               <Text style={styles.catLabel}>{label}</Text>
-              {count > 0 && (
-                <Text style={[styles.catCount, { color }]}>
-                  {t('discover.activeCircles', { count })}
-                </Text>
-              )}
             </TouchableOpacity>
           );
         }}
