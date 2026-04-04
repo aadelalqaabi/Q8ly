@@ -81,11 +81,17 @@ function HotCard({ room, onPress, styles, C, t }) {
       <Text style={styles.hotTitle} numberOfLines={2}>{room.title}</Text>
 
       {/* Last message preview or creator */}
-      <Text style={styles.hotPreview} numberOfLines={1}>
-        {room.lastMessage?.text
-          ? room.lastMessage.text
-          : `${room.creator?.name || ''}\u200E · ${relTime(room.createdAt)}`}
-      </Text>
+      <View style={styles.hotPreviewRow}>
+        {room.lastMessage?.text ? (
+          <Text style={styles.hotPreview} numberOfLines={1}>{room.lastMessage.text}</Text>
+        ) : (
+          <>
+            <Text style={styles.hotPreviewName} numberOfLines={1}>{room.creator?.name || ''}</Text>
+            <Text style={styles.hotPreviewSep}> · </Text>
+            <Text style={styles.hotPreviewTime} numberOfLines={1}>{relTime(room.createdAt)}</Text>
+          </>
+        )}
+      </View>
 
       {/* Stats row */}
       <View style={styles.hotStats}>
@@ -104,11 +110,7 @@ function RoomRow({ room, onPress, styles, C, t }) {
   const catIcon  = CATEGORY_ICONS[room.category] || 'chatbubbles-outline';
   const msgCount = room.messageCount || 0;
   const members  = room.memberCount || 1;
-  // \u200E (LTR mark) before the separator prevents the bidi algorithm from
-  // treating an Arabic creator name as the base direction and moving the date
-  // to the visual start of the string.
-  const sub      = room.lastMessage?.text
-    || `${room.creator?.name || ''}\u200E · ${relTime(room.updatedAt || room.createdAt)}`;
+  const hasLastMsg = !!room.lastMessage?.text;
 
   return (
     <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
@@ -117,9 +119,21 @@ function RoomRow({ room, onPress, styles, C, t }) {
       </View>
       <View style={styles.rowBody}>
         <Text style={styles.rowTitle} numberOfLines={1}>{room.title}</Text>
-        <Text style={styles.rowSub} numberOfLines={1}>
-          {msgCount > 0 ? `${msgCount} · ` : ''}{sub}
-        </Text>
+        <View style={styles.rowSubRow}>
+          {hasLastMsg ? (
+            <>
+              {msgCount > 0 && <Text style={styles.rowSubMuted}>{msgCount}</Text>}
+              {msgCount > 0 && <Text style={styles.rowSubMuted}> · </Text>}
+              <Text style={styles.rowSubText} numberOfLines={1}>{room.lastMessage.text}</Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.rowSubText} numberOfLines={1}>{room.creator?.name || ''}</Text>
+              <Text style={styles.rowSubMuted}> · </Text>
+              <Text style={styles.rowSubMuted} numberOfLines={1}>{relTime(room.updatedAt || room.createdAt)}</Text>
+            </>
+          )}
+        </View>
       </View>
       <View style={styles.rowMeta}>
         <Text style={styles.rowMetaNum}>{members}</Text>
@@ -613,7 +627,11 @@ const makeStyles = (C, isDark, isRTL = false) => StyleSheet.create({
   hotCountLabel: { fontSize: 12, fontWeight: '500' },
   liveDot: { width: 6, height: 6, borderRadius: 3 },
   hotTitle: { fontSize: 17, fontWeight: '700', lineHeight: 23, letterSpacing: -0.3, color: C.text },
-  hotPreview: { fontSize: 13, color: C.textMuted, lineHeight: 18 },
+  hotPreviewRow: { flexDirection: 'row', alignItems: 'center', overflow: 'hidden' },
+  hotPreview: { fontSize: 13, color: C.textMuted, lineHeight: 18, flex: 1 },
+  hotPreviewName: { fontSize: 13, color: C.text, fontWeight: '500', flexShrink: 1 },
+  hotPreviewSep: { fontSize: 13, color: C.textMuted },
+  hotPreviewTime: { fontSize: 13, color: C.textMuted, flexShrink: 0 },
   hotStats: { flexDirection: 'row', gap: 14, marginTop: 4 },
   hotStatItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   hotStatText: { fontSize: 11, color: C.textMuted, fontWeight: '600' },
@@ -629,7 +647,9 @@ const makeStyles = (C, isDark, isRTL = false) => StyleSheet.create({
   },
   rowBody: { flex: 1, gap: 2 },
   rowTitle: { fontSize: 15, fontWeight: '600', letterSpacing: -0.2, color: C.text, textAlign: isRTL ? 'right' : 'left' },
-  rowSub: { fontSize: 13, color: C.textMuted, lineHeight: 17, textAlign: isRTL ? 'right' : 'left' },
+  rowSubRow: { flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', overflow: 'hidden' },
+  rowSubText: { fontSize: 13, color: C.textMuted, lineHeight: 17, flexShrink: 1 },
+  rowSubMuted: { fontSize: 13, color: C.textMuted, lineHeight: 17, flexShrink: 0 },
   rowMeta: { alignItems: 'flex-end', gap: 1, flexShrink: 0 },
   rowMetaNum: { fontSize: 15, fontWeight: '700', color: C.text },
   rowMetaLabel: { fontSize: 11, color: C.textMuted },
