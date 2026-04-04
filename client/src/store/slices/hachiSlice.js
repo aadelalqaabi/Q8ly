@@ -37,6 +37,15 @@ export const createRoom = createAsyncThunk('hachi/createRoom', async ({ title, c
   }
 });
 
+export const fetchMoments = createAsyncThunk('hachi/fetchMoments', async (_, { rejectWithValue }) => {
+  try {
+    const res = await hachiAPI.getMoments();
+    return res.moments;
+  } catch (e) {
+    return rejectWithValue(e.message);
+  }
+});
+
 export const fetchRoom = createAsyncThunk('hachi/fetchRoom', async (id, { rejectWithValue }) => {
   try {
     const res = await hachiAPI.getRoom(id);
@@ -61,6 +70,8 @@ const hachiSlice = createSlice({
     rooms: [],
     archivedRooms: [],
     joinedRooms: [],
+    moments: [],
+    momentsLoading: false,
     joinedLoading: false,
     activeRoom: null,
     isLoading: false,
@@ -91,9 +102,29 @@ const hachiSlice = createSlice({
         state.activeRoom = { ...state.activeRoom, isActive: false };
       }
     },
-    addMessageRealtime(state, { payload }) {
+    addOptimisticMessage(state, { payload }) {
       if (state.activeRoom?._id === payload.roomId) {
         state.activeRoom.messages = [...(state.activeRoom.messages || []), payload.message];
+      }
+    },
+    addMessageRealtime(state, { payload }) {
+      if (state.activeRoom?._id === payload.roomId) {
+        const msgs = state.activeRoom.messages || [];
+        // Replace matching optimistic message (same user + text) with the server version
+        const optIdx = msgs.findIndex(
+          (m) =>
+            typeof m._id === 'string' &&
+            m._id.startsWith('optimistic_') &&
+            m.user?._id?.toString() === payload.message.user?._id?.toString() &&
+            m.text === payload.message.text
+        );
+        if (optIdx !== -1) {
+          const next = [...msgs];
+          next[optIdx] = payload.message;
+          state.activeRoom.messages = next;
+        } else {
+          state.activeRoom.messages = [...msgs, payload.message];
+        }
       }
     },
     updateMemberCount(state, { payload }) {
@@ -149,6 +180,14 @@ const hachiSlice = createSlice({
         state.activeRoom.pinnedMessages = payload.pinnedMessages;
       }
     },
+    deleteMessage(state, { payload }) {
+      // payload: { roomId, messageId }
+      if (state.activeRoom?._id === payload.roomId) {
+        state.activeRoom.messages = state.activeRoom.messages.filter(
+          (m) => m._id?.toString() !== payload.messageId?.toString()
+        );
+      }
+    },
     clearActiveRoom(state) {
       state.activeRoom = null;
       state.joinRequests = [];
@@ -165,6 +204,10 @@ const hachiSlice = createSlice({
       .addCase(fetchJoinedRooms.fulfilled, (state, { payload }) => { state.joinedLoading = false; state.joinedRooms = payload; })
       .addCase(fetchJoinedRooms.rejected, (state) => { state.joinedLoading = false; })
 
+      .addCase(fetchMoments.pending, (state) => { state.momentsLoading = true; })
+      .addCase(fetchMoments.fulfilled, (state, { payload }) => { state.momentsLoading = false; state.moments = payload; })
+      .addCase(fetchMoments.rejected, (state) => { state.momentsLoading = false; })
+
       .addCase(fetchArchivedRooms.pending, (state) => { state.archivedLoading = true; })
       .addCase(fetchArchivedRooms.fulfilled, (state, { payload }) => {
         state.archivedLoading = false;
@@ -180,7 +223,14 @@ const hachiSlice = createSlice({
       .addCase(fetchRoom.pending, (state) => { state.roomLoading = true; })
       .addCase(fetchRoom.fulfilled, (state, { payload }) => {
         state.roomLoading = false;
+        // Preserve any optimistic messages that haven't been confirmed yet
+        const optimisticMsgs = (state.activeRoom?.messages || []).filter(
+          (m) => typeof m._id === 'string' && m._id.startsWith('optimistic_')
+        );
         state.activeRoom = payload;
+        if (optimisticMsgs.length) {
+          state.activeRoom.messages = [...(payload.messages || []), ...optimisticMsgs];
+        }
         // Initialise join requests from loaded room data (creator re-opening the screen)
         if (payload.joinRequests?.length) {
           state.joinRequests = payload.joinRequests.map((r) => ({
@@ -212,6 +262,7 @@ const hachiSlice = createSlice({
 export const {
   addRoomRealtime,
   removeRoomRealtime,
+  addOptimisticMessage,
   addMessageRealtime,
   updateMemberCount,
   updateReactions,
@@ -221,6 +272,7 @@ export const {
   setWaitingApproval,
   removeUserMessages,
   updatePinnedMessages,
+  deleteMessage,
   clearActiveRoom,
 } = hachiSlice.actions;
 

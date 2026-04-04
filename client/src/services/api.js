@@ -92,6 +92,9 @@ export const usersAPI = {
   getBookmarks: (params) => api.get('/users/bookmarks', { params }),
   deleteAccount: () => api.delete('/users/account'),
   updateNotificationSettings: (settings) => api.put('/users/notification-settings', settings),
+  getProfileComments: (username) => api.get(`/users/${username}/comments`),
+  addProfileComment: (username, text) => api.post(`/users/${username}/comments`, { text }),
+  deleteProfileComment: (commentId) => api.delete(`/users/comments/${commentId}`),
 };
 
 // ── Direct Messages ───────────────────────────────────────────────────────────
@@ -155,12 +158,15 @@ export const hachiAPI = {
   react: (id, type) => api.post(`/hachi/${id}/react`, { type }),
   closeRoom: (id) => api.delete(`/hachi/${id}`),
   getMyCircles: () => api.get('/hachi/my'),
+  getRoomsByCreator: (creatorId) => api.get('/hachi', { params: { creator: creatorId } }),
   getJoinedRooms: () => api.get('/hachi/joined'),
   deleteRoom: (id) => api.delete(`/hachi/${id}/delete`),
   pinRoom: (id) => api.post(`/hachi/${id}/pin`),
   unpinRoom: (id) => api.delete(`/hachi/${id}/pin`),
   leaveRoom: (id) => api.post(`/hachi/${id}/leave`),
   getPinnedCircles: () => api.get('/hachi/joined'),
+  getMoments: () => api.get('/hachi/moments'),
+  getUserMessages: (username) => api.get(`/hachi/user-messages/${username}`),
 };
 
 // ── Upload ────────────────────────────────────────────────────────────────────

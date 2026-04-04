@@ -7,6 +7,7 @@ const {
   togglePostNotifications, requestVerification, deleteAccount, updateNotificationSettings,
 } = require('../controllers/userController');
 const { getBookmarks } = require('../controllers/postController');
+const { getProfileComments, addProfileComment, deleteProfileComment } = require('../controllers/profileCommentController');
 
 router.post('/push-token', protect, savePushToken);
 router.get('/search', optionalAuth, searchUsers);
@@ -16,6 +17,9 @@ router.get('/:username', optionalAuth, getProfile);
 router.get('/:username/posts', optionalAuth, getUserPosts);
 router.get('/:username/followers', optionalAuth, getFollowers);
 router.get('/:username/following', optionalAuth, getFollowers);
+router.get('/:username/comments', optionalAuth, getProfileComments);
+router.post('/:username/comments', protect, addProfileComment);
+router.delete('/comments/:commentId', protect, deleteProfileComment);
 router.post('/:id/follow', protect, toggleFollow);
 router.post('/:id/notify-posts', protect, togglePostNotifications);
 router.post('/:id/block', protect, toggleBlock);

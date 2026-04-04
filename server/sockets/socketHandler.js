@@ -131,6 +131,9 @@ const initSocket = (server) => {
         }
 
         socket.join(`hachi:${roomId}`);
+        // Broadcast updated online count
+        const onlineCount = io.sockets.adapter.rooms.get(`hachi:${roomId}`)?.size || 0;
+        io.to(`hachi:${roomId}`).emit('hachiOnlineCount', { roomId, online: onlineCount });
       } catch (err) {
         console.error('joinHachi error:', err.message);
         socket.join(`hachi:${roomId}`);
@@ -139,6 +142,9 @@ const initSocket = (server) => {
 
     socket.on('leaveHachi', (roomId) => {
       socket.leave(`hachi:${roomId}`);
+      // Broadcast updated online count
+      const onlineCount = io.sockets.adapter.rooms.get(`hachi:${roomId}`)?.size || 0;
+      io.to(`hachi:${roomId}`).emit('hachiOnlineCount', { roomId, online: onlineCount });
     });
 
     socket.on('hachiSend', async ({ roomId, text }) => {
@@ -160,6 +166,7 @@ const initSocket = (server) => {
 
         const msg = { user: socket.user._id, text: text.trim(), createdAt: new Date() };
         room.messages.push(msg);
+        room.lastMessage = { text: text.trim(), createdAt: msg.createdAt };
 
         const alreadyMember = room.members.some((m) => m.toString() === uid);
         if (!alreadyMember) {
@@ -225,6 +232,104 @@ const initSocket = (server) => {
       }
     });
 
+    // ── Send image in circle ──────────────────────────────────────
+    socket.on('hachiSendImage', async ({ roomId, imageUrl }) => {
+      if (!socket.user || !imageUrl) return;
+      try {
+        const Hachi = require('../models/Hachi');
+        const room = await Hachi.findById(roomId);
+        if (!room || !room.isActive) return;
+
+        const uid = socket.user._id.toString();
+        if (room.blockedMembers.some((b) => b.toString() === uid)) return;
+
+        const msg = { user: socket.user._id, image: imageUrl, createdAt: new Date() };
+        room.messages.push(msg);
+        room.lastMessage = { text: '📷', createdAt: msg.createdAt };
+
+        if (!room.members.some((m) => m.toString() === uid)) {
+          room.members.push(socket.user._id);
+          room.memberCount = room.members.length;
+        }
+        await room.save();
+
+        const saved = room.messages[room.messages.length - 1];
+        const populated = {
+          _id: saved._id, image: saved.image, reactions: [], createdAt: saved.createdAt,
+          user: { _id: socket.user._id, name: socket.user.name, username: socket.user.username, profilePic: socket.user.profilePic },
+        };
+        io.to(`hachi:${roomId}`).emit('hachiMessage', { roomId, message: populated });
+      } catch (err) {
+        console.error('hachiSendImage error:', err.message);
+      }
+    });
+
+    // ── Send video in circle ──────────────────────────────────────
+    socket.on('hachiSendVideo', async ({ roomId, videoUrl, videoThumbnail }) => {
+      if (!socket.user || !videoUrl) return;
+      try {
+        const Hachi = require('../models/Hachi');
+        const room = await Hachi.findById(roomId);
+        if (!room || !room.isActive) return;
+
+        const uid = socket.user._id.toString();
+        if (room.blockedMembers.some((b) => b.toString() === uid)) return;
+
+        const msg = { user: socket.user._id, video: videoUrl, videoThumbnail: videoThumbnail || '', createdAt: new Date() };
+        room.messages.push(msg);
+        room.lastMessage = { text: '🎥', createdAt: msg.createdAt };
+
+        if (!room.members.some((m) => m.toString() === uid)) {
+          room.members.push(socket.user._id);
+          room.memberCount = room.members.length;
+        }
+        await room.save();
+
+        const saved = room.messages[room.messages.length - 1];
+        const populated = {
+          _id: saved._id, video: saved.video, videoThumbnail: saved.videoThumbnail,
+          reactions: [], createdAt: saved.createdAt,
+          user: { _id: socket.user._id, name: socket.user.name, username: socket.user.username, profilePic: socket.user.profilePic },
+        };
+        io.to(`hachi:${roomId}`).emit('hachiMessage', { roomId, message: populated });
+      } catch (err) {
+        console.error('hachiSendVideo error:', err.message);
+      }
+    });
+
+    // ── Delete own message ──────────────────────────────────────────
+    socket.on('hachiDeleteMessage', async ({ roomId, messageId }) => {
+      if (!socket.user) return;
+      try {
+        const Hachi = require('../models/Hachi');
+        const room = await Hachi.findById(roomId);
+        if (!room) return;
+
+        const msg = room.messages.id(messageId);
+        if (!msg) return;
+
+        const uid = socket.user._id.toString();
+        const isCreator = room.creator.toString() === uid;
+        // Only message author or room creator can delete
+        if (msg.user.toString() !== uid && !isCreator) return;
+
+        // Remove from pinned if pinned
+        room.pinnedMessages = (room.pinnedMessages || []).filter(
+          (p) => p.toString() !== messageId.toString()
+        );
+        room.messages.pull(messageId);
+        await room.save();
+
+        io.to(`hachi:${roomId}`).emit('hachiMessageDeleted', { roomId, messageId });
+        io.to(`hachi:${roomId}`).emit('hachiPinUpdate', {
+          roomId,
+          pinnedMessages: room.pinnedMessages.map((p) => p.toString()),
+        });
+      } catch (err) {
+        console.error('hachiDeleteMessage error:', err.message);
+      }
+    });
+
     // ── Per-message emoji reactions ───────────────────────────────
     socket.on('hachiMessageReact', async ({ roomId, messageId, emoji }) => {
       if (!socket.user || !emoji) return;
@@ -262,6 +367,25 @@ const initSocket = (server) => {
           users: r.users.map((u) => u.toString()),
         }));
         io.to(`hachi:${roomId}`).emit('hachiMessageReaction', { roomId, messageId, reactions: reactionsOut });
+
+        // Notify the message author about the reaction (not if they reacted to their own message)
+        const msgAuthorId = msg.user.toString();
+        if (msgAuthorId !== uid) {
+          try {
+            const Notification = require('../models/Notification');
+            const notif = await Notification.create({
+              userId: msg.user,
+              type: 'message_reaction',
+              fromUser: socket.user._id,
+              circle: roomId,
+              message: emoji,
+            });
+            await notif.populate('fromUser', 'name username profilePic');
+            io.to(`user:${msgAuthorId}`).emit('notification', notif);
+          } catch (notifErr) {
+            console.error('Message reaction notification error:', notifErr.message);
+          }
+        }
       } catch (err) {
         console.error('hachiMessageReact error:', err.message);
       }
@@ -346,6 +470,24 @@ const initSocket = (server) => {
           roomId,
           pinnedMessages: room.pinnedMessages.map((p) => p.toString()),
         });
+
+        // Notify the message author that their message was pinned (not if they pinned their own)
+        if (!alreadyPinned && msg.user.toString() !== socket.user._id.toString()) {
+          try {
+            const Notification = require('../models/Notification');
+            const notif = await Notification.create({
+              userId: msg.user,
+              type: 'pin',
+              fromUser: socket.user._id,
+              circle: roomId,
+              message: room.title,
+            });
+            await notif.populate('fromUser', 'name username profilePic');
+            io.to(`user:${msg.user}`).emit('notification', notif);
+          } catch (notifErr) {
+            console.error('Pin notification error:', notifErr.message);
+          }
+        }
       } catch (err) {
         console.error('hachiPinMessage error:', err.message);
       }

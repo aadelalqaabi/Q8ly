@@ -43,7 +43,7 @@ export default function SettingsScreen({ navigation }) {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   const defaultNotifSettings = currentUser?.notificationSettings || {
-    likes: true, comments: true, follows: true, mentions: true,
+    pins: true, reactions: true, follows: true,
   };
   const allOn = Object.values(defaultNotifSettings).every(Boolean);
   const [notifSettings, setNotifSettings] = useState(defaultNotifSettings);
@@ -61,7 +61,7 @@ export default function SettingsScreen({ navigation }) {
 
   const handleNotifAllToggle = async (value) => {
     setNotifAllOn(value);
-    const next = { likes: value, comments: value, follows: value, mentions: value };
+    const next = { pins: value, reactions: value, follows: value };
     setNotifSettings(next);
     try {
       await usersAPI.updateNotificationSettings(next);
@@ -247,10 +247,9 @@ export default function SettingsScreen({ navigation }) {
           </View>
 
           {[
-            { key: 'likes',    icon: 'heart-outline',       labelKey: 'notifLikes',    subKey: 'notifLikesSub' },
-            { key: 'comments', icon: 'chatbubble-outline',  labelKey: 'notifComments', subKey: 'notifCommentsSub' },
-            { key: 'follows',  icon: 'person-add-outline',  labelKey: 'notifFollows',  subKey: 'notifFollowsSub' },
-            { key: 'mentions', icon: 'at-outline',          labelKey: 'notifMentions', subKey: 'notifMentionsSub' },
+            { key: 'pins',      icon: 'pin-outline',         labelKey: 'notifPins',      subKey: 'notifPinsSub' },
+            { key: 'reactions', icon: 'heart-outline',       labelKey: 'notifReactions', subKey: 'notifReactionsSub' },
+            { key: 'follows',   icon: 'person-add-outline',  labelKey: 'notifFollows',   subKey: 'notifFollowsSub' },
           ].map(({ key, icon, labelKey, subKey }, i, arr) => (
             <View key={key}>
               <View style={styles.divider} />

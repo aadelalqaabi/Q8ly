@@ -8,13 +8,16 @@ const reactionSchema = new mongoose.Schema({
 const messageSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   text: { type: String, maxlength: 500, trim: true },
+  image: { type: String },
+  video: { type: String },
+  videoThumbnail: { type: String },
   voiceUrl: { type: String },
   voiceDuration: { type: Number },
   reactions: [reactionSchema],
   createdAt: { type: Date, default: Date.now },
 }, { _id: true });
 
-const CATEGORIES = ['general', 'food', 'coffee', 'cars', 'girls'];
+const CATEGORIES = ['general', 'food', 'coffee', 'cars', 'girls', 'sports', 'tech', 'finance', 'travel', 'entertainment', 'gaming', 'realestate'];
 
 const hachiSchema = new mongoose.Schema({
   title: { type: String, required: true, maxlength: 80, trim: true },
@@ -38,6 +41,10 @@ const hachiSchema = new mongoose.Schema({
     skull: { type: Number, default: 0 },
   },
   pinnedMessages: [{ type: mongoose.Schema.Types.ObjectId }], // message _ids, max 3
+  lastMessage: {
+    text:      { type: String, default: '' },
+    createdAt: { type: Date },
+  },
   summary: {
     messageCount:     { type: Number, default: 0 },
     participantCount: { type: Number, default: 0 },

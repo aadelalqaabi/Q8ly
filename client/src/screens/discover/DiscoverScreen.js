@@ -1,80 +1,53 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TextInput,
-  TouchableOpacity, ActivityIndicator, RefreshControl, Keyboard, TouchableWithoutFeedback,
+  View, Text, StyleSheet, FlatList, TextInput, Dimensions,
+  TouchableOpacity, ActivityIndicator, Keyboard, TouchableWithoutFeedback,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { usersAPI, postsAPI, hachiAPI, topicsAPI } from '../../services/api';
+import { usersAPI, hachiAPI } from '../../services/api';
 import UserCard from '../../components/profile/UserCard';
-import PostCard from '../../components/post/PostCard';
 import { useTheme } from '../../context/ThemeContext';
 
+const { width: SW } = Dimensions.get('window');
+const GRID_GAP = 12;
+const GRID_PAD = 16;
+const TILE_W = (SW - GRID_PAD * 2 - GRID_GAP) / 2;
+
+const CATEGORY_KEYS = ['general', 'food', 'coffee', 'cars', 'girls', 'sports', 'tech', 'finance', 'travel', 'entertainment', 'gaming', 'realestate'];
+
 const CATEGORY_ICONS = {
-  politics: 'megaphone-outline',
-  society: 'people-outline',
-  traffic: 'car-outline',
-  jobs: 'briefcase-outline',
-  realestate: 'home-outline',
-  sports: 'football-outline',
-  events: 'calendar-outline',
-  offers: 'pricetag-outline',
-  technology: 'hardware-chip-outline',
-  health: 'medkit-outline',
+  general:       'chatbubbles-outline',
+  food:          'restaurant-outline',
+  coffee:        'cafe-outline',
+  cars:          'car-outline',
+  girls:         'sparkles-outline',
+  sports:        'trophy-outline',
+  tech:          'hardware-chip-outline',
+  finance:       'trending-up-outline',
+  travel:        'airplane-outline',
   entertainment: 'film-outline',
-  other: 'ellipsis-horizontal-outline',
+  gaming:        'game-controller-outline',
+  realestate:    'home-outline',
 };
 
-const SEARCH_TAB_KEYS = ['posts', 'accounts', 'circles'];
+const CATEGORY_COLORS = {
+  general:       '#0033A0',
+  food:          '#FF9500',
+  coffee:        '#8B5E3C',
+  cars:          '#FF3B30',
+  girls:         '#AF52DE',
+  sports:        '#34C759',
+  tech:          '#5AC8FA',
+  finance:       '#30D158',
+  travel:        '#007AFF',
+  entertainment: '#FF2D55',
+  gaming:        '#5856D6',
+  realestate:    '#A2845E',
+};
 
-// ── Trending topic row ────────────────────────────────────────────────────────
-function TrendingRow({ topic, rank, onPress }) {
-  const { t } = useTranslation();
-  const { colors: COLORS } = useTheme();
-  const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
-  const accent = topic.color || COLORS.accent;
-  const displayName = topic.nameAr || topic.name;
-  const iconName = CATEGORY_ICONS[topic.category] || 'ellipsis-horizontal-outline';
-
-  return (
-    <TouchableOpacity
-      style={styles.trendRow}
-      onPress={() => onPress(topic)}
-      activeOpacity={0.72}
-    >
-      {/* Left color bar */}
-      <View style={[styles.trendAccent, { backgroundColor: accent }]} />
-
-      {/* Rank */}
-      <Text style={[styles.trendRank, { color: accent }]}>{rank}</Text>
-
-      {/* Body */}
-      <View style={styles.trendBody}>
-        <View style={styles.trendCatRow}>
-          <Ionicons name={iconName} size={11} color={COLORS.textMuted} />
-          <Text style={styles.trendCat}>{topic.category}</Text>
-          {topic.isOfficial && (
-            <View style={[styles.officialBadge, { backgroundColor: accent + '20' }]}>
-              <Text style={[styles.officialText, { color: accent }]}>{t('badge.official')}</Text>
-            </View>
-          )}
-        </View>
-        <Text style={styles.trendName} numberOfLines={1}>{displayName}</Text>
-        {(topic.recentPosts || topic.postsCount) > 0 && (
-          <Text style={styles.trendCount}>
-            {(topic.recentPosts || topic.postsCount).toLocaleString()} {t('discover.posts')}{topic.recentPosts ? ` ${t('discover.today')}` : ''}
-          </Text>
-        )}
-      </View>
-
-      {/* Right icon */}
-      <View style={[styles.trendIconWrap, { backgroundColor: accent + '12' }]}>
-        <Ionicons name="trending-up" size={16} color={accent} />
-      </View>
-    </TouchableOpacity>
-  );
-}
+const SEARCH_TAB_KEYS = ['circles', 'people'];
 
 export default function DiscoverScreen({ navigation }) {
   const { t, i18n } = useTranslation();
@@ -85,56 +58,72 @@ export default function DiscoverScreen({ navigation }) {
   const inputRef = useRef(null);
 
   const [query, setQuery] = useState('');
-  const [tab, setTab] = useState('posts');
+  const [tab, setTab] = useState('circles');
   const [accountResults, setAccountResults] = useState([]);
-  const [postResults, setPostResults] = useState([]);
   const [circleResults, setCircleResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
 
-  // Trending state
-  const [trendingTopics, setTrendingTopics] = useState([]);
-  const [trendingLoading, setTrendingLoading] = useState(true);
+  // Category drill-down state
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [categoryRooms, setCategoryRooms] = useState([]);
+  const [categoryLoading, setCategoryLoading] = useState(false);
 
-  const loadTrending = useCallback(async () => {
-    setTrendingLoading(true);
+  // Count active circles per category (loaded once)
+  const [categoryCounts, setCategoryCounts] = useState({});
+  const [countsLoaded, setCountsLoaded] = useState(false);
+
+  const loadCategoryCounts = useCallback(async () => {
     try {
-      const topicsRes = await topicsAPI.getTrending({ limit: 15 });
-      setTrendingTopics(topicsRes.topics || []);
+      const res = await hachiAPI.getRooms();
+      const counts = {};
+      (res.rooms || []).forEach((r) => {
+        if (r.category) counts[r.category] = (counts[r.category] || 0) + 1;
+      });
+      setCategoryCounts(counts);
     } catch { /* silent */ }
-    finally { setTrendingLoading(false); }
+    finally { setCountsLoaded(true); }
   }, []);
 
-  useEffect(() => { loadTrending(); }, []);
+  useEffect(() => { loadCategoryCounts(); }, []);
 
-  // Long-press on the Discover tab icon → open keyboard and focus search
+  // Long-press on the Discover tab icon → focus search
   useEffect(() => {
     const unsub = navigation.addListener('tabLongPress', () => {
-      // Delay so tab transition finishes before keyboard opens
       setTimeout(() => inputRef.current?.focus(), 150);
     });
     return unsub;
   }, [navigation]);
 
+  const loadCategoryRooms = useCallback(async (cat) => {
+    setCategoryLoading(true);
+    try {
+      const res = await hachiAPI.getRooms(cat);
+      setCategoryRooms(res.rooms || []);
+    } catch { setCategoryRooms([]); }
+    finally { setCategoryLoading(false); }
+  }, []);
+
+  const handleCategoryPress = (cat) => {
+    setSelectedCategory(cat);
+    loadCategoryRooms(cat);
+  };
+
   const doSearch = useCallback(async (q) => {
     if (!q.trim()) {
       setAccountResults([]);
-      setPostResults([]);
       setCircleResults([]);
       return;
     }
     setIsSearching(true);
     try {
-      const [usersRes, postsRes, circlesRes] = await Promise.all([
+      const [usersRes, circlesRes] = await Promise.all([
         usersAPI.searchUsers(q.trim()),
-        postsAPI.search(q.trim()),
         hachiAPI.search(q.trim()),
       ]);
       setAccountResults(usersRes.users || []);
-      setPostResults(postsRes.posts || []);
       setCircleResults(circlesRes.rooms || []);
     } catch {
       setAccountResults([]);
-      setPostResults([]);
       setCircleResults([]);
     } finally {
       setIsSearching(false);
@@ -150,19 +139,13 @@ export default function DiscoverScreen({ navigation }) {
 
   const displayData = useMemo(() => {
     if (!isSearchMode) return [];
-    if (tab === 'posts') return postResults;
-    if (tab === 'accounts') return accountResults;
-    return circleResults;
-  }, [isSearchMode, tab, postResults, accountResults, circleResults]);
+    if (tab === 'circles') return circleResults;
+    return accountResults;
+  }, [isSearchMode, tab, circleResults, accountResults]);
 
   const countFor = (key) => {
-    if (key === 'posts') return postResults.length;
-    if (key === 'accounts') return accountResults.length;
-    return circleResults.length;
-  };
-
-  const handleTopicPress = (topic) => {
-    setQuery(topic.nameAr || topic.name);
+    if (key === 'circles') return circleResults.length;
+    return accountResults.length;
   };
 
   const renderCircleCard = (room) => (
@@ -172,12 +155,12 @@ export default function DiscoverScreen({ navigation }) {
       activeOpacity={0.75}
     >
       <View style={styles.circleIconWrap}>
-        <Ionicons name="radio-outline" size={20} color={COLORS.accent} />
+        <Ionicons name={CATEGORY_ICONS[room.category] || 'chatbubbles-outline'} size={20} color={COLORS.accent} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={styles.circleTitle} numberOfLines={1}>{room.title}</Text>
         <Text style={styles.circleMeta}>
-          {room.memberCount || 0} {t('discover.listening')} · {room.category}
+          {room.memberCount || 0} {t('discover.listening')} · {t(`hachi.cat${room.category?.charAt(0).toUpperCase()}${room.category?.slice(1)}`)}
         </Text>
       </View>
       <View style={[styles.liveChip, !room.isActive && styles.liveChipOff]}>
@@ -190,49 +173,88 @@ export default function DiscoverScreen({ navigation }) {
 
   const renderItem = ({ item }) => {
     if (tab === 'circles') return renderCircleCard(item);
-    if (tab === 'posts') return <PostCard post={item} navigation={navigation} />;
     return <UserCard user={item} navigation={navigation} />;
   };
 
-  const renderTrending = () => {
-    if (trendingLoading) {
+  // ── Category grid (default view) ────────────────────────────────────────────
+  const renderCategoryGrid = () => {
+    if (!countsLoaded) {
       return <ActivityIndicator size="small" color={COLORS.accent} style={{ marginTop: 40 }} />;
-    }
-    if (!trendingTopics.length) {
-      return (
-        <View style={styles.emptyTrend}>
-          <Ionicons name="trending-up-outline" size={40} color={COLORS.textMuted} style={{ marginBottom: 12 }} />
-          <Text style={styles.emptyTrendTitle}>{t('discover.noTrendingTitle')}</Text>
-          <Text style={styles.emptyTrendSub}>{t('discover.noTrendingSub')}</Text>
-        </View>
-      );
     }
     return (
       <FlatList
-        data={trendingTopics}
-        keyExtractor={(item) => item._id}
-        renderItem={({ item, index }) => (
-          <TrendingRow
-            topic={item}
-            rank={index + 1}
-            onPress={handleTopicPress}
-          />
-        )}
+        key="category-grid"
+        data={CATEGORY_KEYS}
+        keyExtractor={(item) => item}
+        numColumns={2}
+        columnWrapperStyle={styles.gridRow}
+        contentContainerStyle={{ padding: GRID_PAD, paddingBottom: insets.bottom + 40 }}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
-        refreshControl={
-          <RefreshControl refreshing={trendingLoading} onRefresh={loadTrending} tintColor={COLORS.accent} />
-        }
         ListHeaderComponent={
-          <View style={styles.trendHeader}>
-            <Text style={styles.trendHeaderTitle}>{t('discover.trendingTitle')}</Text>
-            <Text style={styles.trendHeaderSub}>{t('discover.trendingSub')}</Text>
+          <View style={styles.gridHeader}>
+            <Text style={styles.gridTitle}>{t('discover.categoriesTitle')}</Text>
+            <Text style={styles.gridSub}>{t('discover.categoriesSub')}</Text>
           </View>
         }
-        ItemSeparatorComponent={() => <View style={styles.trendSep} />}
+        renderItem={({ item: cat }) => {
+          const color = CATEGORY_COLORS[cat] || COLORS.accent;
+          const icon = CATEGORY_ICONS[cat] || 'chatbubbles-outline';
+          const count = categoryCounts[cat] || 0;
+          const label = t(`hachi.cat${cat.charAt(0).toUpperCase()}${cat.slice(1)}`);
+          return (
+            <TouchableOpacity
+              style={[styles.catTile, { borderColor: color + '25' }]}
+              onPress={() => handleCategoryPress(cat)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.catIconWrap, { backgroundColor: color + '15' }]}>
+                <Ionicons name={icon} size={24} color={color} />
+              </View>
+              <Text style={styles.catLabel}>{label}</Text>
+              {count > 0 && (
+                <Text style={[styles.catCount, { color }]}>
+                  {t('discover.activeCircles', { count })}
+                </Text>
+              )}
+            </TouchableOpacity>
+          );
+        }}
       />
     );
   };
+
+  // ── Category drill-down (circles in a category) ────────────────────────────
+  const renderCategoryDetail = () => (
+    <FlatList
+      data={categoryRooms}
+      keyExtractor={(item) => item._id}
+      renderItem={({ item }) => renderCircleCard(item)}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ paddingBottom: insets.bottom + 24, flexGrow: 1 }}
+      ListHeaderComponent={
+        <View style={styles.catDetailHeader}>
+          <TouchableOpacity onPress={() => setSelectedCategory(null)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={24} color={COLORS.accent} />
+          </TouchableOpacity>
+          <Ionicons name={CATEGORY_ICONS[selectedCategory] || 'chatbubbles-outline'} size={22} color={CATEGORY_COLORS[selectedCategory] || COLORS.accent} style={{ marginHorizontal: 8 }} />
+          <Text style={styles.catDetailTitle}>
+            {t(`hachi.cat${selectedCategory?.charAt(0).toUpperCase()}${selectedCategory?.slice(1)}`)}
+          </Text>
+        </View>
+      }
+      ListEmptyComponent={
+        categoryLoading ? (
+          <ActivityIndicator size="small" color={COLORS.accent} style={{ marginTop: 40 }} />
+        ) : (
+          <View style={styles.emptyCategory}>
+            <Ionicons name="chatbubbles-outline" size={36} color={COLORS.textMuted} style={{ marginBottom: 12 }} />
+            <Text style={styles.emptyCatTitle}>{t('discover.noCirclesInCategory')}</Text>
+            <Text style={styles.emptyCatSub}>{t('discover.noCirclesInCategorySub')}</Text>
+          </View>
+        )
+      }
+    />
+  );
 
   const renderEmpty = () => {
     if (isSearching) return null;
@@ -264,7 +286,10 @@ export default function DiscoverScreen({ navigation }) {
             ref={inputRef}
             style={styles.searchInput}
             value={query}
-            onChangeText={setQuery}
+            onChangeText={(text) => {
+              setQuery(text);
+              if (text.trim() && selectedCategory) setSelectedCategory(null);
+            }}
             placeholder={t('discover.searchPlaceholder')}
             placeholderTextColor={COLORS.textPlaceholder}
             returnKeyType="search"
@@ -306,7 +331,7 @@ export default function DiscoverScreen({ navigation }) {
 
       {/* Content */}
       {!isSearchMode ? (
-        renderTrending()
+        selectedCategory ? renderCategoryDetail() : renderCategoryGrid()
       ) : isSearching ? (
         <ActivityIndicator size="large" color={COLORS.accent} style={styles.loader} />
       ) : (
@@ -350,102 +375,38 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
   tabDot: { width: 24, height: 2, borderRadius: 1, backgroundColor: 'transparent' },
   tabDotActive: { backgroundColor: C.accent },
 
-  // ── Trending header ─────────────────────────────────────────────────────────
-  trendHeader: {
-    paddingHorizontal: 16,
-    paddingTop: 20,
-    paddingBottom: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: C.separator,
-  },
-  trendHeaderTitle: {
+  // ── Category grid ─────────────────────────────────────────────────────────
+  gridHeader: { marginBottom: 16 },
+  gridTitle: {
     fontSize: 22, fontWeight: '800', color: C.text,
     letterSpacing: -0.3, textAlign: isRTL ? 'right' : 'left',
   },
-  trendHeaderSub: {
+  gridSub: {
     fontSize: 13, color: C.textMuted, marginTop: 2, textAlign: isRTL ? 'right' : 'left',
   },
-
-  // ── Trending row ────────────────────────────────────────────────────────────
-  trendRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingEnd: 16,
+  gridRow: { gap: GRID_GAP, marginBottom: GRID_GAP },
+  catTile: {
+    width: TILE_W, borderRadius: 14, padding: 16,
     backgroundColor: C.white,
+    borderWidth: 1,
   },
-  trendAccent: {
-    width: 3,
-    alignSelf: 'stretch',
-    borderRadius: 2,
-    marginEnd: 12,
+  catIconWrap: {
+    width: 44, height: 44, borderRadius: 22,
+    justifyContent: 'center', alignItems: 'center', marginBottom: 10,
   },
-  trendRank: {
-    fontSize: 28,
-    fontWeight: '900',
-    width: 38,
-    textAlign: 'center',
-    letterSpacing: -1,
-    opacity: 0.85,
-  },
-  trendBody: {
-    flex: 1,
-    marginStart: 8,
-    gap: 3,
-  },
-  trendCatRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  trendCat: {
-    fontSize: 11,
-    color: C.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    fontWeight: '500',
-  },
-  officialBadge: {
-    borderRadius: 6,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    marginStart: 4,
-  },
-  officialText: {
-    fontSize: 9,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-  trendName: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: C.text,
-    letterSpacing: -0.2,
-  },
-  trendCount: {
-    fontSize: 12,
-    color: C.textMuted,
-    fontWeight: '500',
-  },
-  trendIconWrap: {
-    width: 34, height: 34, borderRadius: 17,
-    justifyContent: 'center', alignItems: 'center',
-    marginStart: 10,
-  },
-  trendSep: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: C.separator,
-    marginStart: 71,
-  },
+  catLabel: { fontSize: 15, fontWeight: '600', color: C.text, marginBottom: 2 },
+  catCount: { fontSize: 12, fontWeight: '500' },
 
-  // ── Empty trending ──────────────────────────────────────────────────────────
-  emptyTrend: {
-    alignItems: 'center',
-    paddingTop: 80,
-    paddingHorizontal: 40,
+  // ── Category detail ───────────────────────────────────────────────────────
+  catDetailHeader: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.separator,
   },
-  emptyTrendTitle: { fontSize: 18, fontWeight: '700', color: C.text, marginBottom: 6 },
-  emptyTrendSub: { fontSize: 14, color: C.textMuted },
+  catDetailTitle: { fontSize: 18, fontWeight: '700', color: C.text },
+  emptyCategory: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 40 },
+  emptyCatTitle: { fontSize: 17, fontWeight: '600', color: C.text, marginBottom: 6 },
+  emptyCatSub: { fontSize: 14, color: C.textMuted, textAlign: 'center' },
 
   // ── Circle card ─────────────────────────────────────────────────────────────
   circleCard: {

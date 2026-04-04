@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator,
+  View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Image,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,15 +21,16 @@ export default function NotificationsScreen({ navigation }) {
   const { notifications, unreadCount, isLoading } = useSelector((s) => s.notifications);
 
   const TYPE_CONFIG = {
-    like:         { icon: 'heart',               color: COLORS.accent },
-    comment:      { icon: 'chatbubble',           color: '#0033A0' },
-    reply:        { icon: 'return-up-back',       color: '#0033A0' },
-    follow:       { icon: 'person-add',           color: COLORS.secondary },
-    repost:       { icon: 'repeat',               color: '#FF9500' },
-    mention:      { icon: 'at',                   color: COLORS.accent },
-    system:       { icon: 'information-circle',   color: COLORS.textMuted },
-    kuwait_brief: { icon: 'newspaper',            color: COLORS.accent },
+    pin:              { icon: 'pin',        color: '#FF9500' },
+    message_reaction: { icon: 'heart',      color: '#FF3B30' },
+    follow:           { icon: 'person-add', color: COLORS.accent },
   };
+
+  // Only show circles-relevant notification types
+  const filteredNotifications = useMemo(
+    () => notifications.filter((n) => TYPE_CONFIG[n.type]),
+    [notifications]
+  );
 
   useEffect(() => { dispatch(fetchNotifications()); }, []);
 
@@ -42,31 +43,52 @@ export default function NotificationsScreen({ navigation }) {
 
   const handlePress = (n) => {
     if (!n.read) dispatch(markAsRead([n._id]));
-    if (n.post) {
-      navigation.navigate('PostDetail', { postId: n.post._id || n.post });
+    if (n.type === 'pin' || n.type === 'message_reaction') {
+      const circleId = n.circle?._id || n.circle;
+      if (circleId) navigation.navigate('HachiRoom', { roomId: circleId });
     } else if (n.type === 'follow' && n.fromUser) {
       navigation.navigate('ProfileDetail', { username: n.fromUser.username });
     }
   };
 
   const renderItem = ({ item }) => {
-    const cfg = TYPE_CONFIG[item.type] || TYPE_CONFIG.system;
+    const cfg = TYPE_CONFIG[item.type];
+    if (!cfg) return null;
+
     const timeAgo = item.createdAt
       ? formatDistanceToNow(new Date(item.createdAt), { addSuffix: true, locale: getDateLocale() })
       : '';
 
+    const hasAvatar = item.fromUser?.profilePic;
+
     return (
-      <TouchableOpacity style={styles.row} onPress={() => handlePress(item)} activeOpacity={0.7}>
-        <View style={[styles.iconCircle, { backgroundColor: cfg.color }]}>
-          <Ionicons name={cfg.icon} size={20} color="#fff" />
-        </View>
+      <TouchableOpacity style={[styles.row, !item.read && styles.rowUnread]} onPress={() => handlePress(item)} activeOpacity={0.7}>
+        {/* Avatar or icon */}
+        {hasAvatar ? (
+          <View style={styles.avatarWrap}>
+            <Image source={{ uri: item.fromUser.profilePic }} style={styles.avatar} />
+            <View style={[styles.typeBadge, { backgroundColor: cfg.color }]}>
+              <Ionicons name={cfg.icon} size={10} color="#fff" />
+            </View>
+          </View>
+        ) : (
+          <View style={[styles.iconCircle, { backgroundColor: cfg.color }]}>
+            <Ionicons name={cfg.icon} size={20} color="#fff" />
+          </View>
+        )}
+
         <View style={styles.textBlock}>
           <Text style={[styles.message, !item.read && styles.messageUnread]}>
             {getMessage(item)}
           </Text>
-          {item.post?.content ? (
-            <Text style={styles.preview} numberOfLines={1}>"{item.post.content}"</Text>
-          ) : null}
+          {/* For pin notifications, show the circle name */}
+          {item.type === 'pin' && item.message && (
+            <Text style={styles.preview} numberOfLines={1}>in "{item.message}"</Text>
+          )}
+          {/* For reactions, show the emoji */}
+          {item.type === 'message_reaction' && item.message && (
+            <Text style={styles.emoji}>{item.message}</Text>
+          )}
           <Text style={styles.time}>{timeAgo}</Text>
         </View>
         {!item.read && <View style={styles.dot} />}
@@ -108,7 +130,7 @@ export default function NotificationsScreen({ navigation }) {
         <ActivityIndicator size="large" color={COLORS.accent} style={styles.loader} />
       ) : (
         <FlatList
-          data={notifications}
+          data={filteredNotifications}
           keyExtractor={(item) => item._id}
           renderItem={renderItem}
           ListEmptyComponent={renderEmpty}
@@ -138,11 +160,21 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.separator, gap: 12,
   },
-  iconCircle: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  rowUnread: { backgroundColor: C.accent + '06' },
+  avatarWrap: { width: 42, height: 42, flexShrink: 0 },
+  avatar: { width: 42, height: 42, borderRadius: 21 },
+  typeBadge: {
+    position: 'absolute', bottom: -2, right: -2,
+    width: 20, height: 20, borderRadius: 10,
+    justifyContent: 'center', alignItems: 'center',
+    borderWidth: 2, borderColor: C.white,
+  },
+  iconCircle: { width: 42, height: 42, borderRadius: 21, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
   textBlock: { flex: 1 },
-  message: { fontSize: 16, color: C.text, lineHeight: 22 },
+  message: { fontSize: 15, color: C.text, lineHeight: 21 },
   messageUnread: { fontWeight: '600' },
-  preview: { fontSize: 13, color: C.textMuted, fontStyle: 'italic', marginTop: 2 },
+  preview: { fontSize: 13, color: C.textMuted, marginTop: 2 },
+  emoji: { fontSize: 20, marginTop: 2 },
   time: { fontSize: 12, color: C.textMuted, marginTop: 3 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: C.accent, flexShrink: 0 },
   empty: { flex: 1, alignItems: 'center', paddingTop: 80, paddingHorizontal: 40 },

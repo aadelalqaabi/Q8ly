@@ -13,8 +13,9 @@ const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
   const allowed = [
-    'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-    'video/mp4', 'video/quicktime',
+    'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+    'image/heic', 'image/heif',
+    'video/mp4', 'video/quicktime', 'video/mov', 'video/x-m4v',
     'audio/m4a', 'audio/mp4', 'audio/mpeg', 'audio/aac',
     'audio/wav', 'audio/x-m4a', 'audio/x-wav',
   ];

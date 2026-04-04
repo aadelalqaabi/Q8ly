@@ -21,6 +21,8 @@ const notificationSchema = new mongoose.Schema(
         'trending_topic',
         'kuwait_brief',
         'system',
+        'pin',
+        'message_reaction',
       ],
       required: true,
     },
@@ -47,6 +49,11 @@ const notificationSchema = new mongoose.Schema(
     topic: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Topic',
+      default: null,
+    },
+    circle: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Hachi',
       default: null,
     },
     // Custom message (for system notifications)

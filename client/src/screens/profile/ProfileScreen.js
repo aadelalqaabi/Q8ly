@@ -3,17 +3,32 @@ import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   Image, ActivityIndicator, Alert, Share, Platform, Modal, RefreshControl,
 } from 'react-native';
+import { formatDistanceToNow } from 'date-fns';
+import { getDateLocale } from '../../i18n';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { usersAPI, hachiAPI } from '../../services/api';
-import PostCard from '../../components/post/PostCard';
-import BottomMenu from '../../components/ui/BottomMenu';
 import ShareProfileCard from '../../components/ui/ShareProfileCard';
 import { useTheme } from '../../context/ThemeContext';
 import { useGuestGate } from '../../context/GuestGateContext';
+
+const CATEGORY_ICONS = {
+  general:       'chatbubbles-outline',
+  food:          'restaurant-outline',
+  coffee:        'cafe-outline',
+  cars:          'car-outline',
+  girls:         'sparkles-outline',
+  sports:        'trophy-outline',
+  tech:          'hardware-chip-outline',
+  finance:       'trending-up-outline',
+  travel:        'airplane-outline',
+  entertainment: 'film-outline',
+  gaming:        'game-controller-outline',
+  realestate:    'home-outline',
+};
 
 const BADGE_COLORS = {
   government: '#0033A0',
@@ -57,7 +72,6 @@ function VerifiedBadge({ badge }) {
   );
 }
 
-
 const PALETTE = ['#0033A0', '#007A3D', '#FF6B35', '#2196F3', '#9C27B0', '#00BCD4', '#FF9800'];
 function avatarBg(name) {
   if (!name) return PALETTE[0];
@@ -71,14 +85,6 @@ function fmt(n) {
   if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
   return String(n);
 }
-
-
-const TABS = ['posts', 'bookmarks', 'circles'];
-const TAB_ICONS = {
-  posts: 'grid-outline',
-  bookmarks: 'bookmark-outline',
-  circles: 'chatbubbles-outline',
-};
 
 export default function ProfileScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
@@ -94,25 +100,33 @@ export default function ProfileScreen({ navigation, route }) {
   const isOwnProfile = username === currentUser?.username;
   const isPushed = !!route.params?.username;
 
-
   const flatListRef = useRef(null);
 
   const [profile, setProfile] = useState(isOwnProfile ? currentUser : null);
-  const [posts, setPosts] = useState([]);
-  const [bookmarks, setBookmarks] = useState([]);
   const [circles, setCircles] = useState([]);
   const [pinnedIds, setPinnedIds] = useState([]);
-  const [activeTab, setActiveTab] = useState('posts');
   const [isLoading, setIsLoading] = useState(!isOwnProfile);
-  const [postsLoading, setPostsLoading] = useState(false);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  const [circlesLoading, setCirclesLoading] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isNotifyEnabled, setIsNotifyEnabled] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
 
+  // User's circle messages (activity)
+  const [userMessages, setUserMessages] = useState([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+
+  const loadUserMessages = useCallback(async () => {
+    if (!username) return;
+    setMessagesLoading(true);
+    try {
+      const res = await hachiAPI.getUserMessages(username);
+      setUserMessages(res.messages || []);
+    } catch { /* silent */ }
+    finally { setMessagesLoading(false); }
+  }, [username]);
+
   // Followers / Following modal
-  const [listModal, setListModal] = useState(null); // 'followers' | 'following' | null
+  const [listModal, setListModal] = useState(null);
   const [listData, setListData] = useState([]);
   const [listLoading, setListLoading] = useState(false);
 
@@ -148,38 +162,18 @@ export default function ProfileScreen({ navigation, route }) {
     } catch (e) { console.error(e); }
   }, [username]);
 
-  const loadPosts = useCallback(async (p = 1) => {
-    if (p > 1) setPostsLoading(true);
-    try {
-      const res = await usersAPI.getUserPosts(username, { page: p, limit: 20 });
-      if (p === 1) setPosts(res.posts);
-      else setPosts((prev) => [...prev, ...res.posts]);
-      setHasMore(p < res.pagination.pages);
-      setPage(p);
-    } catch (e) { console.error(e); }
-    finally { setPostsLoading(false); }
-  }, [username]);
-
-  const loadBookmarks = useCallback(async () => {
-    if (!isOwnProfile) return;
-    setPostsLoading(true);
-    try {
-      const res = await usersAPI.getBookmarks({ page: 1, limit: 30 });
-      setBookmarks(res.posts || []);
-    } catch (e) { console.error(e); }
-    finally { setPostsLoading(false); }
-  }, [isOwnProfile]);
-
   const loadCircles = useCallback(async () => {
-    if (!profile?._id) return;
-    setPostsLoading(true);
+    if (!profile?._id && !isOwnProfile) return;
+    setCirclesLoading(true);
     try {
-      const res = await hachiAPI.getMyCircles();
+      // Own profile → authenticated endpoint (includes private circles).
+      // Other profile → public endpoint filtered by creator ID.
+      const res = isOwnProfile
+        ? await hachiAPI.getMyCircles()
+        : await hachiAPI.getRoomsByCreator(profile._id);
       const rooms = res.rooms || [];
-      // Pinned IDs come from the server profile
       const pinned = (profile?.pinnedCircles || currentUser?.pinnedCircles || []).map(String);
       setPinnedIds(pinned);
-      // Sort: pinned first
       rooms.sort((a, b) => {
         const ap = pinned.includes(String(a._id)) ? 0 : 1;
         const bp = pinned.includes(String(b._id)) ? 0 : 1;
@@ -187,33 +181,32 @@ export default function ProfileScreen({ navigation, route }) {
       });
       setCircles(rooms);
     } catch (e) { console.error(e); }
-    finally { setPostsLoading(false); }
-  }, [profile?._id, profile?.pinnedCircles, currentUser?.pinnedCircles]);
+    finally { setCirclesLoading(false); }
+  }, [profile?._id, profile?.pinnedCircles, currentUser?.pinnedCircles, isOwnProfile]);
 
   useEffect(() => {
     const init = async () => {
       if (!isOwnProfile) setIsLoading(true);
-      await Promise.all([loadProfile(), loadPosts(1)]);
+      await loadProfile();
       setIsLoading(false);
     };
     init();
     navigation.setOptions({ headerShown: false });
   }, [username]);
 
+  // Load circles and user messages once profile is ready
+  useEffect(() => {
+    if (profile?._id || isOwnProfile) {
+      loadCircles();
+      loadUserMessages();
+    }
+  }, [profile?._id]);
+
   useEffect(() => {
     return navigation.addListener('tabPress', () => {
       flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
     });
   }, [navigation]);
-
-  useEffect(() => {
-    if (activeTab === 'bookmarks' && isOwnProfile && bookmarks.length === 0) {
-      loadBookmarks();
-    }
-    if (activeTab === 'circles' && circles.length === 0) {
-      loadCircles();
-    }
-  }, [activeTab]);
 
   const [refreshing, setRefreshing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
@@ -292,6 +285,24 @@ export default function ProfileScreen({ navigation, route }) {
     );
   };
 
+  const handleTogglePin = useCallback(async (roomId) => {
+    const isPinned = pinnedIds.includes(String(roomId));
+    if (!isPinned && pinnedIds.length >= 3) {
+      Alert.alert(t('profile.pinLimitTitle'), t('profile.pinLimitMsg'));
+      return;
+    }
+    try {
+      if (isPinned) {
+        await hachiAPI.unpinRoom(roomId);
+        setPinnedIds(prev => prev.filter(id => id !== String(roomId)));
+      } else {
+        await hachiAPI.pinRoom(roomId);
+        setPinnedIds(prev => [...prev, String(roomId)]);
+      }
+    } catch { /* silent */ }
+  }, [pinnedIds]);
+
+  // ── Header ──────────────────────────────────────────────────────────────────
   const renderHeader = () => (
     <View>
       {/* Avatar */}
@@ -315,8 +326,8 @@ export default function ProfileScreen({ navigation, route }) {
       {/* Stats */}
       <View style={styles.statsRow}>
         <View style={styles.stat}>
-          <Text style={styles.statNum}>{fmt(profile?.postsCount)}</Text>
-          <Text style={styles.statLabel}>{t('profile.posts')}</Text>
+          <Text style={styles.statNum}>{fmt(circles.length)}</Text>
+          <Text style={styles.statLabel}>{t('profile.circles')}</Text>
         </View>
         <View style={styles.statDot} />
         <TouchableOpacity
@@ -359,7 +370,6 @@ export default function ProfileScreen({ navigation, route }) {
                 </TouchableOpacity>
               )
             )}
-            {/* DM button hidden — future feature */}
             {!isBlocked && (
               <TouchableOpacity style={styles.notifyBtn} onPress={handleToggleNotify} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} activeOpacity={0.7}>
                 <Ionicons
@@ -373,44 +383,23 @@ export default function ProfileScreen({ navigation, route }) {
         )}
       </View>
 
-      {/* Tabs */}
-      <View style={styles.tabs}>
-        {TABS.filter((tab) => (tab === 'posts') || isOwnProfile).map((tab) => (
-          <TouchableOpacity key={tab} style={[styles.tab, activeTab === tab && styles.tabActive]} onPress={() => setActiveTab(tab)} activeOpacity={0.7}>
-            <Ionicons
-              name={TAB_ICONS[tab]}
-              size={20}
-              color={activeTab === tab ? COLORS.accent : COLORS.textMuted}
-            />
-          </TouchableOpacity>
-        ))}
-      </View>
+      {/* Circles section header */}
+      {circles.length > 0 && (
+        <View style={styles.sectionHeader}>
+          <Ionicons name="chatbubbles-outline" size={15} color={COLORS.textMuted} />
+          <Text style={styles.sectionLabel}>{t('profile.circles')}</Text>
+        </View>
+      )}
     </View>
   );
 
-  const feedData = activeTab === 'circles' ? circles : activeTab === 'bookmarks' ? bookmarks : posts;
-
-  const handleTogglePin = useCallback(async (roomId) => {
-    const isPinned = pinnedIds.includes(String(roomId));
-    if (!isPinned && pinnedIds.length >= 3) {
-      Alert.alert(t('profile.pinLimitTitle'), t('profile.pinLimitMsg'));
-      return;
-    }
-    try {
-      if (isPinned) {
-        await hachiAPI.unpinRoom(roomId);
-        setPinnedIds(prev => prev.filter(id => id !== String(roomId)));
-      } else {
-        await hachiAPI.pinRoom(roomId);
-        setPinnedIds(prev => [...prev, String(roomId)]);
-      }
-    } catch { /* silent */ }
-  }, [pinnedIds]);
-
+  // ── Circle row ──────────────────────────────────────────────────────────────
   const renderCircleItem = useCallback(({ item: room }) => {
     const isPinned = pinnedIds.includes(String(room._id));
+    const catIcon = CATEGORY_ICONS[room.category] || 'chatbubbles-outline';
+    const isActive = room.isActive !== false;
 
-    const renderRightActions = () => (
+    const renderRightActions = isOwnProfile ? () => (
       <View style={styles.swipeActions}>
         <TouchableOpacity
           style={[styles.swipeAction, { backgroundColor: COLORS.accent }]}
@@ -449,32 +438,43 @@ export default function ProfileScreen({ navigation, route }) {
           <Text style={styles.swipeActionText}>{t('common.delete')}</Text>
         </TouchableOpacity>
       </View>
-    );
+    ) : undefined;
 
-    return (
-      <Swipeable renderRightActions={renderRightActions} overshootRight={false}>
-        <TouchableOpacity
-          style={styles.circleRow}
-          onPress={() => navigation.navigate('HachiRoom', { roomId: room._id })}
-          activeOpacity={0.7}
-        >
-          <View style={[styles.circleDot, { backgroundColor: COLORS.accent }]} />
-          <View style={styles.circleInfo}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-              {isPinned && <Ionicons name="pin" size={11} color={COLORS.accent} />}
-              <Text style={styles.circleTitle} numberOfLines={1}>{room.title}</Text>
-            </View>
-            <Text style={styles.circleMeta}>{room.memberCount || 1} {t('profile.membersLabel')} · {room.category}</Text>
+    const row = (
+      <TouchableOpacity
+        style={styles.circleRow}
+        onPress={() => navigation.navigate('HachiRoom', { roomId: room._id })}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.circleIconWrap, !isActive && { opacity: 0.4 }]}>
+          <Ionicons name={catIcon} size={20} color={COLORS.accent} />
+        </View>
+        <View style={styles.circleInfo}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+            {isPinned && <Ionicons name="pin" size={11} color={COLORS.accent} />}
+            <Text style={[styles.circleTitle, !isActive && { color: COLORS.textMuted }]} numberOfLines={1}>{room.title}</Text>
           </View>
-          <Text style={styles.circleMeta}>{room.memberCount || 1} {t('profile.membersLabel')}</Text>
-        </TouchableOpacity>
-      </Swipeable>
+          <Text style={styles.circleMeta}>
+            {room.memberCount || 1} {t('profile.membersLabel')} · {t(`hachi.cat${room.category?.charAt(0).toUpperCase()}${room.category?.slice(1)}`)}
+          </Text>
+        </View>
+        <View style={[styles.statusChip, isActive ? styles.statusLive : styles.statusEnded]}>
+          <Text style={[styles.statusText, isActive ? styles.statusLiveText : styles.statusEndedText]}>
+            {isActive ? t('hachi.liveBadge') : t('hachi.endedBadge')}
+          </Text>
+        </View>
+      </TouchableOpacity>
     );
-  }, [pinnedIds, handleTogglePin, t, COLORS, navigation]);
 
-  const renderPostItem = useCallback(({ item }) => (
-    <PostCard post={item} navigation={navigation} />
-  ), [navigation]);
+    if (isOwnProfile) {
+      return (
+        <Swipeable renderRightActions={renderRightActions} overshootRight={false}>
+          {row}
+        </Swipeable>
+      );
+    }
+    return row;
+  }, [pinnedIds, handleTogglePin, t, COLORS, navigation, isOwnProfile]);
 
   if (isLoading) {
     return (
@@ -486,14 +486,21 @@ export default function ProfileScreen({ navigation, route }) {
 
   return (
     <View style={styles.container}>
-      {/* Fixed nav bar — lives outside FlatList so it never blocks the refresh indicator */}
+      {/* Nav bar */}
       <View style={[styles.navRow, { paddingTop: insets.top + 6, backgroundColor: COLORS.white }]}>
         {isPushed ? (
           <TouchableOpacity style={styles.navBtn} onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={26} color={COLORS.text} />
           </TouchableOpacity>
         ) : (
-          <View style={styles.navBtn} />
+          <TouchableOpacity style={styles.navBtn} onPress={() => navigation.navigate('Notifications')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Ionicons name={unreadCount > 0 ? 'notifications' : 'notifications-outline'} size={24} color={COLORS.text} />
+            {unreadCount > 0 && (
+              <View style={styles.notifBadge}>
+                <Text style={styles.notifBadgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
         )}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
           <TouchableOpacity style={styles.navBtn} onPress={handleShare} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
@@ -519,38 +526,69 @@ export default function ProfileScreen({ navigation, route }) {
 
       <FlatList
         ref={flatListRef}
-        data={feedData}
+        data={circles}
         keyExtractor={(item) => item._id}
-        renderItem={activeTab === 'circles' ? renderCircleItem : renderPostItem}
+        renderItem={renderCircleItem}
         ListHeaderComponent={renderHeader}
         ListFooterComponent={
-          postsLoading
-            ? <ActivityIndicator size="small" color={COLORS.accent} style={{ padding: 20 }} />
-            : <View style={{ height: insets.bottom + 24 }} />
+          <>
+            {circlesLoading && <ActivityIndicator size="small" color={COLORS.accent} style={{ padding: 20 }} />}
+
+            {/* User's circle messages */}
+            {(userMessages.length > 0 || messagesLoading) && (
+              <View style={styles.activitySection}>
+                <View style={styles.sectionHeader}>
+                  <Ionicons name="chatbubble-ellipses-outline" size={15} color={COLORS.textMuted} />
+                  <Text style={styles.sectionLabel}>{t('profile.activity')}</Text>
+                </View>
+
+                {messagesLoading ? (
+                  <ActivityIndicator size="small" color={COLORS.accent} style={{ padding: 20 }} />
+                ) : (
+                  userMessages.map((msg) => {
+                    const timeAgo = msg.createdAt
+                      ? formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true, locale: getDateLocale() })
+                      : '';
+                    return (
+                      <TouchableOpacity
+                        key={msg._id}
+                        style={styles.activityRow}
+                        onPress={() => navigation.navigate('HachiRoom', { roomId: msg.roomId, title: msg.roomTitle })}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.activityDot} />
+                        <View style={styles.activityBody}>
+                          <Text style={styles.activityCircle} numberOfLines={1}>{msg.roomTitle}</Text>
+                          {!!msg.text && <Text style={styles.activityText} numberOfLines={2}>{msg.text}</Text>}
+                          {!!msg.image && (
+                            <Image source={{ uri: msg.image }} style={styles.activityImage} resizeMode="cover" />
+                          )}
+                          <Text style={styles.activityTime}>{timeAgo}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })
+                )}
+              </View>
+            )}
+            <View style={{ height: insets.bottom + 24 }} />
+          </>
         }
         ListEmptyComponent={
-          !postsLoading ? (
+          !circlesLoading ? (
             <View style={styles.empty}>
-              <Text style={styles.emptyText}>
-                {activeTab === 'circles' ? t('profile.noCirclesYet') : activeTab === 'bookmarks' ? t('profile.noBookmarksYet') : t('profile.noPostsYet')}
-              </Text>
+              <Ionicons name="chatbubbles-outline" size={36} color={COLORS.textMuted} style={{ marginBottom: 8 }} />
+              <Text style={styles.emptyText}>{t('profile.noCirclesYet')}</Text>
             </View>
           ) : null
         }
-        onEndReached={() => { if (!postsLoading && hasMore && activeTab === 'posts') loadPosts(page + 1); }}
-        onEndReachedThreshold={0.4}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={async () => {
               setRefreshing(true);
-              await Promise.all([
-                loadProfile(),
-                activeTab === 'posts' ? loadPosts(1)
-                  : activeTab === 'bookmarks' ? loadBookmarks()
-                  : loadCircles(),
-              ]);
+              await Promise.all([loadProfile(), loadCircles(), loadUserMessages()]);
               setRefreshing(false);
             }}
             tintColor={COLORS.accent}
@@ -568,7 +606,6 @@ export default function ProfileScreen({ navigation, route }) {
       >
         <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setListModal(null)} />
         <View style={[styles.modalSheet, { backgroundColor: COLORS.white }]}>
-          {/* Header */}
           <View style={styles.modalHeader}>
             <Text style={[styles.modalTitle, { color: COLORS.text }]}>
               {listModal === 'followers' ? t('profile.followers') : t('profile.followingPl')}
@@ -624,7 +661,6 @@ export default function ProfileScreen({ navigation, route }) {
         </View>
       </Modal>
 
-      {/* DM confirm menu removed — future feature */}
       <ShareProfileCard
         visible={shareCardVisible}
         onClose={() => setShareCardVisible(false)}
@@ -640,8 +676,8 @@ const makeStyles = (C) => StyleSheet.create({
 
   navRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 12, paddingBottom: 4 },
   navBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
-  notifBadge: { position: 'absolute', top: -4, right: -6, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: '#FF3B30', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3 },
-  notifBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '700', lineHeight: 12 },
+  notifBadge: { position: 'absolute', top: 4, right: 4, backgroundColor: '#FF3B30', borderRadius: 9, minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4 },
+  notifBadgeText: { fontSize: 10, fontWeight: '700', color: '#fff' },
 
   avatarSection: { alignItems: 'center', paddingTop: 8, paddingBottom: 16 },
   avatar: { width: 104, height: 104, borderRadius: 52, justifyContent: 'center', alignItems: 'center' },
@@ -650,8 +686,6 @@ const makeStyles = (C) => StyleSheet.create({
   identity: { alignItems: 'center', paddingHorizontal: 32, paddingBottom: 20, gap: 4 },
   name: { fontSize: 24, fontWeight: '800', color: C.text, textAlign: 'center', letterSpacing: -0.5 },
   bio: { fontSize: 14, color: C.text, lineHeight: 20, textAlign: 'center', marginTop: 6 },
-  location: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 4 },
-  locationText: { fontSize: 12, color: C.textMuted },
 
   statsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingBottom: 20, gap: 16 },
   stat: { alignItems: 'center', gap: 2, minWidth: 60 },
@@ -664,48 +698,82 @@ const makeStyles = (C) => StyleSheet.create({
   editChipText: { fontSize: 13, fontWeight: '500', color: C.textMuted },
   followRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   notifyBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center' },
-  messageBtn: { width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center', borderWidth: StyleSheet.hairlineWidth, borderColor: C.separator, backgroundColor: C.fill },
   followChip: { paddingHorizontal: 36, paddingVertical: 10, borderRadius: 22, backgroundColor: C.accent },
   followChipText: { fontSize: 15, fontWeight: '700', color: '#fff' },
   followingChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, borderColor: C.separator, backgroundColor: C.fill },
   followingChipText: { fontSize: 13, fontWeight: '500', color: C.textMuted },
 
-  tabs: { flexDirection: 'row', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.separator },
-  tab: { flex: 1, alignItems: 'center', paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  tabActive: { borderBottomColor: C.accent },
-  tabText: { fontSize: 14, fontWeight: '500', color: C.textMuted },
-  tabTextActive: { color: C.accent, fontWeight: '700' },
+  // ── Section header ────────────────────────────────────────────────────────
+  sectionHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 16, paddingVertical: 12,
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.separator,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.separator,
+  },
+  sectionLabel: { fontSize: 13, fontWeight: '600', color: C.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
 
-  postsHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 2, gap: 12 },
-  postsHeaderLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: C.separator },
-  postsHeaderText: { fontSize: 11, fontWeight: '600', color: C.textMuted, textTransform: 'uppercase', letterSpacing: 1 },
+  // ── Circle row ────────────────────────────────────────────────────────────
+  circleRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 14, gap: 12,
+    backgroundColor: C.white,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.separator,
+  },
+  circleIconWrap: {
+    width: 42, height: 42, borderRadius: 21,
+    backgroundColor: C.accent + '12',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  circleInfo: { flex: 1 },
+  circleTitle: { fontSize: 15, fontWeight: '600', color: C.text },
+  circleMeta: { fontSize: 12, color: C.textMuted, marginTop: 2 },
+  statusChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  statusLive: { backgroundColor: '#34C75920' },
+  statusEnded: { backgroundColor: C.fill },
+  statusText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.3 },
+  statusLiveText: { color: '#34C759' },
+  statusEndedText: { color: C.textMuted },
 
-  empty: { paddingTop: 48, alignItems: 'center' },
+  swipeActions: { flexDirection: 'row' },
+  swipeAction: { width: 72, justifyContent: 'center', alignItems: 'center', gap: 4 },
+  swipeActionText: { fontSize: 11, fontWeight: '600', color: '#fff' },
+
+  empty: { paddingTop: 48, alignItems: 'center', paddingHorizontal: 40 },
   emptyText: { fontSize: 15, color: C.textMuted, textAlign: 'center' },
 
+  // ── Activity (user's circle messages) ────────────────────────────────────
+  activitySection: { marginTop: 8 },
+  activityRow: {
+    flexDirection: 'row', gap: 12,
+    paddingHorizontal: 16, paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.separator,
+  },
+  activityDot: {
+    width: 8, height: 8, borderRadius: 4,
+    backgroundColor: C.accent + '40',
+    marginTop: 6, flexShrink: 0,
+  },
+  activityBody: { flex: 1 },
+  activityCircle: { fontSize: 12, fontWeight: '700', color: C.accent, marginBottom: 3 },
+  activityText: { fontSize: 15, color: C.text, lineHeight: 21 },
+  activityImage: { width: 160, height: 120, borderRadius: 12, marginTop: 6 },
+  activityTime: { fontSize: 11, color: C.textMuted, marginTop: 4 },
+
+  // ── Followers/Following modal ─────────────────────────────────────────────
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
   modalSheet: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '75%',
-    paddingBottom: 32,
+    borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    maxHeight: '75%', paddingBottom: 32,
   },
   modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: C.separator,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.separator,
   },
   modalTitle: { fontSize: 17, fontWeight: '700' },
   userRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   userRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
@@ -714,38 +782,8 @@ const makeStyles = (C) => StyleSheet.create({
   userRowName: { fontSize: 15, fontWeight: '600' },
   userRowUsername: { fontSize: 13, marginTop: 1 },
   unfollowBtn: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    marginLeft: 8,
+    borderWidth: StyleSheet.hairlineWidth, borderRadius: 18,
+    paddingHorizontal: 14, paddingVertical: 7, marginLeft: 8,
   },
   unfollowText: { fontSize: 13, fontWeight: '600' },
-
-  circleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 12,
-    backgroundColor: C.white,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: C.separator,
-  },
-  circleDot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
-  circleInfo: { flex: 1 },
-  circleTitle: { fontSize: 15, fontWeight: '600', color: C.text },
-  circleMeta: { fontSize: 12, color: C.textMuted, marginTop: 2 },
-  circleLiveBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10 },
-  circleLiveText: { fontSize: 12, fontWeight: '700', color: '#34C759' },
-  circleEndedText: { fontSize: 12, color: C.textMuted },
-
-  swipeActions: { flexDirection: 'row' },
-  swipeAction: {
-    width: 72,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 4,
-  },
-  swipeActionText: { fontSize: 11, fontWeight: '600', color: '#fff' },
 });

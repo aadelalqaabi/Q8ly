@@ -1,20 +1,27 @@
 const Hachi = require('../models/Hachi');
 
-// GET /api/hachi — list active rooms (optional ?category=food&creator=userId&tag=x)
+// GET /api/hachi — list circles (permanent forums, sorted by recent activity)
 exports.getRooms = async (req, res) => {
   try {
-    const query = { isActive: true };
+    const query = {};
     if (req.query.category && req.query.category !== 'all') {
       query.category = req.query.category;
     }
     if (req.query.creator) {
       query.creator = req.query.creator;
     }
-    const rooms = await Hachi.find(query)
+    const rawRooms = await Hachi.find(query)
       .populate('creator', 'name username profilePic')
-      .select('-messages')
-      .sort({ memberCount: -1, createdAt: -1 })
-      .limit(50);
+      .sort({ updatedAt: -1 })
+      .limit(50)
+      .lean();
+
+    // Add messageCount and strip full messages array for performance
+    const rooms = rawRooms.map((r) => {
+      const { messages, ...rest } = r;
+      return { ...rest, messageCount: (messages || []).length };
+    });
+
     res.json({ success: true, rooms });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -78,6 +85,63 @@ exports.getArchivedRooms = async (req, res) => {
       .sort({ updatedAt: -1 })
       .limit(30);
     res.json({ success: true, rooms });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// GET /api/hachi/moments — pinned messages across active rooms (for home feed)
+exports.getPinnedMoments = async (req, res) => {
+  try {
+    const rooms = await Hachi.find({
+      isActive: true,
+      'pinnedMessages.0': { $exists: true },
+    })
+      .populate('creator', 'name username profilePic')
+      .populate('messages.user', 'name username profilePic')
+      .sort({ updatedAt: -1 })
+      .limit(20);
+
+    const moments = [];
+    for (const room of rooms) {
+      for (const pinId of room.pinnedMessages) {
+        const msg = room.messages.find(
+          (m) => m._id.toString() === pinId.toString()
+        );
+        if (msg) {
+          // Count replies after this message
+          const msgIdx = room.messages.findIndex(
+            (m) => m._id.toString() === pinId.toString()
+          );
+          let replyCount = 0;
+          if (msgIdx >= 0) {
+            for (let i = msgIdx + 1; i < room.messages.length && replyCount < 50; i++) {
+              replyCount++;
+            }
+          }
+          moments.push({
+            _id: `${room._id}_${msg._id}`,
+            roomId: room._id,
+            roomTitle: room.title,
+            roomCategory: room.category,
+            memberCount: room.memberCount,
+            message: {
+              _id: msg._id,
+              text: msg.text,
+              createdAt: msg.createdAt,
+              user: msg.user,
+            },
+            replyCount,
+            pinnedAt: msg.createdAt,
+          });
+        }
+      }
+    }
+
+    // Sort by most recent pinned message
+    moments.sort((a, b) => new Date(b.pinnedAt) - new Date(a.pinnedAt));
+
+    res.json({ success: true, moments: moments.slice(0, 10) });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -259,6 +323,49 @@ exports.leaveRoom = async (req, res) => {
     room.memberCount = Math.max(1, (room.memberCount || 1) - 1);
     await room.save();
     res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// GET /api/hachi/user-messages/:userId — a user's messages across circles (for profile)
+exports.getUserMessages = async (req, res) => {
+  try {
+    const User = require('../models/User');
+    const user = await User.findOne({ username: req.params.username }).select('_id');
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const userId = user._id;
+    const rooms = await Hachi.find({ 'messages.user': userId })
+      .populate('creator', 'name username profilePic')
+      .sort({ updatedAt: -1 })
+      .limit(30)
+      .lean();
+
+    const messages = [];
+    for (const room of rooms) {
+      const userMsgs = (room.messages || [])
+        .filter((m) => m.user?.toString() === userId.toString() && (m.text || m.image || m.video))
+        .slice(-10); // last 10 from each room
+      for (const msg of userMsgs) {
+        messages.push({
+          _id: msg._id,
+          text: msg.text,
+          image: msg.image,
+          video: msg.video,
+          videoThumbnail: msg.videoThumbnail,
+          createdAt: msg.createdAt,
+          roomId: room._id,
+          roomTitle: room.title,
+          roomCategory: room.category,
+          isActive: room.isActive,
+        });
+      }
+    }
+
+    // Sort by most recent first, limit to 30
+    messages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    res.json({ success: true, messages: messages.slice(0, 30) });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

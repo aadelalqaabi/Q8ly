@@ -23,21 +23,16 @@ import PhoneScreen from '../screens/auth/PhoneScreen';
 import OtpScreen from '../screens/auth/OtpScreen';
 import NameScreen from '../screens/auth/NameScreen';
 import TermsScreen from '../screens/auth/TermsScreen';
-import HomeScreen from '../screens/home/HomeScreen';
 import DiscoverScreen from '../screens/discover/DiscoverScreen';
 import NotificationsScreen from '../screens/notifications/NotificationsScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import EditProfileScreen from '../screens/profile/EditProfileScreen';
 import PostDetailScreen from '../screens/post/PostDetailScreen';
-import CreatePostScreen from '../screens/post/CreatePostScreen';
 import HachiScreen from '../screens/hachi/HachiScreen';
 import HachiRoomScreen from '../screens/hachi/HachiRoomScreen';
 import SettingsScreen from '../screens/settings/SettingsScreen';
 import DeveloperAccountsScreen from '../screens/dev/DeveloperAccountsScreen';
 import MediaViewerScreen from '../screens/media/MediaViewerScreen';
-// DMs disabled — kept for future feature
-// import DMListScreen from '../screens/dm/DMListScreen';
-// import DMConversationScreen from '../screens/dm/DMConversationScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -72,15 +67,6 @@ function MainTabs() {
     >
       <Tab.Screen
         name="Home"
-        component={HomeScreen}
-        options={{
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'flame' : 'flame-outline'} size={29} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Hachi"
         component={HachiScreen}
         options={{
           tabBarIcon: ({ color, focused }) => (
@@ -97,7 +83,6 @@ function MainTabs() {
           ),
         }}
       />
-      {/* DMs tab hidden — future feature */}
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
@@ -151,7 +136,6 @@ function AppStack() {
     >
       <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
       <Stack.Screen name="PostDetail" component={PostDetailScreen} options={{ title: '' }} />
-      <Stack.Screen name="CreatePost" component={CreatePostScreen} options={{ headerShown: false, presentation: 'modal' }} />
       <Stack.Screen name="ProfileDetail" component={ProfileScreen} options={{ headerShown: false }} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ headerShown: false }} />
       <Stack.Screen name="HachiRoom" component={HachiRoomScreen} options={{ title: '', headerShadowVisible: false }} />
@@ -160,7 +144,6 @@ function AppStack() {
       <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false }} />
       <Stack.Screen name="DeveloperAccounts" component={DeveloperAccountsScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Terms" component={TermsScreen} options={{ headerShown: false, presentation: 'modal' }} />
-      {/* DMConversation hidden — future feature */}
       <Stack.Screen
         name="MediaViewer"
         component={MediaViewerScreen}

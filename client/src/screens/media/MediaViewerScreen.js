@@ -18,13 +18,14 @@ import {
   GestureHandlerRootView,
   GestureDetector,
   Gesture,
+  NativeViewGestureHandler,
 } from 'react-native-gesture-handler';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 const MAX_SCALE = 5;
 
 // ── Zoomable image ─────────────────────────────────────────────────────────────
-function ZoomableImage({ uri, onZoomChange, isZoomedShared, dismissGestureRef }) {
+function ZoomableImage({ uri, onZoomChange, isZoomedShared, dismissGestureRef, flatListRef }) {
   const [imgH, setImgH] = useState(SW * 0.75);
 
   const scale      = useSharedValue(1);
@@ -67,7 +68,7 @@ function ZoomableImage({ uri, onZoomChange, isZoomedShared, dismissGestureRef })
   const panGesture = Gesture.Pan()
     .minPointers(1)
     .maxPointers(1)
-    .simultaneousWithExternalGesture(dismissGestureRef)
+    .simultaneousWithExternalGesture(dismissGestureRef, flatListRef)
     .onUpdate((e) => {
       if (!isZoomedShared.value) return;
       translateX.value = savedX.value + e.translationX;
@@ -150,6 +151,7 @@ export default function MediaViewerScreen({ navigation, route }) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [isZoomed, setIsZoomed] = useState(false);
   const listRef = useRef(null);
+  const flatListGestureRef = useRef(null);
 
   // Shared value for zoom state — readable from UI-thread worklets
   const isZoomedShared = useSharedValue(false);
@@ -212,6 +214,7 @@ export default function MediaViewerScreen({ navigation, route }) {
           onZoomChange={handleZoomChange}
           isZoomedShared={isZoomedShared}
           dismissGestureRef={dismissGestureRef}
+          flatListRef={flatListGestureRef}
         />
       </View>
     );
@@ -224,20 +227,22 @@ export default function MediaViewerScreen({ navigation, route }) {
 
       <GestureDetector gesture={dismissGesture}>
         <Animated.View style={[styles.slider, sliderStyle]}>
-          <FlatList
-            ref={listRef}
-            data={media}
-            keyExtractor={(_, i) => String(i)}
-            renderItem={renderItem}
-            horizontal
-            pagingEnabled
-            scrollEnabled={!isZoomed}
-            showsHorizontalScrollIndicator={false}
-            initialScrollIndex={initialIndex}
-            getItemLayout={(_, index) => ({ length: SW, offset: SW * index, index })}
-            viewabilityConfig={viewabilityConfig.current}
-            onViewableItemsChanged={onViewableItemsChanged}
-          />
+          <NativeViewGestureHandler ref={flatListGestureRef}>
+            <FlatList
+              ref={listRef}
+              data={media}
+              keyExtractor={(_, i) => String(i)}
+              renderItem={renderItem}
+              horizontal
+              pagingEnabled
+              scrollEnabled={!isZoomed}
+              showsHorizontalScrollIndicator={false}
+              initialScrollIndex={initialIndex}
+              getItemLayout={(_, index) => ({ length: SW, offset: SW * index, index })}
+              viewabilityConfig={viewabilityConfig.current}
+              onViewableItemsChanged={onViewableItemsChanged}
+            />
+          </NativeViewGestureHandler>
         </Animated.View>
       </GestureDetector>
 

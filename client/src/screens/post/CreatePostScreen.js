@@ -121,7 +121,7 @@ export default function CreatePostScreen({ navigation }) {
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All, // photo + video
+      mediaTypes: ['images', 'videos'],
       quality: 0.85,
       videoMaxDuration: 60,
       allowsEditing: false,
