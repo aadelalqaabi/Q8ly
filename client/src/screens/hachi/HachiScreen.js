@@ -289,45 +289,16 @@ export default function HachiScreen({ navigation }) {
   const goToRoom = (room) =>
     guestGate(() => navigation.navigate('HachiRoom', { roomId: room._id, title: room.title }));
 
-  // FlatList header: escaped moments + most active circles
+  // FlatList header: most active circles
   const ListHeader = useMemo(() => {
-    const hasMoments = moments?.length > 0;
     const hasHot = hotRooms.length > 0;
-    if (!hasMoments && !hasHot) return null;
+    if (!hasHot) return null;
     return (
       <View>
-        {/* Escaped pinned moments */}
-        {hasMoments && (
-          <>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>{t('hachi.moments')}</Text>
-            </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.hotScroll}
-              decelerationRate="fast"
-              snapToInterval={HOT_CARD_W + 12}
-              snapToAlignment="start"
-            >
-              {moments.map((m) => (
-                <MomentCard
-                  key={m._id}
-                  moment={m}
-                  onPress={() => guestGate(() => navigation.navigate('HachiRoom', { roomId: m.roomId, title: m.roomTitle }))}
-                  styles={styles}
-                  C={C}
-                  t={t}
-                />
-              ))}
-            </ScrollView>
-          </>
-        )}
-
         {/* Hot circles */}
         {hasHot && (
           <>
-            <View style={[styles.sectionHeader, hasMoments && { marginTop: 8 }]}>
+            <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>{t('hachi.mostActive')}</Text>
             </View>
             <ScrollView
@@ -360,7 +331,7 @@ export default function HachiScreen({ navigation }) {
         )}
       </View>
     );
-  }, [moments, hotRooms, rooms.length, styles, C]);
+  }, [hotRooms, rooms.length, styles, C]);
 
   const renderEmpty = () => (
     <View style={styles.empty}>
