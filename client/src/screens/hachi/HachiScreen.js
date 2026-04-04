@@ -82,12 +82,12 @@ function HotCard({ room, onPress, styles, C, t, isRTL }) {
       </View>
 
       {/* Title */}
-      <Text style={styles.hotTitle} numberOfLines={2}>{room.title}</Text>
+      <Text style={[styles.hotTitle, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={2}>{room.title}</Text>
 
       {/* Last message preview or creator */}
-      <View style={styles.hotPreviewRow}>
+      <View style={[styles.hotPreviewRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
         {room.lastMessage?.text ? (
-          <Text style={styles.hotPreview} numberOfLines={1}>{room.lastMessage.text}</Text>
+          <Text style={[styles.hotPreview, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={1}>{room.lastMessage.text}</Text>
         ) : (
           <>
             <Text style={styles.hotPreviewName} numberOfLines={1}>{room.creator?.name || ''}</Text>
@@ -98,7 +98,7 @@ function HotCard({ room, onPress, styles, C, t, isRTL }) {
       </View>
 
       {/* Stats row */}
-      <View style={styles.hotStats}>
+      <View style={[styles.hotStats, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
         <View style={styles.hotStatItem}>
           <Ionicons name="chatbubble" size={10} color={C.textMuted} />
           <Text style={styles.hotStatText}>{msgCount}</Text>
