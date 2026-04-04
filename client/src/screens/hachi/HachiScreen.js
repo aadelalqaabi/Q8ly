@@ -574,6 +574,7 @@ const makeStyles = (C, isDark, isRTL = false) => StyleSheet.create({
   // Category tabs
   tabsScroll: {
     flexGrow: 0,
+    flexShrink: 0,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: C.separator,
   },
