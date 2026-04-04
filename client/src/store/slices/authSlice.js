@@ -38,9 +38,9 @@ export const sendOtp = createAsyncThunk('auth/sendOtp', async (phone, { rejectWi
   }
 });
 
-export const verifyOtp = createAsyncThunk('auth/verifyOtp', async ({ phone, code, name }, { rejectWithValue }) => {
+export const verifyOtp = createAsyncThunk('auth/verifyOtp', async ({ phone, code, name, referralCode }, { rejectWithValue }) => {
   try {
-    const response = await authAPI.verifyOtp(phone, code, name);
+    const response = await authAPI.verifyOtp(phone, code, name, referralCode);
     await AsyncStorage.setItem('token', response.token);
     await AsyncStorage.setItem('user', JSON.stringify(response.user));
     // Save into multi-account store
@@ -90,6 +90,22 @@ export const restoreSession = createAsyncThunk('auth/restoreSession', async (_, 
 export const logout = createAsyncThunk('auth/logout', async () => {
   await AsyncStorage.multiRemove(['token', 'user']);
   disconnectSocket();
+});
+
+export const claimDailyBonus = createAsyncThunk('auth/claimDailyBonus', async (_, { rejectWithValue }) => {
+  try {
+    return await authAPI.dailyBonus();
+  } catch (error) {
+    return rejectWithValue(error.message);
+  }
+});
+
+export const redeemReferral = createAsyncThunk('auth/redeemReferral', async (code, { rejectWithValue }) => {
+  try {
+    return await authAPI.redeemReferral(code);
+  } catch (error) {
+    return rejectWithValue(error.message);
+  }
 });
 
 export const switchToAccount = createAsyncThunk('auth/switchToAccount', async ({ token, user }) => {
@@ -245,6 +261,20 @@ const authSlice = createSlice({
         if (action.payload.user?.name) state.needsName = false;
       })
       .addCase(updateProfile.rejected, (state, action) => { state.isLoading = false; state.error = action.payload; });
+
+    // Daily bonus
+    builder.addCase(claimDailyBonus.fulfilled, (state, action) => {
+      if (state.user && !action.payload.alreadyClaimed) {
+        state.user = { ...state.user, hachiPoints: action.payload.hachiPoints };
+      }
+    });
+
+    // Redeem referral
+    builder.addCase(redeemReferral.fulfilled, (state, action) => {
+      if (state.user) {
+        state.user = { ...state.user, hachiPoints: action.payload.hachiPoints };
+      }
+    });
   },
 });
 

@@ -9,15 +9,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { formatDistanceToNow } from 'date-fns';
-import { fetchRooms, fetchMoments, createRoom, addRoomRealtime } from '../../store/slices/hachiSlice';
+import { fetchRooms, fetchMoments, fetchSubjects, createRoom, addRoomRealtime } from '../../store/slices/hachiSlice';
 import { getSocket } from '../../services/socket';
 import { getDateLocale } from '../../i18n';
 import { useTheme } from '../../context/ThemeContext';
 import { useGuestGate } from '../../context/GuestGateContext';
 
 const { width: SW } = Dimensions.get('window');
-const HOT_CARD_W   = SW * 0.72;
-const HACHI_REQUIRED = 50;
+const HOT_CARD_W    = SW * 0.72;
+const HACHI_COST    = 50; // points deducted per circle created
 
 const CATEGORY_ICONS = {
   all:           'globe-outline',
@@ -151,7 +151,7 @@ function RoomRow({ room, onPress, styles, C, t }) {
 
 function LockedOverlay({ points, styles, C }) {
   const { t } = useTranslation();
-  const pct = Math.min((points / HACHI_REQUIRED) * 100, 100);
+  const pct = Math.min((points / HACHI_COST) * 100, 100);
   const rows = [
     { icon: 'create-outline',     label: t('hachi.lockEarnPost'),     pts: '+2' },
     { icon: 'heart-outline',      label: t('hachi.lockEarnLike'),     pts: '+1' },
@@ -164,13 +164,13 @@ function LockedOverlay({ points, styles, C }) {
         <Ionicons name="lock-closed" size={28} color={C.accent} />
       </View>
       <Text style={styles.lockTitle}>{t('hachi.lockTitle')}</Text>
-      <Text style={styles.lockSub}>{t('hachi.lockDesc', { count: HACHI_REQUIRED })}</Text>
+      <Text style={styles.lockSub}>{t('hachi.lockDesc', { count: HACHI_COST })}</Text>
       <View style={styles.progressWrap}>
         <View style={styles.progressTrack}>
           <View style={[styles.progressFill, { width: `${pct}%` }]} />
         </View>
         <Text style={styles.progressLabel}>
-          {t('hachi.lockProgress', { current: points, required: HACHI_REQUIRED })}
+          {t('hachi.lockProgress', { current: points, required: HACHI_COST })}
         </Text>
       </View>
       <View style={styles.earnCard}>
@@ -224,7 +224,7 @@ export default function HachiScreen({ navigation }) {
   const insets      = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
   const isRTL       = i18n.language === 'ar';
-  const { rooms, moments, isLoading } = useSelector((s) => s.hachi);
+  const { rooms, subjects, isLoading } = useSelector((s) => s.hachi);
   const { user: currentUser } = useSelector((s) => s.auth);
   const { unreadCount } = useSelector((s) => s.notifications);
   const { colors: C, isDark } = useTheme();
@@ -234,7 +234,7 @@ export default function HachiScreen({ navigation }) {
 
   const hachiPoints = currentUser?.hachiPoints || 0;
   const hasBadge    = currentUser?.verifiedBadge && currentUser.verifiedBadge !== 'none';
-  const canCreate   = hasBadge || hachiPoints >= HACHI_REQUIRED;
+  const canCreate   = hasBadge || hachiPoints >= HACHI_COST;
 
   const CATEGORIES = CATEGORY_KEYS.map((key) => ({
     key,
@@ -250,10 +250,7 @@ export default function HachiScreen({ navigation }) {
 
   useEffect(() => {
     dispatch(fetchRooms());
-  }, []);
-
-  useEffect(() => {
-    dispatch(fetchMoments());
+    dispatch(fetchSubjects());
   }, []);
 
   useEffect(() => {
@@ -293,13 +290,44 @@ export default function HachiScreen({ navigation }) {
   const goToRoom = (room) =>
     guestGate(() => navigation.navigate('HachiRoom', { roomId: room._id, title: room.title }));
 
-  // FlatList header: most active circles
+  // FlatList header: subjects bar + most active circles
   const ListHeader = useMemo(() => {
-    const hasHot = hotRooms.length > 0;
-    if (!hasHot) return null;
+    const hasHot      = hotRooms.length > 0;
+    const hasSubjects = subjects.length > 0;
+    if (!hasHot && !hasSubjects) return null;
     return (
       <View>
-        {/* Hot circles */}
+        {/* Trending subjects bar */}
+        {hasSubjects && (
+          <View style={styles.subjectsWrap}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.subjectsScroll}
+            >
+              {subjects.map(({ category, count }) => {
+                const icon = CATEGORY_ICONS[category] || 'chatbubbles-outline';
+                const label = t(`hachi.cat${category.charAt(0).toUpperCase()}${category.slice(1)}`);
+                return (
+                  <TouchableOpacity
+                    key={category}
+                    style={styles.subjectPill}
+                    onPress={() => navigation.navigate('Discover', { subjectFilter: category })}
+                    activeOpacity={0.75}
+                  >
+                    <Ionicons name={icon} size={13} color={C.accent} />
+                    <Text style={styles.subjectLabel}>{label}</Text>
+                    <View style={styles.subjectCount}>
+                      <Text style={styles.subjectCountText}>{count}</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Most active circles */}
         {hasHot && (
           <>
             <View style={styles.sectionHeader}>
@@ -337,7 +365,7 @@ export default function HachiScreen({ navigation }) {
         )}
       </View>
     );
-  }, [hotRooms, rooms.length, styles, C]);
+  }, [hotRooms, subjects, rooms.length, styles, C]);
 
   const renderEmpty = () => (
     <View style={styles.empty}>
@@ -356,6 +384,12 @@ export default function HachiScreen({ navigation }) {
       <View style={styles.header}>
         <Text style={styles.wordmark}>{isRTL ? 'كواي' : 'KUWAI'}</Text>
         <View style={styles.headerRight}>
+          {currentUser && (
+            <View style={styles.pointsChip}>
+              <Ionicons name="star" size={12} color={C.accent} />
+              <Text style={styles.pointsChipText}>{hachiPoints}</Text>
+            </View>
+          )}
           <TouchableOpacity
             onPress={handleAddPress}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -381,7 +415,7 @@ export default function HachiScreen({ navigation }) {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom + 24 }}
           refreshing={isLoading}
-          onRefresh={() => { dispatch(fetchRooms()); dispatch(fetchMoments()); }}
+          onRefresh={() => { dispatch(fetchRooms()); dispatch(fetchSubjects()); }}
           ItemSeparatorComponent={() => <View style={styles.sep} />}
         />
       )}
@@ -419,7 +453,15 @@ export default function HachiScreen({ navigation }) {
             <TouchableOpacity onPress={() => { setShowCreate(false); setNewTitle(''); setNewCategory('general'); }}>
               <Text style={styles.modalCancel}>{t('common.cancel')}</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>{t('hachi.newHachi')}</Text>
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <Text style={styles.modalTitle}>{t('hachi.newHachi')}</Text>
+              {!hasBadge && (
+                <View style={styles.costChip}>
+                  <Ionicons name="star" size={10} color={C.accent} />
+                  <Text style={styles.costChipText}>{t('hachi.createCost', { cost: HACHI_COST })}</Text>
+                </View>
+              )}
+            </View>
             <TouchableOpacity
               onPress={handleCreate}
               disabled={!newTitle.trim() || creating}
@@ -510,8 +552,14 @@ const makeStyles = (C, isDark, isRTL = false) => StyleSheet.create({
     borderBottomColor: C.separator,
   },
   wordmark: { flex: 1, fontSize: 28, letterSpacing: -1, fontWeight: '800', color: C.text, textAlign: isRTL ? 'right' : 'left' },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   headerBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
+  pointsChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: isDark ? '#1A2A4A' : '#EEF2FA',
+    borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5,
+  },
+  pointsChipText: { fontSize: 13, fontWeight: '700', color: C.accent },
   notifBadge: {
     position: 'absolute', top: 2, end: 2,
     minWidth: 16, height: 16, borderRadius: 8,
@@ -519,6 +567,25 @@ const makeStyles = (C, isDark, isRTL = false) => StyleSheet.create({
     justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3,
   },
   notifBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800', lineHeight: 11 },
+
+  // Trending subjects bar
+  subjectsWrap: {
+    paddingTop: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: C.separator,
+  },
+  subjectsScroll: { paddingHorizontal: 16, gap: 8, paddingBottom: 12 },
+  subjectPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: isDark ? '#1A2A4A' : '#EEF2FA',
+    borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8,
+  },
+  subjectLabel: { fontSize: 13, fontWeight: '600', color: C.accent },
+  subjectCount: {
+    backgroundColor: C.accent, borderRadius: 10,
+    paddingHorizontal: 6, paddingVertical: 1, minWidth: 18, alignItems: 'center',
+  },
+  subjectCountText: { fontSize: 10, fontWeight: '800', color: '#fff' },
 
   // Section headers
   sectionHeader: {
@@ -695,6 +762,11 @@ const makeStyles = (C, isDark, isRTL = false) => StyleSheet.create({
   },
   startBtnDisabled: { opacity: 0.4 },
   startBtnText: { fontSize: 15, fontWeight: '600', color: '#fff' },
+  costChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    marginTop: 2,
+  },
+  costChipText: { fontSize: 11, color: C.accent, fontWeight: '600' },
   modalSection: { paddingHorizontal: 20, paddingTop: 22 },
   modalLabel: { fontSize: 15, fontWeight: '600', color: C.text, marginBottom: 12 },
   modalInput: {

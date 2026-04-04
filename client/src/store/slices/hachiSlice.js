@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { hachiAPI } from '../../services/api';
+import { updateUserLocally } from './authSlice';
 
 export const fetchRooms = createAsyncThunk('hachi/fetchRooms', async (category, { rejectWithValue }) => {
   try {
@@ -28,10 +29,23 @@ export const fetchArchivedRooms = createAsyncThunk('hachi/fetchArchivedRooms', a
   }
 });
 
-export const createRoom = createAsyncThunk('hachi/createRoom', async ({ title, category, isPublic }, { rejectWithValue }) => {
+export const createRoom = createAsyncThunk('hachi/createRoom', async ({ title, category, isPublic }, { dispatch, rejectWithValue }) => {
   try {
     const res = await hachiAPI.createRoom(title, category, isPublic);
+    // Sync updated hachiPoints back into auth state
+    if (typeof res.hachiPoints === 'number') {
+      dispatch(updateUserLocally({ hachiPoints: res.hachiPoints }));
+    }
     return res.room;
+  } catch (e) {
+    return rejectWithValue(e.message);
+  }
+});
+
+export const fetchSubjects = createAsyncThunk('hachi/fetchSubjects', async (_, { rejectWithValue }) => {
+  try {
+    const res = await hachiAPI.getSubjects();
+    return res.subjects;
   } catch (e) {
     return rejectWithValue(e.message);
   }
@@ -71,6 +85,7 @@ const hachiSlice = createSlice({
     archivedRooms: [],
     joinedRooms: [],
     moments: [],
+    subjects: [],           // trending subjects [{category, count}]
     momentsLoading: false,
     joinedLoading: false,
     activeRoom: null,
@@ -219,6 +234,8 @@ const hachiSlice = createSlice({
         const exists = state.rooms.some((r) => r._id === payload._id);
         if (!exists) state.rooms.unshift(payload);
       })
+
+      .addCase(fetchSubjects.fulfilled, (state, { payload }) => { state.subjects = payload; })
 
       .addCase(fetchRoom.pending, (state) => { state.roomLoading = true; })
       .addCase(fetchRoom.fulfilled, (state, { payload }) => {

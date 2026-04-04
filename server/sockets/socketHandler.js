@@ -233,7 +233,7 @@ const initSocket = (server) => {
     });
 
     // ── Send image in circle ──────────────────────────────────────
-    socket.on('hachiSendImage', async ({ roomId, imageUrl }) => {
+    socket.on('hachiSendImage', async ({ roomId, imageUrl, isLive = false }) => {
       if (!socket.user || !imageUrl) return;
       try {
         const Hachi = require('../models/Hachi');
@@ -243,7 +243,7 @@ const initSocket = (server) => {
         const uid = socket.user._id.toString();
         if (room.blockedMembers.some((b) => b.toString() === uid)) return;
 
-        const msg = { user: socket.user._id, image: imageUrl, createdAt: new Date() };
+        const msg = { user: socket.user._id, image: imageUrl, isLive: !!isLive, createdAt: new Date() };
         room.messages.push(msg);
         room.lastMessage = { text: '📷', createdAt: msg.createdAt };
 
@@ -255,7 +255,7 @@ const initSocket = (server) => {
 
         const saved = room.messages[room.messages.length - 1];
         const populated = {
-          _id: saved._id, image: saved.image, reactions: [], createdAt: saved.createdAt,
+          _id: saved._id, image: saved.image, isLive: saved.isLive, reactions: [], createdAt: saved.createdAt,
           user: { _id: socket.user._id, name: socket.user.name, username: socket.user.username, profilePic: socket.user.profilePic },
         };
         io.to(`hachi:${roomId}`).emit('hachiMessage', { roomId, message: populated });
@@ -265,7 +265,7 @@ const initSocket = (server) => {
     });
 
     // ── Send video in circle ──────────────────────────────────────
-    socket.on('hachiSendVideo', async ({ roomId, videoUrl, videoThumbnail }) => {
+    socket.on('hachiSendVideo', async ({ roomId, videoUrl, videoThumbnail, isLive = false }) => {
       if (!socket.user || !videoUrl) return;
       try {
         const Hachi = require('../models/Hachi');
@@ -275,7 +275,7 @@ const initSocket = (server) => {
         const uid = socket.user._id.toString();
         if (room.blockedMembers.some((b) => b.toString() === uid)) return;
 
-        const msg = { user: socket.user._id, video: videoUrl, videoThumbnail: videoThumbnail || '', createdAt: new Date() };
+        const msg = { user: socket.user._id, video: videoUrl, videoThumbnail: videoThumbnail || '', isLive: !!isLive, createdAt: new Date() };
         room.messages.push(msg);
         room.lastMessage = { text: '🎥', createdAt: msg.createdAt };
 
@@ -287,7 +287,7 @@ const initSocket = (server) => {
 
         const saved = room.messages[room.messages.length - 1];
         const populated = {
-          _id: saved._id, video: saved.video, videoThumbnail: saved.videoThumbnail,
+          _id: saved._id, video: saved.video, videoThumbnail: saved.videoThumbnail, isLive: saved.isLive,
           reactions: [], createdAt: saved.createdAt,
           user: { _id: socket.user._id, name: socket.user.name, username: socket.user.username, profilePic: socket.user.profilePic },
         };

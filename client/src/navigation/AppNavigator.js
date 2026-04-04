@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { restoreSession } from '../store/slices/authSlice';
+import { restoreSession, claimDailyBonus } from '../store/slices/authSlice';
 import { upsertCurrentAccount } from '../utils/accountsStore';
 import { GuestGateProvider, useGuestGate } from '../context/GuestGateContext';
 import { addNotificationRealtime } from '../store/slices/notificationsSlice';
@@ -179,6 +179,12 @@ export default function AppNavigator() {
       .then((val) => { setLangChosen(val === 'ar' || val === 'en'); })
       .catch(() => { setLangChosen(false); });
   }, []);
+
+  // Claim daily login bonus silently whenever the user is authenticated
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    dispatch(claimDailyBonus());
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (!isAuthenticated) return;

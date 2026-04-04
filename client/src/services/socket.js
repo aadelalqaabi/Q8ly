@@ -107,12 +107,12 @@ export const rejectHachiJoin = (roomId, userId) => {
   if (socket) socket.emit('hachiRejectJoin', { roomId, userId });
 };
 
-export const sendHachiImage = (roomId, imageUrl) => {
-  if (socket) socket.emit('hachiSendImage', { roomId, imageUrl });
+export const sendHachiImage = (roomId, imageUrl, isLive = false) => {
+  if (socket) socket.emit('hachiSendImage', { roomId, imageUrl, isLive });
 };
 
-export const sendHachiVideo = (roomId, videoUrl, videoThumbnail) => {
-  if (socket) socket.emit('hachiSendVideo', { roomId, videoUrl, videoThumbnail });
+export const sendHachiVideo = (roomId, videoUrl, videoThumbnail, isLive = false) => {
+  if (socket) socket.emit('hachiSendVideo', { roomId, videoUrl, videoThumbnail, isLive });
 };
 
 export default { initSocket, getSocket, disconnectSocket, joinSpaceRoom, leaveSpaceRoom, joinPostRoom, leavePostRoom, sendTyping, joinHachiRoom, leaveHachiRoom, sendHachiMessage, sendHachiVoice, sendHachiReaction, sendHachiMessageReaction, sendHachiKick, sendHachiPin, approveHachiJoin, rejectHachiJoin, sendHachiImage, sendHachiVideo };

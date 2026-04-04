@@ -50,9 +50,12 @@ export const authAPI = {
   updatePushToken: (token) => api.put('/auth/push-token', { expoPushToken: token }),
   // Phone OTP
   sendOtp: (phone) => api.post('/auth/send-otp', { phone }),
-  verifyOtp: (phone, code, name) => api.post('/auth/verify-otp', { phone, code, name }),
+  verifyOtp: (phone, code, name, referralCode) => api.post('/auth/verify-otp', { phone, code, name, referralCode }),
   // Direct login for founder dummy accounts (no OTP required)
   dummyAuth: (phone) => api.post('/auth/dummy-auth', { phone }),
+  // Point economy
+  dailyBonus: () => api.post('/auth/daily-bonus'),
+  redeemReferral: (code) => api.post('/auth/redeem-referral', { code }),
 };
 
 // ── Posts ─────────────────────────────────────────────────────────────────────
@@ -147,6 +150,7 @@ export const eventsAPI = {
 // ── Hachi ─────────────────────────────────────────────────────────────────────
 export const hachiAPI = {
   search: (q) => api.get('/hachi/search', { params: { q } }),
+  getSubjects: () => api.get('/hachi/subjects'),
   getRooms: (category) => api.get('/hachi', {
     params: { ...(category && category !== 'all' ? { category } : {}) },
   }),

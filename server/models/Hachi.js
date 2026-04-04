@@ -13,6 +13,7 @@ const messageSchema = new mongoose.Schema({
   videoThumbnail: { type: String },
   voiceUrl: { type: String },
   voiceDuration: { type: Number },
+  isLive: { type: Boolean, default: false }, // true = captured with in-app camera
   reactions: [reactionSchema],
   createdAt: { type: Date, default: Date.now },
 }, { _id: true });
@@ -50,6 +51,8 @@ const hachiSchema = new mongoose.Schema({
     participantCount: { type: Number, default: 0 },
     excerpt:          { type: String,  default: '' },
   },
+  // Set when this circle first reaches #1 in velocity ranking → creator gets bonus
+  trendingAwardedAt: { type: Date, default: null },
 }, { timestamps: true });
 
 hachiSchema.index({ isActive: 1, memberCount: -1, createdAt: -1 });

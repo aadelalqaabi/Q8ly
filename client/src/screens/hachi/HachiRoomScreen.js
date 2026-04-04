@@ -65,7 +65,7 @@ function MessageRow({ message, isMine, onLongPress, currentUserId, onReact, onUs
   const { t } = useTranslation();
   const { colors: COLORS } = useTheme();
   const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
-  const { user, text, image, video, videoThumbnail, reactions, createdAt, _uploading } = message;
+  const { user, text, image, video, videoThumbnail, isLive, reactions, createdAt, _uploading } = message;
 
   const timeStr = createdAt
     ? new Date(createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -122,7 +122,13 @@ function MessageRow({ message, isMine, onLongPress, currentUserId, onReact, onUs
           _uploading && styles.msgBubbleUploading,
         ]}>
           {image && (
-            <Image source={{ uri: image }} style={styles.msgImage} resizeMode="cover" />
+            <View>
+              <Image source={{ uri: image }} style={styles.msgImage} resizeMode="cover" />
+              <View style={[styles.mediaBadge, isLive ? styles.mediaBadgeLive : styles.mediaBadgeUploaded]}>
+                <Ionicons name={isLive ? 'radio-outline' : 'cloud-upload-outline'} size={9} color="#fff" />
+                <Text style={styles.mediaBadgeText}>{t(isLive ? 'hachi.badgeLive' : 'hachi.badgeUploaded')}</Text>
+              </View>
+            </View>
           )}
           {video && (
             <TouchableOpacity activeOpacity={0.9}>
@@ -131,6 +137,10 @@ function MessageRow({ message, isMine, onLongPress, currentUserId, onReact, onUs
                 <View style={styles.playBtn}>
                   <Ionicons name="play" size={22} color="#fff" />
                 </View>
+              </View>
+              <View style={[styles.mediaBadge, isLive ? styles.mediaBadgeLive : styles.mediaBadgeUploaded]}>
+                <Ionicons name={isLive ? 'radio-outline' : 'cloud-upload-outline'} size={9} color="#fff" />
+                <Text style={styles.mediaBadgeText}>{t(isLive ? 'hachi.badgeLive' : 'hachi.badgeUploaded')}</Text>
               </View>
             </TouchableOpacity>
           )}
@@ -388,12 +398,12 @@ export default function HachiRoomScreen({ navigation, route }) {
       if (isVideo) {
         const res = await uploadAPI.video(formData);
         dispatch(deleteMessage({ roomId, messageId: tempId }));
-        sendHachiVideo(roomId, res.url, res.thumbnail);
+        sendHachiVideo(roomId, res.url, res.thumbnail, false); // gallery = not live
       } else {
         const res = await uploadAPI.images(formData);
         const url = res.urls?.[0] || res.url;
         dispatch(deleteMessage({ roomId, messageId: tempId }));
-        sendHachiImage(roomId, url);
+        sendHachiImage(roomId, url, false); // gallery = not live
       }
     } catch (e) {
       // Remove optimistic placeholder on failure
@@ -878,6 +888,14 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
   },
   msgBubbleUploading: { opacity: 0.6 },
   msgImage: { width: 220, height: 165, borderRadius: 15, marginBottom: 0 },
+  mediaBadge: {
+    position: 'absolute', bottom: 6, start: 6,
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    borderRadius: 8, paddingHorizontal: 6, paddingVertical: 3,
+  },
+  mediaBadgeLive: { backgroundColor: 'rgba(52,199,89,0.85)' },
+  mediaBadgeUploaded: { backgroundColor: 'rgba(0,0,0,0.45)' },
+  mediaBadgeText: { fontSize: 9, fontWeight: '700', color: '#fff', letterSpacing: 0.2 },
   playOverlay: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
     justifyContent: 'center', alignItems: 'center',

@@ -206,7 +206,12 @@
     "allCircles": "كل الدوائر",
     "moments": "لحظات",
     "deleteMessage": "حذف الرسالة",
-    "deleteMessageConfirm": "هل تريد حذف هذه الرسالة؟"
+    "deleteMessageConfirm": "هل تريد حذف هذه الرسالة؟",
+    "createCost": "{{cost}} نقطة",
+    "badgeLive": "مباشر",
+    "badgeUploaded": "مرفوع",
+    "trendingBonus": "دائرتك تشتعل! +{{bonus}} نقطة",
+    "trendingSubjects": "الأكثر تداولاً"
   },
 
   "notif": {
@@ -320,7 +325,9 @@
     "nameSub": "كيف ستظهر للآخرين",
     "nameHint": "استخدم اسمك الحقيقي",
     "namePlaceholder": "اسمك الكامل",
-    "join": "انضم لـ KUWAI"
+    "join": "انضم لـ KUWAI",
+    "referralPlaceholder": "كود إحالة (اختياري)",
+    "referralHint": "عندك كود؟ أدخله لتحصل على +١٠٠ نقطة"
   },
 
   "badge": {

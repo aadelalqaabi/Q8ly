@@ -6,7 +6,7 @@ import {
 import { useDispatch, useSelector } from 'react-redux';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { updateProfile } from '../../store/slices/authSlice';
+import { updateProfile, redeemReferral } from '../../store/slices/authSlice';
 import { useTheme } from '../../context/ThemeContext';
 
 export default function NameScreen() {
@@ -17,6 +17,7 @@ export default function NameScreen() {
   const { colors: C } = useTheme();
   const { isLoading } = useSelector((s) => s.auth);
   const [name, setName] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const inputRef = useRef(null);
 
   const styles = useMemo(() => makeStyles(C, isRTL), [C, isRTL]);
@@ -26,6 +27,9 @@ export default function NameScreen() {
   const handleJoin = async () => {
     if (!isValid || isLoading) return;
     await dispatch(updateProfile({ name: name.trim() }));
+    if (referralCode.trim()) {
+      dispatch(redeemReferral(referralCode.trim())).catch(() => {/* silent — invalid code */});
+    }
   };
 
   return (
@@ -71,6 +75,29 @@ export default function NameScreen() {
           />
         </TouchableOpacity>
 
+        {/* Optional referral code */}
+        <TouchableOpacity
+          activeOpacity={1}
+          style={[styles.inputCard, { marginTop: 10 }]}
+          onPress={() => {}}
+        >
+          <TextInput
+            style={[styles.input, { fontSize: 16 }]}
+            value={referralCode}
+            onChangeText={(v) => setReferralCode(v.toUpperCase())}
+            placeholder={t('auth.referralPlaceholder')}
+            placeholderTextColor={C.textPlaceholder}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            returnKeyType="done"
+            onSubmitEditing={handleJoin}
+            maxLength={6}
+          />
+        </TouchableOpacity>
+        <Text style={[styles.referralHint, { textAlign: isRTL ? 'right' : 'left' }]}>
+          {t('auth.referralHint')}
+        </Text>
+
         <View style={{ flex: 1 }} />
 
         {/* CTA */}
@@ -112,6 +139,7 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
     paddingHorizontal: 18, height: 60, justifyContent: 'center', marginBottom: 10,
   },
   input: { fontSize: 20, fontWeight: '500', color: C.text, textAlign: isRTL ? 'right' : 'left' },
+  referralHint: { fontSize: 12, color: C.textMuted, marginTop: 6, marginBottom: 8 },
 
   btn: {
     backgroundColor: C.accent, borderRadius: 14,

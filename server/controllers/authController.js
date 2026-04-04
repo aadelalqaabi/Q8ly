@@ -4,7 +4,27 @@ const { generateToken } = require('../middleware/auth');
 const Topic = require('../models/Topic');
 const { sendOtp: sendOtpSvc, verifyOtp: verifyOtpSvc, normalizePhone } = require('../services/otpService');
 
+// ── Constants ─────────────────────────────────────────────────────────────────
+const EARLY_ADOPTER_LIMIT = 500;   // first N users get the big grant
+const EARLY_ADOPTER_GRANT = 500;
+const STANDARD_GRANT = 100;
+const DAILY_BONUS = 10;
+const REFERRAL_BONUS = 100;        // both sides
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+function generateReferralCode() {
+  return crypto.randomBytes(3).toString('hex').toUpperCase(); // 6 char e.g. "A3F9B2"
+}
+
+// Kuwait midnight: UTC+3, so Kuwait day changes at 21:00 UTC
+function kuwaitDayStart() {
+  const now = new Date();
+  // Shift to Kuwait time (+3h), floor to midnight, shift back to UTC
+  const kw = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+  kw.setUTCHours(0, 0, 0, 0);
+  return new Date(kw.getTime() - 3 * 60 * 60 * 1000);
+}
 
 async function generateUniqueUsername(name) {
   // "Ahmad Al Rashidi" → "ahmadalrashidi"
@@ -213,7 +233,7 @@ const sendOtp = async (req, res, next) => {
 // @access  Public
 const verifyOtp = async (req, res, next) => {
   try {
-    const { phone, code, name } = req.body;
+    const { phone, code, name, referralCode } = req.body;
     if (!phone || !code) {
       return res.status(400).json({ success: false, message: 'Phone and code are required' });
     }
@@ -231,23 +251,49 @@ const verifyOtp = async (req, res, next) => {
     const isNewUser = !user;
 
     if (!user) {
+      // Determine welcome grant: first 500 real users get 500, rest get 100
+      const realUserCount = await User.countDocuments({ phoneVerified: true });
+      const welcomeGrant = realUserCount < EARLY_ADOPTER_LIMIT ? EARLY_ADOPTER_GRANT : STANDARD_GRANT;
+
       // New user — name is set in the next onboarding step
       const providedName = name?.trim() || '';
       const username = providedName
         ? await generateUniqueUsername(providedName)
         : `user${Date.now().toString().slice(-5)}`;
+
+      // Generate unique referral code
+      let newReferralCode;
+      let codeConflict = true;
+      while (codeConflict) {
+        newReferralCode = generateReferralCode();
+        codeConflict = await User.exists({ referralCode: newReferralCode });
+      }
+
       user = await User.create({
         phone: normalized,
         phoneVerified: true,
         name: providedName,
         username,
+        hachiPoints: welcomeGrant,
+        referralCode: newReferralCode,
       });
+
+      // Handle referral: if a valid referral code was provided, award both parties
+      if (referralCode) {
+        const referrer = await User.findOne({ referralCode: referralCode.toUpperCase() });
+        if (referrer && referrer._id.toString() !== user._id.toString()) {
+          user.referredBy = referrer._id;
+          user.hachiPoints += REFERRAL_BONUS;
+          await user.save({ validateBeforeSave: false });
+          await User.findByIdAndUpdate(referrer._id, { $inc: { hachiPoints: REFERRAL_BONUS } });
+        }
+      }
 
       // Auto-follow default topics
       const defaultTopics = await Topic.find({ isOfficial: true }).limit(6).select('_id');
       if (defaultTopics.length > 0) {
         user.followedTopics = defaultTopics.map((t) => t._id);
-        await user.save();
+        await user.save({ validateBeforeSave: false });
         await Topic.updateMany(
           { _id: { $in: defaultTopics.map((t) => t._id) } },
           { $inc: { followersCount: 1 } }
@@ -315,4 +361,67 @@ const dummyAuth = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, getMe, updatePassword, updatePushToken, sendOtp, verifyOtp, dummyAuth };
+// @desc    Claim daily login bonus (+10 points, once per Kuwait day)
+// @route   POST /api/auth/daily-bonus
+// @access  Private
+const claimDailyBonus = async (req, res, next) => {
+  try {
+    const user = req.user;
+    const dayStart = kuwaitDayStart();
+
+    if (user.lastLoginBonusDate && user.lastLoginBonusDate >= dayStart) {
+      // Already claimed today
+      return res.json({
+        success: true,
+        alreadyClaimed: true,
+        hachiPoints: user.hachiPoints,
+      });
+    }
+
+    user.hachiPoints = (user.hachiPoints || 0) + DAILY_BONUS;
+    user.lastLoginBonusDate = new Date();
+    await user.save({ validateBeforeSave: false });
+
+    res.json({
+      success: true,
+      alreadyClaimed: false,
+      bonus: DAILY_BONUS,
+      hachiPoints: user.hachiPoints,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Redeem a referral code after signup (only once, only if not already referred)
+// @route   POST /api/auth/redeem-referral
+// @access  Private
+const redeemReferral = async (req, res, next) => {
+  try {
+    const user = req.user;
+    if (user.referredBy) {
+      return res.status(400).json({ success: false, message: 'Already redeemed a referral' });
+    }
+
+    const { code } = req.body;
+    if (!code) return res.status(400).json({ success: false, message: 'Code is required' });
+
+    const referrer = await User.findOne({ referralCode: code.toUpperCase().trim() });
+    if (!referrer) return res.status(404).json({ success: false, message: 'Invalid referral code' });
+    if (referrer._id.toString() === user._id.toString()) {
+      return res.status(400).json({ success: false, message: 'Cannot use your own code' });
+    }
+
+    user.referredBy = referrer._id;
+    user.hachiPoints = (user.hachiPoints || 0) + REFERRAL_BONUS;
+    await user.save({ validateBeforeSave: false });
+
+    await User.findByIdAndUpdate(referrer._id, { $inc: { hachiPoints: REFERRAL_BONUS } });
+
+    res.json({ success: true, bonus: REFERRAL_BONUS, hachiPoints: user.hachiPoints });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { register, login, getMe, updatePassword, updatePushToken, sendOtp, verifyOtp, dummyAuth, claimDailyBonus, redeemReferral };

@@ -1,9 +1,22 @@
 const Hachi = require('../models/Hachi');
+const User = require('../models/User');
 
-// GET /api/hachi — list circles (permanent forums, sorted by recent activity)
+// ── Velocity score ─────────────────────────────────────────────────────────────
+// Computes a real-time "hotness" score for ranking the Most Active list.
+// Weights recent messages (last 30 min) heavily over raw member count.
+function velocityScore(room, now) {
+  const windowMs = 30 * 60 * 1000; // 30 minutes
+  const cutoff = now - windowMs;
+  const recentMsgs = (room.messages || []).filter(
+    (m) => new Date(m.createdAt).getTime() > cutoff
+  ).length;
+  return recentMsgs * 3 + (room.memberCount || 1);
+}
+
+// GET /api/hachi — list circles, sorted by velocity
 exports.getRooms = async (req, res) => {
   try {
-    const query = {};
+    const query = { isActive: true };
     if (req.query.category && req.query.category !== 'all') {
       query.category = req.query.category;
     }
@@ -13,14 +26,42 @@ exports.getRooms = async (req, res) => {
     const rawRooms = await Hachi.find(query)
       .populate('creator', 'name username profilePic')
       .sort({ updatedAt: -1 })
-      .limit(50)
+      .limit(80)
       .lean();
 
-    // Add messageCount and strip full messages array for performance
+    const now = Date.now();
+
+    // Compute velocity score and messageCount for each room
     const rooms = rawRooms.map((r) => {
       const { messages, ...rest } = r;
-      return { ...rest, messageCount: (messages || []).length };
+      return {
+        ...rest,
+        messageCount: (messages || []).length,
+        velocityScore: velocityScore({ ...r, messages }, now),
+      };
     });
+
+    // Sort by velocity (highest first)
+    rooms.sort((a, b) => b.velocityScore - a.velocityScore);
+
+    // Trending refund: if the #1 room hasn't been awarded yet, give the creator a bonus
+    if (rooms.length > 0) {
+      const top = rooms[0];
+      if (!top.trendingAwardedAt && top.velocityScore >= 5) {
+        // Award async — don't block the response
+        Hachi.findByIdAndUpdate(top._id, { trendingAwardedAt: new Date() }).exec();
+        User.findByIdAndUpdate(top.creator?._id || top.creator, { $inc: { hachiPoints: 100 } }).exec();
+        // Emit a socket event so the creator's client can update points live
+        const io = req.app?.get('io');
+        if (io && top.creator?._id) {
+          io.to(`user:${top.creator._id}`).emit('hachiTrendingBonus', {
+            roomId: top._id,
+            roomTitle: top.title,
+            bonus: 100,
+          });
+        }
+      }
+    }
 
     res.json({ success: true, rooms });
   } catch (err) {
@@ -28,24 +69,29 @@ exports.getRooms = async (req, res) => {
   }
 };
 
-const HACHI_POINTS_REQUIRED = 50;
+const HACHI_POINTS_COST = 50;
 
-// POST /api/hachi — create room
+// POST /api/hachi — create room (deducts 50 points)
 exports.createRoom = async (req, res) => {
   try {
     const { title, category = 'general', isPublic = true } = req.body;
     if (!title?.trim()) return res.status(400).json({ success: false, message: 'Title is required' });
 
-    // Badged users (verified) bypass the points gate entirely
+    // Badged users (verified) bypass the points cost
     const hasBadge = req.user.verifiedBadge && req.user.verifiedBadge !== 'none';
-    // Loyalty gate: user must have at least 50 hachiPoints (skipped for badged users)
-    if (!hasBadge && (req.user.hachiPoints || 0) < HACHI_POINTS_REQUIRED) {
-      return res.status(403).json({
-        success: false,
-        message: 'ما وصلت بعد',
-        hachiPoints: req.user.hachiPoints || 0,
-        required: HACHI_POINTS_REQUIRED,
-      });
+
+    if (!hasBadge) {
+      const currentPoints = req.user.hachiPoints || 0;
+      if (currentPoints < HACHI_POINTS_COST) {
+        return res.status(403).json({
+          success: false,
+          message: 'ما وصلت بعد',
+          hachiPoints: currentPoints,
+          required: HACHI_POINTS_COST,
+        });
+      }
+      // Deduct points
+      await User.findByIdAndUpdate(req.user._id, { $inc: { hachiPoints: -HACHI_POINTS_COST } });
     }
 
     const room = await Hachi.create({
@@ -59,10 +105,28 @@ exports.createRoom = async (req, res) => {
 
     await room.populate('creator', 'name username profilePic');
 
+    // Fetch updated points to return to client
+    const updatedUser = await User.findById(req.user._id).select('hachiPoints');
+
     const io = req.app.get('io');
     io.emit('hachiNewRoom', { ...room.toObject(), messages: undefined });
 
-    res.status(201).json({ success: true, room });
+    res.status(201).json({ success: true, room, hachiPoints: updatedUser.hachiPoints });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// GET /api/hachi/subjects — top 5 active subjects (categories) by circle count
+exports.getSubjects = async (req, res) => {
+  try {
+    const counts = await Hachi.aggregate([
+      { $match: { isActive: true } },
+      { $group: { _id: '$category', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 5 },
+    ]);
+    res.json({ success: true, subjects: counts.map((c) => ({ category: c._id, count: c.count })) });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

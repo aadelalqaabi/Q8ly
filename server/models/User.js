@@ -112,8 +112,11 @@ const userSchema = new mongoose.Schema(
     // Stats
     postsCount: { type: Number, default: 0 },
     likesReceived: { type: Number, default: 0 },
-    // Hachi loyalty points (unlocks Hachi creation at 50)
+    // Hachi point economy
     hachiPoints: { type: Number, default: 0 },
+    referralCode: { type: String, unique: true, sparse: true },
+    referredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    lastLoginBonusDate: { type: Date, default: null },
     // Admin role
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
     // Account status

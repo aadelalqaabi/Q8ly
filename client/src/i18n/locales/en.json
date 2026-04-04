@@ -206,7 +206,12 @@
     "allCircles": "All Circles",
     "moments": "Moments",
     "deleteMessage": "Delete Message",
-    "deleteMessageConfirm": "Delete this message?"
+    "deleteMessageConfirm": "Delete this message?",
+    "createCost": "{{cost}} pts",
+    "badgeLive": "Live",
+    "badgeUploaded": "Uploaded",
+    "trendingBonus": "Your circle is on fire! +{{bonus}} points",
+    "trendingSubjects": "Trending"
   },
 
   "notif": {
@@ -320,7 +325,9 @@
     "nameSub": "How you'll appear to others",
     "nameHint": "Use your real name",
     "namePlaceholder": "Your full name",
-    "join": "Join KUWAI"
+    "join": "Join KUWAI",
+    "referralPlaceholder": "Referral code (optional)",
+    "referralHint": "Have a code? Enter it to earn +100 points"
   },
 
   "badge": {
