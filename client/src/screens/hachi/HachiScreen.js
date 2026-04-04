@@ -84,7 +84,7 @@ function HotCard({ room, onPress, styles, C, t }) {
       <Text style={styles.hotPreview} numberOfLines={1}>
         {room.lastMessage?.text
           ? room.lastMessage.text
-          : `${room.creator?.name || ''} · ${relTime(room.createdAt)}`}
+          : `${room.creator?.name || ''}\u200E · ${relTime(room.createdAt)}`}
       </Text>
 
       {/* Stats row */}
@@ -104,8 +104,11 @@ function RoomRow({ room, onPress, styles, C, t }) {
   const catIcon  = CATEGORY_ICONS[room.category] || 'chatbubbles-outline';
   const msgCount = room.messageCount || 0;
   const members  = room.memberCount || 1;
+  // \u200E (LTR mark) before the separator prevents the bidi algorithm from
+  // treating an Arabic creator name as the base direction and moving the date
+  // to the visual start of the string.
   const sub      = room.lastMessage?.text
-    || `${room.creator?.name || ''} · ${relTime(room.updatedAt || room.createdAt)}`;
+    || `${room.creator?.name || ''}\u200E · ${relTime(room.updatedAt || room.createdAt)}`;
 
   return (
     <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
