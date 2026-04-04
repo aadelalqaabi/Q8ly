@@ -826,7 +826,7 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
   msgRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    marginBottom: 2,
+    marginBottom: 10,
     paddingHorizontal: 12,
     gap: 8,
   },
@@ -842,13 +842,13 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
   msgHeader: {
     flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 3,
+    gap: 8,
+    marginBottom: 5,
     paddingHorizontal: 2,
   },
   msgHeaderMine: { flexDirection: 'row-reverse' },
-  msgAuthor: { fontSize: 12, fontWeight: '700', color: C.accent },
-  msgTime: { fontSize: 10, color: C.textMuted, letterSpacing: -0.1 },
+  msgAuthor: { fontSize: 13, fontWeight: '700', color: C.accent },
+  msgTime: { fontSize: 11, color: C.textMuted, letterSpacing: -0.1 },
   msgTimeMine: { color: C.textMuted },
   msgBubble: {
     backgroundColor: C.fill,
