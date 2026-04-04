@@ -50,6 +50,16 @@ function relTime(date) {
   return formatDistanceToNow(new Date(date), { addSuffix: true, locale: getDateLocale() });
 }
 
+// ── Verified badge (inline checkmark for badged circle creators) ──────────────
+function CreatorBadge({ badge }) {
+  if (!badge || badge === 'none') return null;
+  return (
+    <View style={{ width: 13, height: 13, borderRadius: 7, backgroundColor: '#0033A0', justifyContent: 'center', alignItems: 'center', marginStart: 3 }}>
+      <Ionicons name="checkmark" size={8} color="#fff" />
+    </View>
+  );
+}
+
 // ── HotCard ────────────────────────────────────────────────────────────────────
 
 function HotCard({ room, onPress, styles, C, t, isRTL }) {
@@ -91,6 +101,7 @@ function HotCard({ room, onPress, styles, C, t, isRTL }) {
         ) : (
           <>
             <Text style={styles.hotPreviewName} numberOfLines={1}>{room.creator?.name || ''}</Text>
+            <CreatorBadge badge={room.creator?.verifiedBadge} />
             <Text style={styles.hotPreviewSep}> · </Text>
             <Text style={styles.hotPreviewTime} numberOfLines={1}>{relTime(room.createdAt)}</Text>
           </>
@@ -133,6 +144,7 @@ function RoomRow({ room, onPress, styles, C, t }) {
           ) : (
             <>
               <Text style={styles.rowSubText} numberOfLines={1}>{room.creator?.name || ''}</Text>
+              <CreatorBadge badge={room.creator?.verifiedBadge} />
               <Text style={styles.rowSubMuted}> · </Text>
               <Text style={styles.rowSubMuted} numberOfLines={1}>{relTime(room.updatedAt || room.createdAt)}</Text>
             </>

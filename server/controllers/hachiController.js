@@ -1,5 +1,6 @@
 const Hachi = require('../models/Hachi');
 const User = require('../models/User');
+const { invalidateUserCache } = require('../middleware/auth');
 
 // ── Velocity score ─────────────────────────────────────────────────────────────
 // Computes a real-time "hotness" score for ranking the Most Active list.
@@ -24,7 +25,7 @@ exports.getRooms = async (req, res) => {
       query.creator = req.query.creator;
     }
     const rawRooms = await Hachi.find(query)
-      .populate('creator', 'name username profilePic')
+      .populate('creator', 'name username profilePic verifiedBadge')
       .sort({ updatedAt: -1 })
       .limit(80)
       .lean();
@@ -90,8 +91,9 @@ exports.createRoom = async (req, res) => {
           required: HACHI_POINTS_COST,
         });
       }
-      // Deduct points
+      // Deduct points and bust the auth cache so the stale balance isn't reused
       await User.findByIdAndUpdate(req.user._id, { $inc: { hachiPoints: -HACHI_POINTS_COST } });
+      invalidateUserCache(req.user._id);
     }
 
     const room = await Hachi.create({
@@ -103,7 +105,7 @@ exports.createRoom = async (req, res) => {
       memberCount: 1,
     });
 
-    await room.populate('creator', 'name username profilePic');
+    await room.populate('creator', 'name username profilePic verifiedBadge');
 
     // Fetch updated points to return to client
     const updatedUser = await User.findById(req.user._id).select('hachiPoints');
@@ -215,8 +217,8 @@ exports.getPinnedMoments = async (req, res) => {
 exports.getRoom = async (req, res) => {
   try {
     const room = await Hachi.findById(req.params.id)
-      .populate('creator', 'name username profilePic')
-      .populate('messages.user', 'name username profilePic');
+      .populate('creator', 'name username profilePic verifiedBadge')
+      .populate('messages.user', 'name username profilePic verifiedBadge');
 
     if (!room) {
       return res.status(404).json({ success: false, message: 'Room not found' });

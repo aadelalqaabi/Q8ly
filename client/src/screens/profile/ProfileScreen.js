@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  Image, ActivityIndicator, Alert, Share, Platform, Modal, RefreshControl,
+  Image, ActivityIndicator, Alert, Share, Platform, Modal, RefreshControl, Dimensions,
 } from 'react-native';
+
+const { width: SW } = Dimensions.get('window');
 import { formatDistanceToNow } from 'date-fns';
 import { getDateLocale } from '../../i18n';
-import { Swipeable } from 'react-native-gesture-handler';
 import { useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,43 +31,32 @@ const CATEGORY_ICONS = {
   realestate:    'home-outline',
 };
 
-const BADGE_COLORS = {
-  government: '#0033A0',
-  media:      '#D97706',
-  business:   '#16A34A',
-  influencer: '#7C3AED',
-  founder:    '#0033A0',
-};
-const BADGE_KEYS = {
-  government: 'badge.official',
-  media:      'badge.media',
-  business:   'badge.business',
-  influencer: 'badge.influencer',
-  founder:    'badge.founder',
-};
-
-function VerifiedBadge({ badge }) {
-  const { t } = useTranslation();
+// Unified verified badge — one design for all verified account types
+function VerifiedBadge({ badge, compact = false }) {
   if (!badge || badge === 'none') return null;
-  const color = BADGE_COLORS[badge];
-  const key = BADGE_KEYS[badge];
-  if (!color || !key) return null;
-  const isFounder = badge === 'founder';
+  if (compact) {
+    // Inline checkmark circle used next to names in circles / chat
+    return (
+      <View style={{
+        width: 15, height: 15, borderRadius: 8,
+        backgroundColor: '#0033A0',
+        justifyContent: 'center', alignItems: 'center', marginStart: 3,
+      }}>
+        <Ionicons name="checkmark" size={9} color="#fff" />
+      </View>
+    );
+  }
   return (
     <View style={{
-      backgroundColor: color,
-      borderRadius: 4,
-      paddingHorizontal: isFounder ? 6 : 5,
-      paddingVertical: 2,
-      marginTop: 6,
-      alignSelf: 'center',
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: isFounder ? 3 : 0,
+      backgroundColor: '#0033A0',
+      borderRadius: 6,
+      paddingHorizontal: 8, paddingVertical: 3,
+      marginTop: 6, alignSelf: 'center',
+      flexDirection: 'row', alignItems: 'center', gap: 4,
     }}>
-      {isFounder && <Text style={{ color: '#FFD700', fontSize: 8, lineHeight: 10 }}>★</Text>}
-      <Text style={{ color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 }}>
-        {t(key).toUpperCase()}
+      <Ionicons name="checkmark-circle" size={12} color="#fff" />
+      <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 0.6 }}>
+        KUWAI
       </Text>
     </View>
   );
@@ -325,10 +315,17 @@ export default function ProfileScreen({ navigation, route }) {
 
       {/* Stats */}
       <View style={styles.statsRow}>
-        <View style={styles.stat}>
-          <Text style={styles.statNum}>{fmt(circles.length)}</Text>
-          <Text style={styles.statLabel}>{t('profile.circles')}</Text>
-        </View>
+        {profile?.verifiedBadge && profile.verifiedBadge !== 'none' ? (
+          // Badged profile: show the KUWAI badge instead of circle count
+          <View style={styles.stat}>
+            <VerifiedBadge badge={profile.verifiedBadge} />
+          </View>
+        ) : (
+          <View style={styles.stat}>
+            <Text style={styles.statNum}>{fmt(circles.length)}</Text>
+            <Text style={styles.statLabel}>{t('profile.circles')}</Text>
+          </View>
+        )}
         <View style={styles.statDot} />
         <TouchableOpacity
           style={styles.stat}
@@ -393,87 +390,78 @@ export default function ProfileScreen({ navigation, route }) {
     </View>
   );
 
-  // ── Circle row ──────────────────────────────────────────────────────────────
+  // ── Circle card (2-column grid) ───────────────────────────────────────────────
   const renderCircleItem = useCallback(({ item: room }) => {
     const isPinned = pinnedIds.includes(String(room._id));
     const catIcon = CATEGORY_ICONS[room.category] || 'chatbubbles-outline';
     const isActive = room.isActive !== false;
 
-    const renderRightActions = isOwnProfile ? () => (
-      <View style={styles.swipeActions}>
-        <TouchableOpacity
-          style={[styles.swipeAction, { backgroundColor: COLORS.accent }]}
-          onPress={() => handleTogglePin(room._id)}
-          activeOpacity={0.85}
-        >
-          <Ionicons name={isPinned ? 'pin' : 'pin-outline'} size={20} color="#fff" />
-          <Text style={styles.swipeActionText}>{isPinned ? t('profile.unpin') : t('profile.pin')}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.swipeAction, { backgroundColor: '#FF3B30' }]}
-          onPress={() => {
-            Alert.alert(
-              t('profile.deleteCircle'),
-              t('profile.deleteCircleMsg'),
-              [
-                { text: t('common.cancel'), style: 'cancel' },
-                {
-                  text: t('common.delete'),
-                  style: 'destructive',
-                  onPress: async () => {
-                    try {
-                      await hachiAPI.deleteRoom(room._id);
-                      setCircles((prev) => prev.filter((r) => r._id !== room._id));
-                    } catch (e) {
-                      Alert.alert(t('common.error'), e.message || t('common.somethingWrong'));
-                    }
-                  },
+    const handleLongPress = isOwnProfile ? () => {
+      Alert.alert(room.title, undefined, [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: isPinned ? t('profile.unpin') : t('profile.pin'),
+          onPress: () => handleTogglePin(room._id),
+        },
+        {
+          text: t('common.delete'),
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(t('profile.deleteCircle'), t('profile.deleteCircleMsg'), [
+              { text: t('common.cancel'), style: 'cancel' },
+              {
+                text: t('common.delete'),
+                style: 'destructive',
+                onPress: async () => {
+                  try {
+                    await hachiAPI.deleteRoom(room._id);
+                    setCircles((prev) => prev.filter((r) => r._id !== room._id));
+                  } catch (e) {
+                    Alert.alert(t('common.error'), e.message || t('common.somethingWrong'));
+                  }
                 },
-              ]
-            );
-          }}
-          activeOpacity={0.85}
-        >
-          <Ionicons name="trash-outline" size={20} color="#fff" />
-          <Text style={styles.swipeActionText}>{t('common.delete')}</Text>
-        </TouchableOpacity>
-      </View>
-    ) : undefined;
+              },
+            ]);
+          },
+        },
+      ]);
+    } : undefined;
 
-    const row = (
+    return (
       <TouchableOpacity
-        style={styles.circleRow}
+        style={styles.circleCard}
         onPress={() => navigation.navigate('HachiRoom', { roomId: room._id })}
-        activeOpacity={0.7}
+        onLongPress={handleLongPress}
+        delayLongPress={400}
+        activeOpacity={0.75}
       >
-        <View style={[styles.circleIconWrap, !isActive && { opacity: 0.4 }]}>
-          <Ionicons name={catIcon} size={20} color={COLORS.accent} />
-        </View>
-        <View style={styles.circleInfo}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-            {isPinned && <Ionicons name="pin" size={11} color={COLORS.accent} />}
-            <Text style={[styles.circleTitle, !isActive && { color: COLORS.textMuted }]} numberOfLines={1}>{room.title}</Text>
+        {/* Top: category icon + pin indicator */}
+        <View style={styles.circleCardTop}>
+          <View style={[styles.circleCardIcon, { backgroundColor: isActive ? COLORS.accent + '14' : COLORS.fill }]}>
+            <Ionicons name={catIcon} size={16} color={isActive ? COLORS.accent : COLORS.textMuted} />
           </View>
-          <Text style={styles.circleMeta}>
-            {room.memberCount || 1} {t('profile.membersLabel')} · {t(`hachi.cat${room.category?.charAt(0).toUpperCase()}${room.category?.slice(1)}`)}
-          </Text>
+          {isPinned && (
+            <View style={styles.pinBadge}>
+              <Ionicons name="pin" size={10} color={COLORS.accent} />
+            </View>
+          )}
         </View>
-        <View style={[styles.statusChip, isActive ? styles.statusLive : styles.statusEnded]}>
-          <Text style={[styles.statusText, isActive ? styles.statusLiveText : styles.statusEndedText]}>
+
+        {/* Title */}
+        <Text style={styles.circleCardTitle} numberOfLines={2}>{room.title}</Text>
+
+        {/* Footer: status + member count */}
+        <View style={styles.circleCardFooter}>
+          <View style={[styles.circleCardStatusDot, { backgroundColor: isActive ? '#34C759' : COLORS.separator }]} />
+          <Text style={[styles.circleCardStatus, { color: isActive ? '#34C759' : COLORS.textMuted }]}>
             {isActive ? t('hachi.liveBadge') : t('hachi.endedBadge')}
           </Text>
+          <Text style={styles.circleCardSep}>·</Text>
+          <Ionicons name="people-outline" size={11} color={COLORS.textMuted} />
+          <Text style={styles.circleCardFooterText}>{room.memberCount || 1}</Text>
         </View>
       </TouchableOpacity>
     );
-
-    if (isOwnProfile) {
-      return (
-        <Swipeable renderRightActions={renderRightActions} overshootRight={false}>
-          {row}
-        </Swipeable>
-      );
-    }
-    return row;
   }, [pinnedIds, handleTogglePin, t, COLORS, navigation, isOwnProfile]);
 
   if (isLoading) {
@@ -529,12 +517,14 @@ export default function ProfileScreen({ navigation, route }) {
         data={circles}
         keyExtractor={(item) => item._id}
         renderItem={renderCircleItem}
+        numColumns={2}
+        columnWrapperStyle={styles.circleGrid}
         ListHeaderComponent={renderHeader}
         ListFooterComponent={
           <>
             {circlesLoading && <ActivityIndicator size="small" color={COLORS.accent} style={{ padding: 20 }} />}
 
-            {/* User's circle messages */}
+            {/* User's circle messages (activity) */}
             {(userMessages.length > 0 || messagesLoading) && (
               <View style={styles.activitySection}>
                 <View style={styles.sectionHeader}>
@@ -549,22 +539,27 @@ export default function ProfileScreen({ navigation, route }) {
                     const timeAgo = msg.createdAt
                       ? formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true, locale: getDateLocale() })
                       : '';
+                    const catIcon = CATEGORY_ICONS[msg.roomCategory] || 'chatbubbles-outline';
                     return (
                       <TouchableOpacity
                         key={msg._id}
-                        style={styles.activityRow}
+                        style={styles.activityCard}
                         onPress={() => navigation.navigate('HachiRoom', { roomId: msg.roomId, title: msg.roomTitle })}
                         activeOpacity={0.7}
                       >
-                        <View style={styles.activityDot} />
-                        <View style={styles.activityBody}>
-                          <Text style={styles.activityCircle} numberOfLines={1}>{msg.roomTitle}</Text>
-                          {!!msg.text && <Text style={styles.activityText} numberOfLines={2}>{msg.text}</Text>}
-                          {!!msg.image && (
-                            <Image source={{ uri: msg.image }} style={styles.activityImage} resizeMode="cover" />
-                          )}
+                        <View style={styles.activityCardHeader}>
+                          <View style={styles.activityIconWrap}>
+                            <Ionicons name={catIcon} size={13} color={COLORS.accent} />
+                          </View>
+                          <Text style={styles.activityCircleName} numberOfLines={1}>{msg.roomTitle}</Text>
                           <Text style={styles.activityTime}>{timeAgo}</Text>
                         </View>
+                        {!!msg.text && (
+                          <Text style={styles.activityText} numberOfLines={3}>{msg.text}</Text>
+                        )}
+                        {!!msg.image && (
+                          <Image source={{ uri: msg.image }} style={styles.activityImage} resizeMode="cover" />
+                        )}
                       </TouchableOpacity>
                     );
                   })
@@ -712,52 +707,47 @@ const makeStyles = (C, isRTL = false) => StyleSheet.create({
   },
   sectionLabel: { fontSize: 13, fontWeight: '600', color: C.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
 
-  // ── Circle row ────────────────────────────────────────────────────────────
-  circleRow: {
-    flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 14, gap: 12,
-    backgroundColor: C.white,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.separator,
+  // ── Circle grid ───────────────────────────────────────────────────────────
+  circleGrid: { paddingHorizontal: 12, gap: 8 },
+  circleCard: {
+    flex: 1,
+    backgroundColor: C.fill,
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 8,
+    minHeight: 110,
+    justifyContent: 'space-between',
   },
-  circleIconWrap: {
-    width: 42, height: 42, borderRadius: 21,
-    backgroundColor: C.accent + '12',
-    justifyContent: 'center', alignItems: 'center',
-  },
-  circleInfo: { flex: 1 },
-  circleTitle: { fontSize: 15, fontWeight: '600', color: C.text, textAlign: isRTL ? 'right' : 'left' },
-  circleMeta: { fontSize: 12, color: C.textMuted, marginTop: 2, textAlign: isRTL ? 'right' : 'left' },
-  statusChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  statusLive: { backgroundColor: '#34C75920' },
-  statusEnded: { backgroundColor: C.fill },
-  statusText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.3 },
-  statusLiveText: { color: '#34C759' },
-  statusEndedText: { color: C.textMuted },
-
-  swipeActions: { flexDirection: 'row' },
-  swipeAction: { width: 72, justifyContent: 'center', alignItems: 'center', gap: 4 },
-  swipeActionText: { fontSize: 11, fontWeight: '600', color: '#fff' },
+  circleCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  circleCardIcon: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
+  pinBadge: { width: 20, height: 20, borderRadius: 10, backgroundColor: C.accent + '14', justifyContent: 'center', alignItems: 'center' },
+  circleCardTitle: { fontSize: 13, fontWeight: '700', color: C.text, lineHeight: 18 },
+  circleCardFooter: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, flexWrap: 'wrap' },
+  circleCardStatusDot: { width: 6, height: 6, borderRadius: 3 },
+  circleCardStatus: { fontSize: 11, fontWeight: '700' },
+  circleCardSep: { fontSize: 11, color: C.textMuted },
+  circleCardFooterText: { fontSize: 11, color: C.textMuted },
 
   empty: { paddingTop: 48, alignItems: 'center', paddingHorizontal: 40 },
   emptyText: { fontSize: 15, color: C.textMuted, textAlign: 'center' },
 
   // ── Activity (user's circle messages) ────────────────────────────────────
-  activitySection: { marginTop: 8 },
-  activityRow: {
-    flexDirection: 'row', gap: 12,
-    paddingHorizontal: 16, paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.separator,
+  activitySection: { marginTop: 4, paddingBottom: 8 },
+  activityCard: {
+    marginHorizontal: 12, marginBottom: 8,
+    backgroundColor: C.fill,
+    borderRadius: 14, padding: 14,
   },
-  activityDot: {
-    width: 8, height: 8, borderRadius: 4,
-    backgroundColor: C.accent + '40',
-    marginTop: 6, flexShrink: 0,
+  activityCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
+  activityIconWrap: {
+    width: 24, height: 24, borderRadius: 12,
+    backgroundColor: C.accent + '14',
+    justifyContent: 'center', alignItems: 'center',
   },
-  activityBody: { flex: 1 },
-  activityCircle: { fontSize: 12, fontWeight: '700', color: C.accent, marginBottom: 3 },
-  activityText: { fontSize: 15, color: C.text, lineHeight: 21 },
-  activityImage: { width: 160, height: 120, borderRadius: 12, marginTop: 6 },
-  activityTime: { fontSize: 11, color: C.textMuted, marginTop: 4 },
+  activityCircleName: { flex: 1, fontSize: 12, fontWeight: '700', color: C.accent },
+  activityText: { fontSize: 14, color: C.text, lineHeight: 20 },
+  activityImage: { width: '100%', height: 160, borderRadius: 10, marginTop: 8 },
+  activityTime: { fontSize: 11, color: C.textMuted },
 
   // ── Followers/Following modal ─────────────────────────────────────────────
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },

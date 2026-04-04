@@ -25,10 +25,12 @@
     .badge-banned { background: #F8D7DA; color: #721C24; }
     .badge-active { background: #D4EDDA; color: #155724; }
     .badge-removed { background: #F8D7DA; color: #721C24; }
-    .badge-government { background: #DBEAFE; color: #1E40AF; }
-    .badge-media      { background: #FEF3C7; color: #92400E; }
-    .badge-business   { background: #D1FAE5; color: #065F46; }
-    .badge-influencer { background: #EDE9FE; color: #5B21B6; }
+    .badge-verified   { background: #0033A0; color: #fff; }
+    .badge-government { background: #0033A0; color: #fff; }
+    .badge-media      { background: #0033A0; color: #fff; }
+    .badge-business   { background: #0033A0; color: #fff; }
+    .badge-influencer { background: #0033A0; color: #fff; }
+    .badge-founder    { background: #0033A0; color: #fff; }
     .badge-none       { background: #F2F2F7; color: #6C6C70; }
     .btn { padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity .15s; border: none; }
     .btn:hover { opacity: 0.8; }
@@ -298,10 +300,12 @@ let token = localStorage.getItem('kn_admin_token');
 
 const BADGE_LABELS = {
   none:        'None',
-  government:  'Official',
-  media:       'Media',
-  business:    'Business',
-  influencer:  'Influencer',
+  verified:    'KUWAI Verified',
+  government:  'KUWAI Verified',
+  media:       'KUWAI Verified',
+  business:    'KUWAI Verified',
+  influencer:  'KUWAI Verified',
+  founder:     'KUWAI Verified',
 };
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -519,12 +523,12 @@ async function loadUsers(page = 1) {
               <td>${u.postsCount||0}</td>
               <td>${u.followersCount||0}</td>
               <td>${u.hachiPoints||0}</td>
-              <td>${u.verifiedBadge && u.verifiedBadge !== 'none' ? `<span class="badge badge-${u.verifiedBadge}">${BADGE_LABELS[u.verifiedBadge]||u.verifiedBadge} ✓</span>` : '<span style="color:#AEAEB2;font-size:13px">—</span>'}</td>
+              <td>${u.verifiedBadge && u.verifiedBadge !== 'none' ? `<span class="badge badge-verified" style="gap:4px">✓ KUWAI</span>` : '<span style="color:#AEAEB2;font-size:13px">—</span>'}</td>
               <td><span class="badge ${u.isBanned?'badge-banned':'badge-active'}">${u.isBanned?'Banned':'Active'}</span></td>
               <td style="font-size:13px;color:#6C6C70">${fmtDate(u.createdAt)}</td>
               <td>
                 <div style="display:flex;gap:6px;flex-wrap:wrap">
-                  <button class="btn btn-gray" onclick="promptVerify('${u._id}','${u.username}','${u.verifiedBadge||'none'}')">Verify</button>
+                  <button class="btn ${u.verifiedBadge && u.verifiedBadge !== 'none' ? 'btn-outline' : 'btn-gray'}" style="${u.verifiedBadge && u.verifiedBadge !== 'none' ? 'border-color:#0033A0;color:#0033A0' : ''}" onclick="promptVerify('${u._id}','${u.username}','${u.verifiedBadge||'none'}')">✓ Badge</button>
                   <button class="btn ${u.isBanned?'btn-green':'btn-gray'}" onclick="promptBan('${u._id}','${u.username}',${u.isBanned})">${u.isBanned?'Unban':'Ban'}</button>
                   <button class="btn btn-red" onclick="promptDeleteUser('${u._id}','${u.username}')">Delete</button>
                 </div>
@@ -541,29 +545,37 @@ async function loadUsers(page = 1) {
 }
 
 function promptVerify(id, username, currentBadge) {
-  const opts = Object.entries(BADGE_LABELS).map(([val, label]) => `
-    <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;border:1.5px solid ${currentBadge===val?'#0033A0':'#E5E5EA'};margin-bottom:6px;background:${currentBadge===val?'#EEF2FA':'#fff'}">
-      <input type="radio" name="badge" value="${val}" ${currentBadge===val?'checked':''} style="accent-color:#0033A0" />
-      <span style="font-size:14px;font-weight:${currentBadge===val?'700':'500'}">${label}</span>
-      ${val!=='none'?`<span class="badge badge-${val}" style="margin-left:auto">${label} ✓</span>`:''}
-    </label>`).join('');
+  const hasBadge = currentBadge && currentBadge !== 'none';
   openModal(`
-    <h3 style="font-size:17px;font-weight:700;margin-bottom:4px">Verification Badge</h3>
-    <p style="font-size:13px;color:#6C6C70;margin-bottom:16px">@${username}</p>
-    <div style="max-height:360px;overflow-y:auto">${opts}</div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
-      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-red" onclick="doVerify('${id}')">Save</button>
+    <div style="text-align:center;padding:8px 0 4px">
+      <div style="width:52px;height:52px;background:#0033A0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin-bottom:14px">
+        <svg fill="none" stroke="#fff" stroke-width="3" viewBox="0 0 24 24" width="26" height="26"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+      </div>
+      <h3 style="font-size:18px;font-weight:700;margin-bottom:4px">KUWAI Badge</h3>
+      <p style="font-size:13px;color:#6C6C70;margin-bottom:20px">@${username}</p>
+      ${hasBadge ? `
+        <div style="background:#EEF2FA;border-radius:12px;padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:10px">
+          <span class="badge badge-verified" style="gap:4px">✓ KUWAI</span>
+          <span style="font-size:13px;color:#0033A0;font-weight:600">Currently verified</span>
+        </div>` : `
+        <div style="background:#F2F2F7;border-radius:12px;padding:12px 16px;margin-bottom:20px">
+          <span style="font-size:13px;color:#6C6C70">This user has no badge yet</span>
+        </div>`}
+      <div style="display:flex;gap:8px;justify-content:center">
+        <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+        ${hasBadge
+          ? `<button class="btn btn-gray" onclick="doVerify('${id}','none')">Remove Badge</button>`
+          : `<button class="btn" style="background:#0033A0;color:#fff" onclick="doVerify('${id}','verified')">Grant KUWAI Badge</button>`
+        }
+      </div>
     </div>`);
 }
 
-async function doVerify(id) {
-  const selected = document.querySelector('input[name="badge"]:checked');
-  if (!selected) return;
+async function doVerify(id, badge) {
   try {
-    await apiFetch(`/admin/users/${id}/verify`, { method: 'PATCH', body: { verifiedBadge: selected.value } });
+    await apiFetch(`/admin/users/${id}/verify`, { method: 'PATCH', body: { verifiedBadge: badge } });
     closeModal();
-    toast(selected.value === 'none' ? 'Badge removed.' : `Badge set to ${BADGE_LABELS[selected.value]}.`);
+    toast(badge === 'none' ? 'Badge removed.' : 'KUWAI badge granted ✓');
     loadUsers(usersPage);
   } catch (e) { toast('Error: ' + e.message); }
 }

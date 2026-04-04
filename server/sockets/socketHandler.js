@@ -34,7 +34,7 @@ const initSocket = (server) => {
       }
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const user = await User.findById(decoded.id).select('_id username name profilePic');
+      const user = await User.findById(decoded.id).select('_id username name profilePic verifiedBadge');
 
       if (!user) {
         socket.user = null;

@@ -104,11 +104,16 @@ function MessageRow({ message, isMine, onLongPress, currentUserId, onReact, onUs
 
       {/* Content column */}
       <View style={[styles.msgCol, isMine && styles.msgColMine]}>
-        {/* Header: name + time */}
+        {/* Header: name + verified badge + time */}
         <View style={[styles.msgHeader, isMine && styles.msgHeaderMine]}>
           {!isMine && (
-            <TouchableOpacity onPress={() => onUserPress(user)} activeOpacity={0.7}>
+            <TouchableOpacity onPress={() => onUserPress(user)} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text style={styles.msgAuthor}>{user?.name || t('hachi.someoneDefault')}</Text>
+              {user?.verifiedBadge && user.verifiedBadge !== 'none' && (
+                <View style={styles.msgVerifiedBadge}>
+                  <Ionicons name="checkmark" size={8} color="#fff" />
+                </View>
+              )}
             </TouchableOpacity>
           )}
           <Text style={[styles.msgTime, isMine && styles.msgTimeMine]}>{timeStr}</Text>
@@ -858,6 +863,7 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
   },
   msgHeaderMine: { flexDirection: 'row-reverse' },
   msgAuthor: { fontSize: 13, fontWeight: '700', color: C.accent },
+  msgVerifiedBadge: { width: 14, height: 14, borderRadius: 7, backgroundColor: '#0033A0', justifyContent: 'center', alignItems: 'center', marginStart: 4 },
   msgTime: { fontSize: 11, color: C.textMuted, letterSpacing: -0.1 },
   msgTimeMine: { color: C.textMuted },
   msgBubble: {
