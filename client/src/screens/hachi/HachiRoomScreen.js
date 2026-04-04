@@ -484,7 +484,9 @@ export default function HachiRoomScreen({ navigation, route }) {
                 size={13}
                 color={COLORS.accent}
               />
-              <Text style={styles.infoCatLabel}>{activeRoom.category || 'general'}</Text>
+              <Text style={styles.infoCatLabel}>
+                {t(`hachi.cat${(activeRoom.category || 'general').charAt(0).toUpperCase()}${(activeRoom.category || 'general').slice(1)}`)}
+              </Text>
             </View>
             <View style={styles.infoSep} />
             <Ionicons name="person" size={12} color={COLORS.accent} />

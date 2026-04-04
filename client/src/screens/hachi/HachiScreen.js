@@ -101,10 +101,10 @@ function HotCard({ room, onPress, styles, C, t }) {
 // ── RoomRow ────────────────────────────────────────────────────────────────────
 
 function RoomRow({ room, onPress, styles, C, t }) {
-  const heat    = heatColor(room.memberCount || 1);
-  const catIcon = CATEGORY_ICONS[room.category] || 'chatbubbles-outline';
+  const catIcon  = CATEGORY_ICONS[room.category] || 'chatbubbles-outline';
   const msgCount = room.messageCount || 0;
-  const sub     = room.lastMessage?.text
+  const members  = room.memberCount || 1;
+  const sub      = room.lastMessage?.text
     || `${room.creator?.name || ''} · ${relTime(room.updatedAt || room.createdAt)}`;
 
   return (
@@ -114,19 +114,13 @@ function RoomRow({ room, onPress, styles, C, t }) {
       </View>
       <View style={styles.rowBody}>
         <Text style={styles.rowTitle} numberOfLines={1}>{room.title}</Text>
-        <Text style={styles.rowSub} numberOfLines={1}>{sub}</Text>
+        <Text style={styles.rowSub} numberOfLines={1}>
+          {msgCount > 0 ? `${msgCount} · ` : ''}{sub}
+        </Text>
       </View>
-      <View style={styles.rowStats}>
-        <View style={styles.rowStatItem}>
-          <Ionicons name="chatbubble" size={10} color={C.textMuted} />
-          <Text style={styles.rowStatText}>{msgCount}</Text>
-        </View>
-        <View style={styles.rowBadge}>
-          <Ionicons name="person" size={10} color={C.textMuted} />
-          <Text style={[styles.rowBadgeNum, { color: C.textMuted }]}>
-            {room.memberCount || 1}
-          </Text>
-        </View>
+      <View style={styles.rowMeta}>
+        <Text style={styles.rowMetaNum}>{members}</Text>
+        <Text style={styles.rowMetaLabel}>{t('hachi.inChat')}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -633,15 +627,9 @@ const makeStyles = (C, isDark) => StyleSheet.create({
   rowBody: { flex: 1, gap: 2 },
   rowTitle: { fontSize: 15, fontWeight: '600', letterSpacing: -0.2, color: C.text },
   rowSub: { fontSize: 13, color: C.textMuted, lineHeight: 17 },
-  rowStats: { alignItems: 'flex-end', gap: 5 },
-  rowStatItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  rowStatText: { fontSize: 11, color: C.textMuted, fontWeight: '600' },
-  rowBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 3,
-    borderRadius: 12, paddingHorizontal: 9, paddingVertical: 4,
-    backgroundColor: C.fill,
-  },
-  rowBadgeNum: { fontSize: 13, fontWeight: '800', color: C.textMuted },
+  rowMeta: { alignItems: 'flex-end', gap: 1, flexShrink: 0 },
+  rowMetaNum: { fontSize: 15, fontWeight: '700', color: C.text },
+  rowMetaLabel: { fontSize: 11, color: C.textMuted },
   sep: { height: StyleSheet.hairlineWidth, backgroundColor: C.separator, marginStart: 72 },
 
   // Moment cards (escaped pinned messages)
