@@ -379,7 +379,7 @@ export default function HachiScreen({ navigation }) {
 
       {/* ── Header ── */}
       <View style={styles.header}>
-        <Text style={styles.wordmark}>KUWAI</Text>
+        <Text style={styles.wordmark}>{isRTL ? 'كواي' : 'KUWAI'}</Text>
         <View style={styles.headerRight}>
           <TouchableOpacity
             onPress={handleAddPress}
@@ -534,7 +534,7 @@ const makeStyles = (C, isDark, isRTL = false) => StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: C.separator,
   },
-  wordmark: { flex: 1, fontSize: 28, letterSpacing: -1, fontWeight: '800', color: C.text },
+  wordmark: { flex: 1, fontSize: 28, letterSpacing: -1, fontWeight: '800', color: C.text, textAlign: isRTL ? 'right' : 'left' },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   headerBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   notifBadge: {
