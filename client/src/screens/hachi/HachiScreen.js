@@ -38,23 +38,15 @@ const CATEGORY_KEYS = ['all', 'general', 'food', 'coffee', 'cars', 'girls', 'spo
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-// Returns a full color scheme based on member count heat level
-function heatScheme(count, C) {
-  if (count >= 25) return {
-    bg: '#FF3B30', title: '#fff', muted: 'rgba(255,255,255,0.72)',
-    badge: 'rgba(0,0,0,0.18)', badgeText: '#fff', dot: '#fff',
-  };
-  if (count >= 10) return {
-    bg: '#FF9500', title: '#fff', muted: 'rgba(255,255,255,0.72)',
-    badge: 'rgba(0,0,0,0.14)', badgeText: '#fff', dot: '#fff',
-  };
-  if (count >= 4) return {
-    bg: '#34C759', title: '#fff', muted: 'rgba(255,255,255,0.72)',
-    badge: 'rgba(0,0,0,0.12)', badgeText: '#fff', dot: '#fff',
+// Color scheme: first card = Kuwait blue, rest = fill
+function cardScheme(isFirst, C) {
+  if (isFirst) return {
+    bg: '#0033A0', title: '#fff', muted: 'rgba(255,255,255,0.72)',
+    badge: 'rgba(255,255,255,0.18)', badgeText: '#fff', dot: '#fff',
   };
   return {
     bg: C.fill, title: C.text, muted: C.textMuted,
-    badge: C.white, badgeText: C.textMuted, dot: C.textMuted,
+    badge: C.white, badgeText: C.textMuted, dot: C.accent,
   };
 }
 
@@ -75,12 +67,11 @@ function CreatorBadge({ badge }) {
 
 // ── HotCard ────────────────────────────────────────────────────────────────────
 
-function HotCard({ room, onPress, styles, C, t, isRTL }) {
-  const scheme   = heatScheme(room.memberCount || 1, C);
+function HotCard({ room, onPress, styles, C, t, isRTL, isFirst }) {
+  const scheme   = cardScheme(isFirst, C);
   const catIcon  = CATEGORY_ICONS[room.category] || 'chatbubbles-outline';
   const msgCount = room.messageCount || 0;
   const members  = room.memberCount || 1;
-  const isHot    = members >= 4;
 
   return (
     <TouchableOpacity
@@ -96,7 +87,7 @@ function HotCard({ room, onPress, styles, C, t, isRTL }) {
             {t(`hachi.cat${(room.category || 'general').charAt(0).toUpperCase()}${(room.category || 'general').slice(1)}`)}
           </Text>
         </View>
-        {isHot && <View style={[styles.liveDot, { backgroundColor: scheme.dot }]} />}
+        {isFirst && <View style={[styles.liveDot, { backgroundColor: scheme.dot }]} />}
       </View>
 
       {/* Title */}
@@ -338,7 +329,7 @@ export default function HachiScreen({ navigation }) {
               snapToInterval={HOT_CARD_W + 12}
               snapToAlignment="start"
             >
-              {hotRooms.map((room) => (
+              {hotRooms.map((room, i) => (
                 <HotCard
                   key={room._id}
                   room={room}
@@ -347,6 +338,7 @@ export default function HachiScreen({ navigation }) {
                   C={C}
                   t={t}
                   isRTL={isRTL}
+                  isFirst={i === 0}
                 />
               ))}
             </ScrollView>
