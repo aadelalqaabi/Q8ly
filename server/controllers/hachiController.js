@@ -75,8 +75,11 @@ const HACHI_POINTS_COST = 50;
 // POST /api/hachi — create room (deducts 50 points)
 exports.createRoom = async (req, res) => {
   try {
-    const { title, category = 'general', isPublic = true } = req.body;
-    if (!title?.trim()) return res.status(400).json({ success: false, message: 'Title is required' });
+    const { title: rawTitle, category = 'general', isPublic = true } = req.body;
+    if (!rawTitle?.trim()) return res.status(400).json({ success: false, message: 'Title is required' });
+    // Strip emoji characters from title
+    const title = rawTitle.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '').trim();
+    if (!title) return res.status(400).json({ success: false, message: 'Title is required' });
 
     // Badged users (verified) bypass the points cost
     const hasBadge = req.user.verifiedBadge && req.user.verifiedBadge !== 'none';

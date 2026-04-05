@@ -54,7 +54,7 @@ function relTime(date) {
 function CreatorBadge({ badge }) {
   if (!badge || badge === 'none') return null;
   return (
-    <View style={{ width: 13, height: 13, borderRadius: 7, backgroundColor: '#0033A0', justifyContent: 'center', alignItems: 'center', marginStart: 3 }}>
+    <View style={{ width: 13, height: 13, borderRadius: 7, backgroundColor: '#0033A0', justifyContent: 'center', alignItems: 'center', marginHorizontal: 4, flexShrink: 0 }}>
       <Ionicons name="checkmark" size={8} color="#fff" />
     </View>
   );
@@ -133,7 +133,7 @@ function RoomRow({ room, onPress, styles, C, t }) {
         <Ionicons name={catIcon} size={20} color={C.textMuted} />
       </View>
       <View style={styles.rowBody}>
-        <Text style={styles.rowTitle} numberOfLines={1}>{room.title}</Text>
+        <Text style={styles.rowTitle} numberOfLines={2}>{room.title}</Text>
         <View style={styles.rowSubRow}>
           {hasLastMsg ? (
             <>
@@ -662,7 +662,7 @@ const makeStyles = (C, isDark, isRTL = false) => StyleSheet.create({
   rowSubRow: { flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', overflow: 'hidden' },
   rowSubText: { fontSize: 13, color: C.textMuted, lineHeight: 17, flexShrink: 1 },
   rowSubMuted: { fontSize: 13, color: C.textMuted, lineHeight: 17, flexShrink: 0 },
-  rowMeta: { alignItems: 'flex-end', gap: 1, flexShrink: 0 },
+  rowMeta: { alignItems: 'flex-start', gap: 1, flexShrink: 0 },
   rowMetaNum: { fontSize: 15, fontWeight: '700', color: C.text },
   rowMetaLabel: { fontSize: 11, color: C.textMuted },
   sep: { height: StyleSheet.hairlineWidth, backgroundColor: C.separator, marginStart: 72 },

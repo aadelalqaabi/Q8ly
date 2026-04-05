@@ -863,7 +863,7 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
   },
   msgHeaderMine: { flexDirection: 'row-reverse' },
   msgAuthor: { fontSize: 13, fontWeight: '700', color: C.accent },
-  msgVerifiedBadge: { width: 14, height: 14, borderRadius: 7, backgroundColor: '#0033A0', justifyContent: 'center', alignItems: 'center', marginStart: 4 },
+  msgVerifiedBadge: { width: 14, height: 14, borderRadius: 7, backgroundColor: '#0033A0', justifyContent: 'center', alignItems: 'center', marginHorizontal: 5, flexShrink: 0 },
   msgTime: { fontSize: 11, color: C.textMuted, letterSpacing: -0.1 },
   msgTimeMine: { color: C.textMuted },
   msgBubble: {
