@@ -306,7 +306,7 @@ export default function HachiScreen({ navigation }) {
     const hasHot = hotRooms.length > 0;
     if (!hasHot) return null;
     return (
-      <View>
+      <View style={{ backgroundColor: C.white }}>
         {/* Most active circles */}
         {hasHot && (
           <>
@@ -317,7 +317,7 @@ export default function HachiScreen({ navigation }) {
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.hotScroll}
-              style={isRTL && { transform: [{ scaleX: -1 }] }}
+              style={[{ backgroundColor: C.white }, isRTL && { transform: [{ scaleX: -1 }] }]}
               decelerationRate="fast"
               snapToInterval={HOT_CARD_W + 12}
               snapToAlignment="start"
