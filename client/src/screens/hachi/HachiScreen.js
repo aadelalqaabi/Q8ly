@@ -393,7 +393,8 @@ export default function HachiScreen({ navigation }) {
           ListHeaderComponent={ListHeader}
           ListEmptyComponent={renderEmpty}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom + 24 }}
+          style={{ backgroundColor: C.white }}
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom + 24, backgroundColor: C.white }}
           refreshing={isLoading}
           onRefresh={() => { dispatch(fetchRooms()); }}
           ItemSeparatorComponent={() => <View style={styles.sep} />}
@@ -576,20 +577,13 @@ const makeStyles = (C, isDark, isRTL = false) => StyleSheet.create({
   sectionTitle: { fontSize: 15, fontWeight: '700', letterSpacing: -0.2, color: C.text },
 
   // Hot cards
-  hotScroll: { paddingHorizontal: 16, gap: 12, paddingBottom: 6 },
+  hotScroll: { paddingHorizontal: 16, gap: 12, paddingBottom: 12, backgroundColor: C.white },
   hotCard: {
     width: HOT_CARD_W,
-    backgroundColor: C.white,
+    backgroundColor: C.fill,
     borderRadius: 20,
     padding: 16,
     gap: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: isDark ? 0.45 : 0.06,
-    shadowRadius: 16,
-    elevation: 4,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: isDark ? C.separator : 'rgba(0,0,0,0.04)',
   },
   hotTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   hotCatBadge: {
