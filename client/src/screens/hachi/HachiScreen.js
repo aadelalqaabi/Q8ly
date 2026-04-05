@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { formatDistanceToNow } from 'date-fns';
-import { fetchRooms, fetchMoments, fetchSubjects, createRoom, addRoomRealtime } from '../../store/slices/hachiSlice';
+import { fetchRooms, fetchMoments, createRoom, addRoomRealtime } from '../../store/slices/hachiSlice';
 import { getSocket } from '../../services/socket';
 import { getDateLocale } from '../../i18n';
 import { useTheme } from '../../context/ThemeContext';
@@ -236,7 +236,7 @@ export default function HachiScreen({ navigation }) {
   const insets      = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
   const isRTL       = i18n.language === 'ar';
-  const { rooms, subjects, isLoading } = useSelector((s) => s.hachi);
+  const { rooms, isLoading } = useSelector((s) => s.hachi);
   const { user: currentUser } = useSelector((s) => s.auth);
   const { unreadCount } = useSelector((s) => s.notifications);
   const { colors: C, isDark } = useTheme();
@@ -262,7 +262,6 @@ export default function HachiScreen({ navigation }) {
 
   useEffect(() => {
     dispatch(fetchRooms());
-    dispatch(fetchSubjects());
   }, []);
 
   useEffect(() => {
@@ -302,43 +301,12 @@ export default function HachiScreen({ navigation }) {
   const goToRoom = (room) =>
     guestGate(() => navigation.navigate('HachiRoom', { roomId: room._id, title: room.title }));
 
-  // FlatList header: subjects bar + most active circles
+  // FlatList header: most active circles
   const ListHeader = useMemo(() => {
-    const hasHot      = hotRooms.length > 0;
-    const hasSubjects = subjects.length > 0;
-    if (!hasHot && !hasSubjects) return null;
+    const hasHot = hotRooms.length > 0;
+    if (!hasHot) return null;
     return (
       <View>
-        {/* Trending subjects bar */}
-        {hasSubjects && (
-          <View style={styles.subjectsWrap}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.subjectsScroll}
-            >
-              {subjects.map(({ category, count }) => {
-                const icon = CATEGORY_ICONS[category] || 'chatbubbles-outline';
-                const label = t(`hachi.cat${category.charAt(0).toUpperCase()}${category.slice(1)}`);
-                return (
-                  <TouchableOpacity
-                    key={category}
-                    style={styles.subjectPill}
-                    onPress={() => navigation.navigate('Discover', { subjectFilter: category })}
-                    activeOpacity={0.75}
-                  >
-                    <Ionicons name={icon} size={13} color={C.accent} />
-                    <Text style={styles.subjectLabel}>{label}</Text>
-                    <View style={styles.subjectCount}>
-                      <Text style={styles.subjectCountText}>{count}</Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-        )}
-
         {/* Most active circles */}
         {hasHot && (
           <>
@@ -377,7 +345,7 @@ export default function HachiScreen({ navigation }) {
         )}
       </View>
     );
-  }, [hotRooms, subjects, rooms.length, styles, C]);
+  }, [hotRooms, rooms.length, styles, C]);
 
   const renderEmpty = () => (
     <View style={styles.empty}>
@@ -427,7 +395,7 @@ export default function HachiScreen({ navigation }) {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom + 24 }}
           refreshing={isLoading}
-          onRefresh={() => { dispatch(fetchRooms()); dispatch(fetchSubjects()); }}
+          onRefresh={() => { dispatch(fetchRooms()); }}
           ItemSeparatorComponent={() => <View style={styles.sep} />}
         />
       )}
