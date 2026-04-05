@@ -564,7 +564,7 @@ const makeStyles = (C, isDark, isRTL = false) => StyleSheet.create({
     borderBottomColor: C.separator,
   },
   wordmark: { flex: 1, fontSize: 28, letterSpacing: -1, fontWeight: '800', color: C.text, textAlign: isRTL ? 'right' : 'left' },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  headerRight: { flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 6 },
   headerBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   pointsChip: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
