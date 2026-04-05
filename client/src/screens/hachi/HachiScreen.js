@@ -38,11 +38,24 @@ const CATEGORY_KEYS = ['all', 'general', 'food', 'coffee', 'cars', 'girls', 'spo
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function heatColor(count) {
-  if (count >= 25) return '#FF3B30';
-  if (count >= 10) return '#FF9500';
-  if (count >= 4)  return '#34C759';
-  return null;
+// Returns a full color scheme based on member count heat level
+function heatScheme(count, C) {
+  if (count >= 25) return {
+    bg: '#FF3B30', title: '#fff', muted: 'rgba(255,255,255,0.72)',
+    badge: 'rgba(0,0,0,0.18)', badgeText: '#fff', dot: '#fff',
+  };
+  if (count >= 10) return {
+    bg: '#FF9500', title: '#fff', muted: 'rgba(255,255,255,0.72)',
+    badge: 'rgba(0,0,0,0.14)', badgeText: '#fff', dot: '#fff',
+  };
+  if (count >= 4) return {
+    bg: '#34C759', title: '#fff', muted: 'rgba(255,255,255,0.72)',
+    badge: 'rgba(0,0,0,0.12)', badgeText: '#fff', dot: '#fff',
+  };
+  return {
+    bg: C.fill, title: C.text, muted: C.textMuted,
+    badge: C.white, badgeText: C.textMuted, dot: C.textMuted,
+  };
 }
 
 function relTime(date) {
@@ -63,57 +76,60 @@ function CreatorBadge({ badge }) {
 // ── HotCard ────────────────────────────────────────────────────────────────────
 
 function HotCard({ room, onPress, styles, C, t, isRTL }) {
-  const heat   = heatColor(room.memberCount || 1);
-  const heatBg = heat ? heat + '15' : C.fill;
-  const catIcon = CATEGORY_ICONS[room.category] || 'chatbubbles-outline';
+  const scheme   = heatScheme(room.memberCount || 1, C);
+  const catIcon  = CATEGORY_ICONS[room.category] || 'chatbubbles-outline';
   const msgCount = room.messageCount || 0;
+  const members  = room.memberCount || 1;
+  const isHot    = members >= 4;
 
   return (
     <TouchableOpacity
-      style={[styles.hotCard, isRTL && { transform: [{ scaleX: -1 }] }]}
+      style={[styles.hotCard, { backgroundColor: scheme.bg }, isRTL && { transform: [{ scaleX: -1 }] }]}
       onPress={onPress}
-      activeOpacity={0.78}
+      activeOpacity={0.82}
     >
-      {/* Top row: category + member count */}
+      {/* Top row: category badge + live dot */}
       <View style={[styles.hotTop, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-        <View style={styles.hotCatBadge}>
-          <Ionicons name={catIcon} size={12} color={C.textMuted} />
-          <Text style={[styles.hotCatLabel, { color: C.textMuted }]}>
+        <View style={[styles.hotCatBadge, { backgroundColor: scheme.badge }]}>
+          <Ionicons name={catIcon} size={12} color={scheme.badgeText} />
+          <Text style={[styles.hotCatLabel, { color: scheme.badgeText }]}>
             {t(`hachi.cat${(room.category || 'general').charAt(0).toUpperCase()}${(room.category || 'general').slice(1)}`)}
           </Text>
         </View>
-        <View style={[styles.hotCount, { backgroundColor: heatBg }]}>
-          {heat && <View style={[styles.liveDot, { backgroundColor: heat }]} />}
-          <Ionicons name="people" size={11} color={heat || C.textMuted} />
-          <Text style={[styles.hotCountNum, { color: heat || C.textMuted }]}>
-            {room.memberCount || 1}
-          </Text>
-        </View>
+        {isHot && <View style={[styles.liveDot, { backgroundColor: scheme.dot }]} />}
       </View>
 
       {/* Title */}
-      <Text style={[styles.hotTitle, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={2}>{room.title}</Text>
+      <Text style={[styles.hotTitle, { color: scheme.title, textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={2}>
+        {room.title}
+      </Text>
 
-      {/* Last message preview or creator */}
+      {/* Preview or creator */}
       <View style={[styles.hotPreviewRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
         {room.lastMessage?.text ? (
-          <Text style={[styles.hotPreview, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={1}>{room.lastMessage.text}</Text>
+          <Text style={[styles.hotPreview, { color: scheme.muted, textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={1}>
+            {room.lastMessage.text}
+          </Text>
         ) : (
           <>
-            <Text style={styles.hotPreviewName} numberOfLines={1}>{room.creator?.name || ''}</Text>
+            <Text style={[styles.hotPreviewName, { color: scheme.muted }]} numberOfLines={1}>{room.creator?.name || ''}</Text>
             <CreatorBadge badge={room.creator?.verifiedBadge} />
-            <Text style={styles.hotPreviewSep}> · </Text>
-            <Text style={styles.hotPreviewTime} numberOfLines={1}>{relTime(room.createdAt)}</Text>
           </>
         )}
       </View>
 
-      {/* Stats row */}
-      <View style={[styles.hotStats, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-        <View style={styles.hotStatItem}>
-          <Ionicons name="chatbubble" size={10} color={C.textMuted} />
-          <Text style={styles.hotStatText}>{msgCount}</Text>
+      {/* Footer: member count + message count */}
+      <View style={[styles.hotFooter, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+        <View style={[styles.hotMemberPill, { backgroundColor: scheme.badge }]}>
+          <Ionicons name="people" size={11} color={scheme.badgeText} />
+          <Text style={[styles.hotMemberNum, { color: scheme.badgeText }]}>{members}</Text>
         </View>
+        {msgCount > 0 && (
+          <View style={[styles.hotMsgPill, { backgroundColor: scheme.badge }]}>
+            <Ionicons name="chatbubble" size={10} color={scheme.badgeText} />
+            <Text style={[styles.hotMemberNum, { color: scheme.badgeText }]}>{msgCount}</Text>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -580,35 +596,33 @@ const makeStyles = (C, isDark, isRTL = false) => StyleSheet.create({
   hotScroll: { paddingHorizontal: 16, gap: 12, paddingBottom: 12, backgroundColor: C.white },
   hotCard: {
     width: HOT_CARD_W,
-    backgroundColor: C.fill,
-    borderRadius: 20,
+    borderRadius: 22,
     padding: 16,
     gap: 10,
+    justifyContent: 'space-between',
+    minHeight: 160,
   },
   hotTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   hotCatBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: C.fill, borderRadius: 12,
-    paddingHorizontal: 9, paddingVertical: 4,
+    borderRadius: 12, paddingHorizontal: 9, paddingVertical: 4,
   },
   hotCatLabel: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.3 },
-  hotCount: {
-    flexDirection: 'row', alignItems: 'center', gap: 3,
-    borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4,
-    backgroundColor: C.fill,
+  liveDot: { width: 8, height: 8, borderRadius: 4 },
+  hotTitle: { fontSize: 18, fontWeight: '800', lineHeight: 24, letterSpacing: -0.4 },
+  hotPreviewRow: { flexDirection: 'row', alignItems: 'center', overflow: 'hidden', flex: 1 },
+  hotPreview: { fontSize: 13, lineHeight: 18, flex: 1 },
+  hotPreviewName: { fontSize: 13, fontWeight: '500', flexShrink: 1 },
+  hotFooter: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  hotMemberPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5,
   },
-  hotCountNum: { fontSize: 14, fontWeight: '800' },
-  hotCountLabel: { fontSize: 12, fontWeight: '500' },
-  liveDot: { width: 6, height: 6, borderRadius: 3 },
-  hotTitle: { fontSize: 17, fontWeight: '700', lineHeight: 23, letterSpacing: -0.3, color: C.text },
-  hotPreviewRow: { flexDirection: 'row', alignItems: 'center', overflow: 'hidden' },
-  hotPreview: { fontSize: 13, color: C.textMuted, lineHeight: 18, flex: 1 },
-  hotPreviewName: { fontSize: 13, color: C.text, fontWeight: '500', flexShrink: 1 },
-  hotPreviewSep: { fontSize: 13, color: C.textMuted },
-  hotPreviewTime: { fontSize: 13, color: C.textMuted, flexShrink: 0 },
-  hotStats: { flexDirection: 'row', gap: 14, marginTop: 4 },
-  hotStatItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  hotStatText: { fontSize: 11, color: C.textMuted, fontWeight: '600' },
+  hotMsgPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5,
+  },
+  hotMemberNum: { fontSize: 13, fontWeight: '700' },
 
   // Room rows
   row: {
