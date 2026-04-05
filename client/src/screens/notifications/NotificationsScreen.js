@@ -32,7 +32,11 @@ export default function NotificationsScreen({ navigation }) {
     [notifications]
   );
 
-  useEffect(() => { dispatch(fetchNotifications()); }, []);
+  useEffect(() => {
+    dispatch(fetchNotifications()).then(() => {
+      dispatch(markAsRead([]));
+    });
+  }, []);
 
   const getMessage = (item) => {
     const name = item.fromUser?.name || t('notif.someone');
@@ -117,13 +121,7 @@ export default function NotificationsScreen({ navigation }) {
           <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={26} color={COLORS.accent} />
         </TouchableOpacity>
         <Text style={styles.title}>{t('notif.title')}</Text>
-        {unreadCount > 0 ? (
-          <TouchableOpacity onPress={() => dispatch(markAsRead([]))} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={styles.markAll}>{t('notif.markAll')}</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.backBtn} />
-        )}
+        <View style={styles.backBtn} />
       </View>
 
       {isLoading ? (
@@ -151,9 +149,9 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.separator,
   },
-  backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'flex-start' },
+  backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: isRTL ? 'flex-end' : 'flex-start' },
   title: { flex: 1, fontSize: 24, fontWeight: '700', color: C.text, textAlign: isRTL ? 'right' : 'left' },
-  markAll: { fontSize: 13, color: C.accent, fontWeight: '500' },
+
   loader: { marginTop: 60 },
   row: {
     flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center',

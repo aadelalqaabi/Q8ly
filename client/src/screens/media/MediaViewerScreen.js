@@ -275,7 +275,7 @@ export default function MediaViewerScreen({ navigation, route }) {
       {/* Zoom hint */}
       {isZoomed && (
         <View style={[styles.hintBar, { bottom: insets.bottom + 16 }]}>
-          <Text style={styles.hintText}>اضغط مرتين للرجوع</Text>
+          <Text style={styles.hintText}>Double-tap to zoom out</Text>
         </View>
       )}
     </GestureHandlerRootView>

@@ -45,6 +45,39 @@ exports.getRooms = async (req, res) => {
     // Sort by velocity (highest first)
     rooms.sort((a, b) => b.velocityScore - a.velocityScore);
 
+    // Attach followingInRoom: which people the current user follows are in each room
+    if (req.user && req.user.following?.length) {
+      const followingSet = new Set(req.user.following.map((id) => id.toString()));
+
+      // Collect all member IDs across all rooms that the user follows
+      const relevantIds = new Set();
+      for (const room of rooms) {
+        for (const memberId of room.members || []) {
+          const s = memberId.toString();
+          if (followingSet.has(s)) relevantIds.add(s);
+        }
+      }
+
+      // Fetch names + profilePics in one query
+      let memberMap = {};
+      if (relevantIds.size > 0) {
+        const memberUsers = await User.find({ _id: { $in: [...relevantIds] } })
+          .select('name username profilePic')
+          .lean();
+        for (const u of memberUsers) {
+          memberMap[u._id.toString()] = { _id: u._id, name: u.name, username: u.username, profilePic: u.profilePic };
+        }
+      }
+
+      for (const room of rooms) {
+        room.followingInRoom = (room.members || [])
+          .map((id) => id.toString())
+          .filter((id) => followingSet.has(id))
+          .map((id) => memberMap[id])
+          .filter(Boolean);
+      }
+    }
+
     // Trending refund: if the #1 room hasn't been awarded yet, give the creator a bonus
     if (rooms.length > 0) {
       const top = rooms[0];

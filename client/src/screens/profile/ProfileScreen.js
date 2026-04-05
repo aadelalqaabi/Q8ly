@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity,
+  View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView,
   Image, ActivityIndicator, Alert, Share, Platform, Modal, RefreshControl, Dimensions,
 } from 'react-native';
 
@@ -91,6 +91,7 @@ export default function ProfileScreen({ navigation, route }) {
   const isPushed = !!route.params?.username;
 
   const flatListRef = useRef(null);
+  const tabScrollRef = useRef(null);
 
   const [profile, setProfile] = useState(isOwnProfile ? currentUser : null);
   const [circles, setCircles] = useState([]);
@@ -198,6 +199,7 @@ export default function ProfileScreen({ navigation, route }) {
     });
   }, [navigation]);
 
+  const [activeTab, setActiveTab] = useState('circles');
   const [refreshing, setRefreshing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
 
@@ -380,13 +382,6 @@ export default function ProfileScreen({ navigation, route }) {
         )}
       </View>
 
-      {/* Circles section header */}
-      {circles.length > 0 && (
-        <View style={styles.sectionHeader}>
-          <Ionicons name="chatbubbles-outline" size={15} color={COLORS.textMuted} />
-          <Text style={styles.sectionLabel}>{t('profile.circles')}</Text>
-        </View>
-      )}
     </View>
   );
 
@@ -464,6 +459,30 @@ export default function ProfileScreen({ navigation, route }) {
     );
   }, [pinnedIds, handleTogglePin, t, COLORS, navigation, isOwnProfile]);
 
+  const renderActivityItem = useCallback(({ item: msg }) => {
+    const timeAgo = msg.createdAt
+      ? formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true, locale: getDateLocale() })
+      : '';
+    const catIcon = CATEGORY_ICONS[msg.roomCategory] || 'chatbubbles-outline';
+    return (
+      <TouchableOpacity
+        style={styles.activityCard}
+        onPress={() => navigation.navigate('HachiRoom', { roomId: msg.roomId, title: msg.roomTitle })}
+        activeOpacity={0.7}
+      >
+        <View style={styles.activityCardHeader}>
+          <View style={styles.activityIconWrap}>
+            <Ionicons name={catIcon} size={13} color={COLORS.accent} />
+          </View>
+          <Text style={styles.activityCircleName} numberOfLines={1}>{msg.roomTitle}</Text>
+          <Text style={styles.activityTime}>{timeAgo}</Text>
+        </View>
+        {!!msg.text && <Text style={styles.activityText} numberOfLines={3}>{msg.text}</Text>}
+        {!!msg.image && <Image source={{ uri: msg.image }} style={styles.activityImage} resizeMode="cover" />}
+      </TouchableOpacity>
+    );
+  }, [COLORS, navigation]);
+
   if (isLoading) {
     return (
       <View style={[styles.loader, { paddingTop: insets.top }]}>
@@ -471,6 +490,16 @@ export default function ProfileScreen({ navigation, route }) {
       </View>
     );
   }
+
+  const TABS = [
+    { key: 'circles',  label: t('profile.circles') },
+    { key: 'activity', label: t('profile.activity') },
+  ];
+
+  const goToTab = (index) => {
+    setActiveTab(TABS[index].key);
+    tabScrollRef.current?.scrollTo({ x: SW * index, animated: true });
+  };
 
   return (
     <View style={styles.container}>
@@ -512,85 +541,83 @@ export default function ProfileScreen({ navigation, route }) {
         </View>
       </View>
 
-      <FlatList
-        ref={flatListRef}
-        data={circles}
-        keyExtractor={(item) => item._id}
-        renderItem={renderCircleItem}
-        numColumns={2}
-        columnWrapperStyle={styles.circleGrid}
-        ListHeaderComponent={renderHeader}
-        ListFooterComponent={
-          <>
-            {circlesLoading && <ActivityIndicator size="small" color={COLORS.accent} style={{ padding: 20 }} />}
+      {/* Profile info */}
+      {renderHeader()}
 
-            {/* User's circle messages (activity) */}
-            {(userMessages.length > 0 || messagesLoading) && (
-              <View style={styles.activitySection}>
-                <View style={styles.sectionHeader}>
-                  <Ionicons name="chatbubble-ellipses-outline" size={15} color={COLORS.textMuted} />
-                  <Text style={styles.sectionLabel}>{t('profile.activity')}</Text>
-                </View>
+      {/* Tab bar */}
+      <View style={styles.tabBar}>
+        {TABS.map((tab, i) => {
+          const active = activeTab === tab.key;
+          return (
+            <TouchableOpacity key={tab.key} style={styles.tabItem} onPress={() => goToTab(i)} activeOpacity={0.7}>
+              <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{tab.label}</Text>
+              {active && <View style={styles.tabUnderline} />}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
 
-                {messagesLoading ? (
-                  <ActivityIndicator size="small" color={COLORS.accent} style={{ padding: 20 }} />
-                ) : (
-                  userMessages.map((msg) => {
-                    const timeAgo = msg.createdAt
-                      ? formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true, locale: getDateLocale() })
-                      : '';
-                    const catIcon = CATEGORY_ICONS[msg.roomCategory] || 'chatbubbles-outline';
-                    return (
-                      <TouchableOpacity
-                        key={msg._id}
-                        style={styles.activityCard}
-                        onPress={() => navigation.navigate('HachiRoom', { roomId: msg.roomId, title: msg.roomTitle })}
-                        activeOpacity={0.7}
-                      >
-                        <View style={styles.activityCardHeader}>
-                          <View style={styles.activityIconWrap}>
-                            <Ionicons name={catIcon} size={13} color={COLORS.accent} />
-                          </View>
-                          <Text style={styles.activityCircleName} numberOfLines={1}>{msg.roomTitle}</Text>
-                          <Text style={styles.activityTime}>{timeAgo}</Text>
-                        </View>
-                        {!!msg.text && (
-                          <Text style={styles.activityText} numberOfLines={3}>{msg.text}</Text>
-                        )}
-                        {!!msg.image && (
-                          <Image source={{ uri: msg.image }} style={styles.activityImage} resizeMode="cover" />
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })
-                )}
+      {/* Swipeable pages */}
+      <ScrollView
+        ref={tabScrollRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onMomentumScrollEnd={(e) => {
+          const page = Math.round(e.nativeEvent.contentOffset.x / SW);
+          setActiveTab(TABS[page]?.key || 'circles');
+        }}
+        style={[{ flex: 1 }, isRTL && { transform: [{ scaleX: -1 }] }]}
+      >
+        {/* Page 0: Circles */}
+        <FlatList
+          style={[{ width: SW }, isRTL && { transform: [{ scaleX: -1 }] }]}
+          data={circles}
+          keyExtractor={(item) => item._id}
+          renderItem={renderCircleItem}
+          numColumns={2}
+          columnWrapperStyle={styles.circleGrid}
+          contentContainerStyle={{ paddingTop: 8, paddingBottom: insets.bottom + 24, flexGrow: 1 }}
+          showsVerticalScrollIndicator={false}
+          nestedScrollEnabled
+          ListEmptyComponent={
+            !circlesLoading ? (
+              <View style={styles.empty}>
+                <Ionicons name="chatbubbles-outline" size={36} color={COLORS.textMuted} style={{ marginBottom: 8 }} />
+                <Text style={styles.emptyText}>{t('profile.noCirclesYet')}</Text>
               </View>
-            )}
-            <View style={{ height: insets.bottom + 24 }} />
-          </>
-        }
-        ListEmptyComponent={
-          !circlesLoading ? (
-            <View style={styles.empty}>
-              <Ionicons name="chatbubbles-outline" size={36} color={COLORS.textMuted} style={{ marginBottom: 8 }} />
-              <Text style={styles.emptyText}>{t('profile.noCirclesYet')}</Text>
-            </View>
-          ) : null
-        }
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={async () => {
-              setRefreshing(true);
-              await Promise.all([loadProfile(), loadCircles(), loadUserMessages()]);
-              setRefreshing(false);
-            }}
-            tintColor={COLORS.accent}
-            colors={[COLORS.accent]}
-          />
-        }
-      />
+            ) : <ActivityIndicator size="small" color={COLORS.accent} style={{ padding: 20 }} />
+          }
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={async () => { setRefreshing(true); await Promise.all([loadProfile(), loadCircles(), loadUserMessages()]); setRefreshing(false); }}
+              tintColor={COLORS.accent}
+              colors={[COLORS.accent]}
+            />
+          }
+        />
+
+        {/* Page 1: Activity */}
+        <FlatList
+          style={[{ width: SW }, isRTL && { transform: [{ scaleX: -1 }] }]}
+          data={userMessages}
+          keyExtractor={(item) => item._id}
+          renderItem={renderActivityItem}
+          contentContainerStyle={{ paddingTop: 8, paddingBottom: insets.bottom + 24, flexGrow: 1 }}
+          showsVerticalScrollIndicator={false}
+          nestedScrollEnabled
+          ListEmptyComponent={
+            !messagesLoading ? (
+              <View style={styles.empty}>
+                <Ionicons name="chatbubble-ellipses-outline" size={36} color={COLORS.textMuted} style={{ marginBottom: 8 }} />
+                <Text style={styles.emptyText}>{t('profile.noActivity')}</Text>
+              </View>
+            ) : <ActivityIndicator size="small" color={COLORS.accent} style={{ padding: 20 }} />
+          }
+        />
+      </ScrollView>
 
       {/* Followers / Following modal */}
       <Modal
@@ -698,14 +725,21 @@ const makeStyles = (C, isRTL = false) => StyleSheet.create({
   followingChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, borderColor: C.separator, backgroundColor: C.fill },
   followingChipText: { fontSize: 13, fontWeight: '500', color: C.textMuted },
 
-  // ── Section header ────────────────────────────────────────────────────────
-  sectionHeader: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 16, paddingVertical: 12,
+  // ── Tab bar ───────────────────────────────────────────────────────────────
+  tabBar: {
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.separator,
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.separator,
   },
-  sectionLabel: { fontSize: 13, fontWeight: '600', color: C.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
+  tabItem: {
+    flex: 1, alignItems: 'center', paddingVertical: 12, position: 'relative',
+  },
+  tabLabel: { fontSize: 14, fontWeight: '600', color: C.textMuted },
+  tabLabelActive: { color: C.text },
+  tabUnderline: {
+    position: 'absolute', bottom: 0, left: '20%', right: '20%',
+    height: 2, borderRadius: 1, backgroundColor: C.text,
+  },
 
   // ── Circle grid ───────────────────────────────────────────────────────────
   circleGrid: { paddingHorizontal: 12, gap: 8 },
@@ -732,9 +766,8 @@ const makeStyles = (C, isRTL = false) => StyleSheet.create({
   emptyText: { fontSize: 15, color: C.textMuted, textAlign: 'center' },
 
   // ── Activity (user's circle messages) ────────────────────────────────────
-  activitySection: { marginTop: 4, paddingBottom: 8 },
   activityCard: {
-    marginHorizontal: 12, marginBottom: 8,
+    marginHorizontal: 12, marginTop: 8, marginBottom: 0,
     backgroundColor: C.fill,
     borderRadius: 14, padding: 14,
   },

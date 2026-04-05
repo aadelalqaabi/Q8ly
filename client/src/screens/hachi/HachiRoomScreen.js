@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { formatDistanceToNow } from 'date-fns';
 import * as ImagePicker from 'expo-image-picker';
+import * as Haptics from 'expo-haptics';
 import {
   fetchRoom,
   addOptimisticMessage, addMessageRealtime, updateMemberCount, updateReactions,
@@ -61,7 +62,7 @@ function ReactionPills({ reactions, currentUserId, onPress }) {
 }
 
 // ── Single message row (feed/thread style) ──────────────────────────────────────
-function MessageRow({ message, isMine, onLongPress, currentUserId, onReact, onUserPress }) {
+function MessageRow({ message, isMine, onLongPress, currentUserId, onReact, onUserPress, onImagePress }) {
   const { t } = useTranslation();
   const { colors: COLORS } = useTheme();
   const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
@@ -127,16 +128,16 @@ function MessageRow({ message, isMine, onLongPress, currentUserId, onReact, onUs
           _uploading && styles.msgBubbleUploading,
         ]}>
           {image && (
-            <View>
+            <TouchableOpacity activeOpacity={0.92} onPress={() => onImagePress?.({ uri: image, type: 'image' })}>
               <Image source={{ uri: image }} style={styles.msgImage} resizeMode="cover" />
               <View style={[styles.mediaBadge, isLive ? styles.mediaBadgeLive : styles.mediaBadgeUploaded]}>
                 <Ionicons name={isLive ? 'radio-outline' : 'cloud-upload-outline'} size={9} color="#fff" />
                 <Text style={styles.mediaBadgeText}>{t(isLive ? 'hachi.badgeLive' : 'hachi.badgeUploaded')}</Text>
               </View>
-            </View>
+            </TouchableOpacity>
           )}
           {video && (
-            <TouchableOpacity activeOpacity={0.9}>
+            <TouchableOpacity activeOpacity={0.9} onPress={() => onImagePress?.({ uri: video, type: 'video' })}>
               <Image source={{ uri: videoThumbnail || video }} style={styles.msgImage} resizeMode="cover" />
               <View style={styles.playOverlay}>
                 <View style={styles.playBtn}>
@@ -305,6 +306,7 @@ export default function HachiRoomScreen({ navigation, route }) {
   const handleSend = useCallback(() => {
     const trimmed = text.trim();
     if (!trimmed) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     // Optimistic update — show message immediately without waiting for server broadcast
     dispatch(addOptimisticMessage({
@@ -328,10 +330,12 @@ export default function HachiRoomScreen({ navigation, route }) {
   }, [text, roomId, currentUser, dispatch]);
 
   const handleReact = useCallback((messageId, emoji) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     sendHachiMessageReaction(roomId, messageId?.toString(), emoji);
   }, [roomId]);
 
   const handleLongPress = useCallback((message) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSelectedMsg(message);
   }, []);
 
@@ -342,12 +346,70 @@ export default function HachiRoomScreen({ navigation, route }) {
 
   const handleDeleteOwnMessage = useCallback(() => {
     if (!selectedMsg) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     const msgId = selectedMsg._id?.toString();
     setSelectedMsg(null);
     setConfirmDelete(false);
     const socket = getSocket();
     if (socket) socket.emit('hachiDeleteMessage', { roomId, messageId: msgId });
   }, [roomId, selectedMsg]);
+
+  const handleCamera = useCallback(async () => {
+    let tempId = null;
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(t('common.error'), t('common.cameraPermission') || 'Camera permission is required.');
+        return;
+      }
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images', 'videos'],
+        quality: 0.8,
+      });
+      if (result.canceled) return;
+      const asset = result.assets[0];
+      setUploading(true);
+
+      const formData = new FormData();
+      const isVideo = asset.type === 'video';
+      const ext = asset.uri.split('.').pop()?.toLowerCase() || (isVideo ? 'mp4' : 'jpg');
+      let mimeType = asset.mimeType;
+      if (!mimeType) mimeType = isVideo ? 'video/mp4' : `image/${ext}`;
+
+      formData.append(isVideo ? 'video' : 'images', {
+        uri: asset.uri,
+        name: `circle_cam_${Date.now()}.${isVideo ? 'mp4' : 'jpg'}`,
+        type: mimeType,
+      });
+
+      tempId = `uploading_${Date.now()}`;
+      dispatch(addOptimisticMessage({
+        roomId,
+        message: {
+          _id: tempId, _uploading: true,
+          ...(isVideo ? { video: asset.uri } : { image: asset.uri }),
+          createdAt: new Date().toISOString(), reactions: [],
+          user: { _id: currentUser?._id, name: currentUser?.name, username: currentUser?.username, profilePic: currentUser?.profilePic },
+        },
+      }));
+
+      if (isVideo) {
+        const res = await uploadAPI.video(formData);
+        dispatch(deleteMessage({ roomId, messageId: tempId }));
+        sendHachiVideo(roomId, res.url, res.thumbnail, true);
+      } else {
+        const res = await uploadAPI.images(formData);
+        const url = res.urls?.[0] || res.url;
+        dispatch(deleteMessage({ roomId, messageId: tempId }));
+        sendHachiImage(roomId, url, true);
+      }
+    } catch (e) {
+      if (tempId) dispatch(deleteMessage({ roomId, messageId: tempId }));
+      Alert.alert(t('common.error'), e.message || t('common.somethingWrong'));
+    } finally {
+      setUploading(false);
+    }
+  }, [roomId, currentUser, dispatch, t]);
 
   const handlePickMedia = useCallback(async () => {
     let tempId = null;
@@ -559,6 +621,7 @@ export default function HachiRoomScreen({ navigation, route }) {
               onLongPress={handleLongPress}
               onReact={handleReact}
               onUserPress={handleUserPress}
+              onImagePress={(media) => navigation.navigate('MediaViewer', { media: [media], initialIndex: 0 })}
             />
           )}
           ListEmptyComponent={
@@ -579,6 +642,14 @@ export default function HachiRoomScreen({ navigation, route }) {
           </View>
         ) : (
           <View style={[styles.inputBar, { paddingBottom: keyboardVisible ? 16 : insets.bottom + 10 }]}>
+            <TouchableOpacity
+              onPress={handleCamera}
+              disabled={uploading}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={styles.mediaBtn}
+            >
+              <Ionicons name="camera-outline" size={24} color={COLORS.accent} />
+            </TouchableOpacity>
             <TouchableOpacity
               onPress={handlePickMedia}
               disabled={uploading}
