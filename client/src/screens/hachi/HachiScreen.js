@@ -121,17 +121,11 @@ function RankedRow({ room, rank, onPress, styles, C, isRTL, isLast }) {
 function RoomRow({ room, onPress, styles, C, t }) {
   const catIcon = CATEGORY_ICONS[room.category] || 'chatbubbles-outline';
   const members = room.memberCount || 1;
-  const hasFollowing = room.followingInRoom?.length > 0;
 
   return (
     <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
-      <View style={{ alignItems: 'center', gap: 3 }}>
-        <View style={[styles.rowIcon, { backgroundColor: C.fill }]}>
-          <Ionicons name={catIcon} size={20} color={C.textMuted} />
-        </View>
-        {hasFollowing && (
-          <Text style={{ fontSize: 10, fontWeight: '600', color: C.accent }}>Followed</Text>
-        )}
+      <View style={[styles.rowIcon, { backgroundColor: C.fill }]}>
+        <Ionicons name={catIcon} size={20} color={C.textMuted} />
       </View>
       <View style={styles.rowBody}>
         <Text style={styles.rowTitle} numberOfLines={2}>{room.title}</Text>
@@ -156,10 +150,12 @@ function LockedOverlay({ points, styles, C }) {
   const { t } = useTranslation();
   const pct = Math.min((points / HACHI_COST) * 100, 100);
   const rows = [
-    { icon: 'create-outline',     label: t('hachi.lockEarnPost'),     pts: '+2' },
-    { icon: 'heart-outline',      label: t('hachi.lockEarnLike'),     pts: '+1' },
-    { icon: 'person-add-outline', label: t('hachi.lockEarnFollower'), pts: '+3' },
-    { icon: 'chatbubble-outline', label: t('hachi.lockEarnComment'),  pts: '+1' },
+    { icon: 'create-outline',     label: t('hachi.lockEarnPost'),             pts: '+2' },
+    { icon: 'heart-outline',      label: t('hachi.lockEarnLike'),             pts: '+1' },
+    { icon: 'person-add-outline', label: t('hachi.lockEarnFollower'),         pts: '+3' },
+    { icon: 'chatbubble-outline', label: t('hachi.lockEarnComment'),          pts: '+1' },
+    { icon: 'chatbubbles-outline',label: t('hachi.lockEarnCommentReceived'),  pts: '+1' },
+    { icon: 'happy-outline',      label: t('hachi.lockEarnReactionReceived'), pts: '+1' },
   ];
   return (
     <View style={styles.lockedWrap}>

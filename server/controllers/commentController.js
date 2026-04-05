@@ -78,9 +78,12 @@ const addComment = async (req, res, next) => {
       depth,
     });
 
-    // Update counts + award hachiPoints to commenter
+    // Update counts + award hachiPoints to commenter and post author
     await Post.findByIdAndUpdate(req.params.id, { $inc: { commentsCount: 1 } });
     await User.findByIdAndUpdate(req.user._id, { $inc: { hachiPoints: 1 } });
+    if (post.userId.toString() !== req.user._id.toString()) {
+      await User.findByIdAndUpdate(post.userId, { $inc: { hachiPoints: 1 } });
+    }
     if (parentId) {
       await Comment.findByIdAndUpdate(parentId, { $inc: { repliesCount: 1 } });
     }

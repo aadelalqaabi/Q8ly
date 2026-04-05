@@ -154,6 +154,8 @@
     "lockEarnLike": "Someone likes your post",
     "lockEarnFollower": "New follower",
     "lockEarnComment": "Write a comment",
+    "lockEarnCommentReceived": "Someone comments on your post",
+    "lockEarnReactionReceived": "Someone reacts to your circle message",
     "minutesLeft": "{{n}}m",
     "hoursLeft": "{{n}}h",
     "expiringSoon": "Expiring soon",

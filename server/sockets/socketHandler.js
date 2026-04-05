@@ -147,7 +147,7 @@ const initSocket = (server) => {
       io.to(`hachi:${roomId}`).emit('hachiOnlineCount', { roomId, online: onlineCount });
     });
 
-    socket.on('hachiSend', async ({ roomId, text }) => {
+    socket.on('hachiSend', async ({ roomId, text, replyTo }) => {
       if (!socket.user || !text?.trim()) return;
       try {
         const { isBlocked } = checkContent(text.trim());
@@ -164,9 +164,16 @@ const initSocket = (server) => {
         const uid = socket.user._id.toString();
         if (room.blockedMembers.some((b) => b.toString() === uid)) return;
 
-        const msg = { user: socket.user._id, text: text.trim(), createdAt: new Date() };
-        room.messages.push(msg);
-        room.lastMessage = { text: text.trim(), createdAt: msg.createdAt };
+        const msgData = { user: socket.user._id, text: text.trim(), createdAt: new Date() };
+        if (replyTo?.messageId && replyTo?.userName) {
+          msgData.replyTo = {
+            messageId: replyTo.messageId,
+            text: replyTo.text || '',
+            userName: replyTo.userName,
+          };
+        }
+        room.messages.push(msgData);
+        room.lastMessage = { text: text.trim(), createdAt: msgData.createdAt };
 
         const alreadyMember = room.members.some((m) => m.toString() === uid);
         if (!alreadyMember) {
@@ -181,6 +188,7 @@ const initSocket = (server) => {
           text: saved.text,
           reactions: [],
           createdAt: saved.createdAt,
+          replyTo: saved.replyTo || null,
           user: {
             _id: socket.user._id,
             name: socket.user.name,
@@ -344,6 +352,7 @@ const initSocket = (server) => {
         const uid = socket.user._id.toString();
         const existing = msg.reactions.find((r) => r.emoji === emoji);
 
+        let reactionAdded = false;
         if (existing) {
           const idx = existing.users.findIndex((u) => u.toString() === uid);
           if (idx >= 0) {
@@ -353,12 +362,21 @@ const initSocket = (server) => {
             }
           } else {
             existing.users.push(socket.user._id);
+            reactionAdded = true;
           }
         } else {
           msg.reactions.push({ emoji, users: [socket.user._id] });
+          reactionAdded = true;
         }
 
         await room.save();
+
+        // Award +1 point to message author when a new reaction is added (not self)
+        const msgAuthorIdStr = msg.user.toString();
+        if (reactionAdded && msgAuthorIdStr !== uid) {
+          const User = require('../models/User');
+          User.findByIdAndUpdate(msg.user, { $inc: { hachiPoints: 1 } }).exec();
+        }
 
         // Broadcast updated reactions (include user IDs so clients can derive isReacted)
         const reactionsOut = msg.reactions.map((r) => ({

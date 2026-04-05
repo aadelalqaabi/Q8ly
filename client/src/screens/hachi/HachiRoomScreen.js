@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import {
   View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity,
   TextInput, KeyboardAvoidingView, Platform, ActivityIndicator,
-  Image, Modal, Alert, Keyboard, Share,
+  Image, Modal, Alert, Keyboard, Share, Animated, PanResponder,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
@@ -58,6 +58,40 @@ function ReactionPills({ reactions, currentUserId, onPress }) {
         );
       })}
     </View>
+  );
+}
+
+// ── Swipeable wrapper (WhatsApp-style swipe-right to reply) ───────────────────
+function SwipeableMessage({ children, onReply }) {
+  const translateX = useRef(new Animated.Value(0)).current;
+  const triggered = useRef(false);
+  const THRESHOLD = 60;
+
+  const panResponder = useRef(PanResponder.create({
+    onMoveShouldSetPanResponder: (_, g) =>
+      Math.abs(g.dx) > Math.abs(g.dy) * 1.5 && g.dx > 8,
+    onPanResponderMove: (_, g) => {
+      const dx = Math.max(0, Math.min(g.dx, THRESHOLD + 10));
+      translateX.setValue(dx * 0.6);
+      if (!triggered.current && dx >= THRESHOLD) {
+        triggered.current = true;
+        onReply();
+      }
+    },
+    onPanResponderRelease: () => {
+      triggered.current = false;
+      Animated.spring(translateX, { toValue: 0, useNativeDriver: true, tension: 200, friction: 15 }).start();
+    },
+    onPanResponderTerminate: () => {
+      triggered.current = false;
+      Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start();
+    },
+  })).current;
+
+  return (
+    <Animated.View style={{ transform: [{ translateX }] }} {...panResponder.panHandlers}>
+      {children}
+    </Animated.View>
   );
 }
 
@@ -127,6 +161,17 @@ function MessageRow({ message, isMine, onLongPress, currentUserId, onReact, onUs
           hasMedia && !text && styles.msgBubbleMedia,
           _uploading && styles.msgBubbleUploading,
         ]}>
+          {/* Reply quote */}
+          {message.replyTo?.userName && (
+            <View style={[styles.replyQuote, isMine && styles.replyQuoteMine]}>
+              <Text style={[styles.replyQuoteName, isMine && { color: 'rgba(255,255,255,0.9)' }]} numberOfLines={1}>
+                {message.replyTo.userName}
+              </Text>
+              <Text style={[styles.replyQuoteText, isMine && { color: 'rgba(255,255,255,0.7)' }]} numberOfLines={1}>
+                {message.replyTo.text || '📷 Photo'}
+              </Text>
+            </View>
+          )}
           {image && (
             <TouchableOpacity activeOpacity={0.92} onPress={() => onImagePress?.({ uri: image, type: 'image' })}>
               <Image source={{ uri: image }} style={styles.msgImage} resizeMode="cover" />
@@ -189,6 +234,7 @@ export default function HachiRoomScreen({ navigation, route }) {
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null); // { messageId, userName, text }
 
   const isCreator = (activeRoom?.creator?._id || activeRoom?.creator)?.toString() === currentUser?._id?.toString();
 
@@ -308,7 +354,6 @@ export default function HachiRoomScreen({ navigation, route }) {
     if (!trimmed) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    // Optimistic update — show message immediately without waiting for server broadcast
     dispatch(addOptimisticMessage({
       roomId,
       message: {
@@ -316,6 +361,7 @@ export default function HachiRoomScreen({ navigation, route }) {
         text: trimmed,
         createdAt: new Date().toISOString(),
         reactions: [],
+        replyTo: replyingTo || null,
         user: {
           _id: currentUser?._id,
           name: currentUser?.name,
@@ -325,9 +371,10 @@ export default function HachiRoomScreen({ navigation, route }) {
       },
     }));
 
-    sendHachiMessage(roomId, trimmed);
+    sendHachiMessage(roomId, trimmed, replyingTo);
     setText('');
-  }, [text, roomId, currentUser, dispatch]);
+    setReplyingTo(null);
+  }, [text, roomId, currentUser, dispatch, replyingTo]);
 
   const handleReact = useCallback((messageId, emoji) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -614,15 +661,26 @@ export default function HachiRoomScreen({ navigation, route }) {
           data={messages}
           keyExtractor={(item) => item._id?.toString() || Math.random().toString()}
           renderItem={({ item }) => (
-            <MessageRow
-              message={item}
-              isMine={(item.user?._id || item.user)?.toString() === currentUser?._id?.toString()}
-              currentUserId={currentUser?._id}
-              onLongPress={handleLongPress}
-              onReact={handleReact}
-              onUserPress={handleUserPress}
-              onImagePress={(media) => navigation.navigate('MediaViewer', { media: [media], initialIndex: 0 })}
-            />
+            <SwipeableMessage
+              onReply={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setReplyingTo({
+                  messageId: item._id?.toString(),
+                  userName: item.user?.name || t('hachi.someoneDefault'),
+                  text: item.text || '',
+                });
+              }}
+            >
+              <MessageRow
+                message={item}
+                isMine={(item.user?._id || item.user)?.toString() === currentUser?._id?.toString()}
+                currentUserId={currentUser?._id}
+                onLongPress={handleLongPress}
+                onReact={handleReact}
+                onUserPress={handleUserPress}
+                onImagePress={(media) => navigation.navigate('MediaViewer', { media: [media], initialIndex: 0 })}
+              />
+            </SwipeableMessage>
           )}
           ListEmptyComponent={
             <View style={styles.emptyMessages}>
@@ -633,6 +691,19 @@ export default function HachiRoomScreen({ navigation, route }) {
           contentContainerStyle={{ padding: 12, flexGrow: 1 }}
           showsVerticalScrollIndicator={false}
         />
+
+        {/* Reply preview bar */}
+        {replyingTo && (
+          <View style={styles.replyBar}>
+            <View style={styles.replyBarContent}>
+              <Text style={styles.replyBarName} numberOfLines={1}>{replyingTo.userName}</Text>
+              <Text style={styles.replyBarText} numberOfLines={1}>{replyingTo.text || '📷 Photo'}</Text>
+            </View>
+            <TouchableOpacity onPress={() => setReplyingTo(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="close" size={18} color={COLORS.textMuted} />
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Input bar / view-only notice */}
         {isViewOnly ? (
@@ -964,6 +1035,38 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
     elevation: 0,
   },
   msgBubbleUploading: { opacity: 0.6 },
+
+  // Reply quote inside bubble
+  replyQuote: {
+    borderLeftWidth: 3,
+    borderLeftColor: 'rgba(0,51,160,0.4)',
+    paddingLeft: 8,
+    paddingVertical: 4,
+    marginBottom: 6,
+    backgroundColor: 'rgba(0,0,0,0.04)',
+    borderRadius: 6,
+  },
+  replyQuoteMine: {
+    borderLeftColor: 'rgba(255,255,255,0.5)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  replyQuoteName: { fontSize: 12, fontWeight: '700', color: C.accent },
+  replyQuoteText: { fontSize: 12, color: C.textMuted, marginTop: 1 },
+
+  // Reply preview bar above input
+  replyBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: C.fill,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: C.separator,
+    gap: 10,
+  },
+  replyBarContent: { flex: 1, borderLeftWidth: 3, borderLeftColor: C.accent, paddingLeft: 8, gap: 2 },
+  replyBarName: { fontSize: 12, fontWeight: '700', color: C.accent },
+  replyBarText: { fontSize: 12, color: C.textMuted },
   msgImage: { width: 220, height: 165, borderRadius: 15, marginBottom: 0 },
   mediaBadge: {
     position: 'absolute', bottom: 6, start: 6,

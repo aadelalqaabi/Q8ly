@@ -75,8 +75,8 @@ export const leaveHachiRoom = (roomId) => {
   if (socket) socket.emit('leaveHachi', roomId);
 };
 
-export const sendHachiMessage = (roomId, text) => {
-  if (socket) socket.emit('hachiSend', { roomId, text });
+export const sendHachiMessage = (roomId, text, replyTo = null) => {
+  if (socket) socket.emit('hachiSend', { roomId, text, replyTo });
 };
 
 export const sendHachiReaction = (roomId, type) => {

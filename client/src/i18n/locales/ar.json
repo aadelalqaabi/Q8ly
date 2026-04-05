@@ -154,6 +154,8 @@
     "lockEarnLike": "إعجاب بأحد منشوراتك",
     "lockEarnFollower": "متابع جديد",
     "lockEarnComment": "كتابة تعليق",
+    "lockEarnCommentReceived": "شخص يعلّق على منشورك",
+    "lockEarnReactionReceived": "شخص يتفاعل مع رسالتك في الدائرة",
     "minutesLeft": "{{n}} د",
     "hoursLeft": "{{n}} س",
     "expiringSoon": "ينتهي قريباً",

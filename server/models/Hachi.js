@@ -13,8 +13,13 @@ const messageSchema = new mongoose.Schema({
   videoThumbnail: { type: String },
   voiceUrl: { type: String },
   voiceDuration: { type: Number },
-  isLive: { type: Boolean, default: false }, // true = captured with in-app camera
+  isLive: { type: Boolean, default: false },
   reactions: [reactionSchema],
+  replyTo: {
+    messageId: { type: mongoose.Schema.Types.ObjectId },
+    text: { type: String },
+    userName: { type: String },
+  },
   createdAt: { type: Date, default: Date.now },
 }, { _id: true });
 
