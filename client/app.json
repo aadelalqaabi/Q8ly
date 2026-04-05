@@ -3,7 +3,7 @@
     "name": "KUWAI",
     "slug": "kuwait-now",
     "scheme": "kuwai",
-    "version": "1.1.1",
+    "version": "1.1.2",
     "orientation": "portrait",
     "icon": "./src/assets/Logo.png",
     "userInterfaceStyle": "automatic",
@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "kuwai.cotan.com",
-      "buildNumber": "3",
+      "buildNumber": "4",
       "associatedDomains": ["applinks:kuwai.app"],
       "infoPlist": {
         "NSCameraUsageDescription": "KUWAI uses your camera so you can take photos and record videos to share in your posts and circles. For example, you can snap a photo of an event in Kuwait and post it directly to your feed.",
@@ -31,7 +31,7 @@
         "backgroundColor": "#0033A0"
       },
       "package": "app.kuwaitnow",
-      "versionCode": 3,
+      "versionCode": 4,
       "permissions": [
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
@@ -53,7 +53,7 @@
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 0
     },
-    "runtimeVersion": "1.1.1",
+    "runtimeVersion": "1.1.2",
     "plugins": [
       "expo-updates",
       "expo-splash-screen",
