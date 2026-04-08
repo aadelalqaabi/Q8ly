@@ -367,12 +367,12 @@ export default function DiscoverScreen({ navigation }) {
                     onPress={() => navigation.navigate('HachiRoom', { roomId: room._id, title: room.title })}
                     activeOpacity={0.7}
                   >
-                    <Text style={[styles.activeRank, i === 0 && { color: COLORS.accent }]}>{i + 1}</Text>
-                    <View style={[styles.activeIcon, { backgroundColor: i === 0 ? '#DDE7F5' : COLORS.fill }]}>
-                      <Ionicons name={CATEGORY_ICONS[room.category] || 'chatbubbles-outline'} size={17} color={i === 0 ? COLORS.accent : COLORS.textMuted} />
+                    <Text style={styles.activeRank}>{i + 1}</Text>
+                    <View style={[styles.activeIcon, { backgroundColor: COLORS.fill }]}>
+                      <Ionicons name={CATEGORY_ICONS[room.category] || 'chatbubbles-outline'} size={17} color={COLORS.textMuted} />
                     </View>
                     <View style={{ flex: 1, gap: 2 }}>
-                      <Text style={[styles.activeRowTitle, { textAlign: isRTL ? 'right' : 'left' }, i === 0 && { fontWeight: '700' }]} numberOfLines={1}>{room.title}</Text>
+                      <Text style={[styles.activeRowTitle, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={1}>{room.title}</Text>
                       <Text style={styles.activeRowSub} numberOfLines={1}>{room.creator?.name || ''}</Text>
                     </View>
                     <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 3 }}>
@@ -441,7 +441,7 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.separator,
     backgroundColor: C.white,
   },
-  activeRowFirst: { backgroundColor: '#EEF2FA' },
+  activeRowFirst: {},
   activeRowLast: { borderBottomWidth: 0 },
   activeRank: { fontSize: 13, fontWeight: '700', color: C.textMuted, width: 18, textAlign: 'center', flexShrink: 0 },
   activeIcon: { width: 36, height: 36, borderRadius: 11, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
