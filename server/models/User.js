@@ -75,7 +75,7 @@ const userSchema = new mongoose.Schema(
     // Verification badge
     verifiedBadge: {
       type: String,
-      enum: ['none', 'government', 'media', 'influencer', 'business', 'founder'],
+      enum: ['none', 'official', 'government', 'media', 'influencer', 'business', 'founder'],
       default: 'none',
     },
     isVerified: {

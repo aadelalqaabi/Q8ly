@@ -547,25 +547,26 @@ async function loadUsers(page = 1) {
 function promptVerify(id, username, currentBadge) {
   const hasBadge = currentBadge && currentBadge !== 'none';
   openModal(`
-    <div style="padding:4px 0">
-      <div style="text-align:center;margin-bottom:16px">
-        <div style="width:52px;height:52px;background:#0033A0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px">
-          <svg fill="none" stroke="#fff" stroke-width="3" viewBox="0 0 24 24" width="26" height="26"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-        </div>
-        <h3 style="font-size:18px;font-weight:700;margin-bottom:4px">Assign Badge</h3>
-        <p style="font-size:13px;color:#6C6C70">@${username} · currently <strong>${hasBadge ? currentBadge : 'none'}</strong></p>
+    <div style="text-align:center;padding:8px 0 4px">
+      <div style="width:52px;height:52px;background:#0033A0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin-bottom:14px">
+        <svg fill="none" stroke="#fff" stroke-width="3" viewBox="0 0 24 24" width="26" height="26"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
       </div>
-      <select id="badge-select" style="width:100%;padding:10px 14px;border-radius:10px;border:1.5px solid #E5E5EA;font-size:14px;margin-bottom:16px;background:#fff">
-        <option value="none" ${currentBadge==='none'?'selected':''}>None</option>
-        <option value="government" ${currentBadge==='government'?'selected':''}>Government / Official</option>
-        <option value="media" ${currentBadge==='media'?'selected':''}>Media</option>
-        <option value="influencer" ${currentBadge==='influencer'?'selected':''}>Influencer</option>
-        <option value="business" ${currentBadge==='business'?'selected':''}>Business</option>
-        <option value="founder" ${currentBadge==='founder'?'selected':''}>Founder</option>
-      </select>
-      <div style="display:flex;gap:8px;justify-content:flex-end">
+      <h3 style="font-size:18px;font-weight:700;margin-bottom:4px">KUWAI Badge</h3>
+      <p style="font-size:13px;color:#6C6C70;margin-bottom:20px">@${username}</p>
+      ${hasBadge ? `
+        <div style="background:#EEF2FA;border-radius:12px;padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:10px">
+          <span class="badge badge-verified" style="gap:4px">✓ KUWAI</span>
+          <span style="font-size:13px;color:#0033A0;font-weight:600">Currently verified</span>
+        </div>` : `
+        <div style="background:#F2F2F7;border-radius:12px;padding:12px 16px;margin-bottom:20px">
+          <span style="font-size:13px;color:#6C6C70">This user has no badge yet</span>
+        </div>`}
+      <div style="display:flex;gap:8px;justify-content:center">
         <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-        <button class="btn" style="background:#0033A0;color:#fff" onclick="doVerify('${id}', document.getElementById('badge-select').value)">Save</button>
+        ${hasBadge
+          ? `<button class="btn btn-gray" onclick="doVerify('${id}','none')">Remove Badge</button>`
+          : `<button class="btn" style="background:#0033A0;color:#fff" onclick="doVerify('${id}','official')">Grant KUWAI Badge</button>`
+        }
       </div>
     </div>`);
 }

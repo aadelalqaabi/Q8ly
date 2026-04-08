@@ -167,7 +167,7 @@ exports.banUser = async (req, res) => {
 exports.verifyUser = async (req, res) => {
   try {
     const { verifiedBadge } = req.body;
-    const valid = ['none', 'government', 'media', 'influencer', 'business', 'founder'];
+    const valid = ['none', 'official', 'government', 'media', 'influencer', 'business', 'founder'];
     if (!valid.includes(verifiedBadge)) {
       return res.status(400).json({ success: false, message: 'Invalid badge type' });
     }
