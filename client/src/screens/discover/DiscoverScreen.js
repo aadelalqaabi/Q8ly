@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TextInput, Dimensions,
+  View, Text, StyleSheet, FlatList, ScrollView, TextInput, Dimensions,
   TouchableOpacity, ActivityIndicator, Keyboard, TouchableWithoutFeedback,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -59,7 +59,7 @@ export default function DiscoverScreen({ navigation }) {
   const inputRef = useRef(null);
 
   const { rooms } = useSelector((s) => s.hachi);
-  const hotRooms = useMemo(() => rooms.slice(0, 5), [rooms]);
+  const hotRooms = useMemo(() => rooms.slice(0, 10), [rooms]);
 
   const [query, setQuery] = useState('');
   const [tab, setTab] = useState('circles');
@@ -355,7 +355,36 @@ export default function DiscoverScreen({ navigation }) {
 
       {/* Content */}
       {!isSearchMode ? (
-        selectedCategory ? renderCategoryDetail() : renderCategoryGrid()
+        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
+          {hotRooms.length > 0 && (
+            <View style={styles.mostActiveSection}>
+              <Text style={styles.mostActiveTitle}>{t('hachi.mostActive')}</Text>
+              <View style={styles.mostActiveList}>
+                {hotRooms.map((room, i) => (
+                  <TouchableOpacity
+                    key={room._id}
+                    style={[styles.activeRow, i === 0 && styles.activeRowFirst, i === hotRooms.length - 1 && styles.activeRowLast, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
+                    onPress={() => navigation.navigate('HachiRoom', { roomId: room._id, title: room.title })}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.activeRank, i === 0 && { color: COLORS.accent }]}>{i + 1}</Text>
+                    <View style={[styles.activeIcon, { backgroundColor: i === 0 ? '#DDE7F5' : COLORS.fill }]}>
+                      <Ionicons name={CATEGORY_ICONS[room.category] || 'chatbubbles-outline'} size={17} color={i === 0 ? COLORS.accent : COLORS.textMuted} />
+                    </View>
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Text style={[styles.activeRowTitle, { textAlign: isRTL ? 'right' : 'left' }, i === 0 && { fontWeight: '700' }]} numberOfLines={1}>{room.title}</Text>
+                      <Text style={styles.activeRowSub} numberOfLines={1}>{room.creator?.name || ''}</Text>
+                    </View>
+                    <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 3 }}>
+                      <Ionicons name="people" size={12} color={COLORS.textMuted} />
+                      <Text style={styles.activeRowMembers}>{room.memberCount || 1}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+        </ScrollView>
       ) : isSearching ? (
         <ActivityIndicator size="large" color={COLORS.accent} style={styles.loader} />
       ) : (

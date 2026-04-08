@@ -275,7 +275,7 @@ export default function HachiScreen({ navigation }) {
     guestGate(() => navigation.navigate('HachiRoom', { roomId: room._id, title: room.title }));
 
   // Category chips header
-  const chipKeys = ['all', ...CATEGORY_KEYS];
+  const chipKeys = CATEGORY_KEYS; // already includes 'all' as first item
   const ListHeader = useMemo(() => (
     <View style={{ backgroundColor: C.white, paddingBottom: 4 }}>
       <ScrollView
