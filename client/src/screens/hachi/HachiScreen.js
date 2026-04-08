@@ -281,7 +281,8 @@ export default function HachiScreen({ navigation }) {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingVertical: 10, flexDirection: isRTL ? 'row-reverse' : 'row' }}
+        style={isRTL ? { transform: [{ scaleX: -1 }] } : null}
+        contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingVertical: 10 }}
       >
         {chipKeys.map((key) => {
           const active = activeCategory === key;
@@ -290,7 +291,7 @@ export default function HachiScreen({ navigation }) {
             <TouchableOpacity
               key={key}
               onPress={() => setActiveCategory(key)}
-              style={[styles.chip, active && styles.chipActive]}
+              style={[styles.chip, active && styles.chipActive, isRTL ? { transform: [{ scaleX: -1 }] } : null]}
               activeOpacity={0.7}
             >
               <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
