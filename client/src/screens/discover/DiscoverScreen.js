@@ -432,21 +432,19 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
   gridHeader: { marginBottom: 16 },
 
   // Most active in discover
-  mostActiveSection: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
-  mostActiveTitle: { fontSize: 15, fontWeight: '700', color: C.text, letterSpacing: -0.2, marginBottom: 10 },
-  mostActiveList: {
-    backgroundColor: C.fill, borderRadius: 16,
-    overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: C.separator,
-  },
+  mostActiveSection: { paddingTop: 16 },
+  mostActiveTitle: { fontSize: 15, fontWeight: '700', color: C.text, letterSpacing: -0.2, paddingHorizontal: 16, marginBottom: 4 },
+  mostActiveList: { overflow: 'hidden' },
   activeRow: {
-    alignItems: 'center', gap: 10,
-    paddingHorizontal: 14, paddingVertical: 12,
+    alignItems: 'center', gap: 12,
+    paddingHorizontal: 16, paddingVertical: 13,
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.separator,
+    backgroundColor: C.white,
   },
   activeRowFirst: { backgroundColor: '#EEF2FA' },
   activeRowLast: { borderBottomWidth: 0 },
   activeRank: { fontSize: 13, fontWeight: '700', color: C.textMuted, width: 18, textAlign: 'center', flexShrink: 0 },
-  activeIcon: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  activeIcon: { width: 36, height: 36, borderRadius: 11, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
   activeRowTitle: { fontSize: 14, fontWeight: '600', color: C.text, letterSpacing: -0.1 },
   activeRowSub: { fontSize: 12, color: C.textMuted },
   activeRowMembers: { fontSize: 12, fontWeight: '600', color: C.textMuted },
