@@ -157,44 +157,39 @@ const initSocket = (server) => {
         }
 
         const Hachi = require('../models/Hachi');
-        const room = await Hachi.findById(roomId);
-        if (!room || !room.isActive) return;
-
-        // Prevent blocked members from sending
+        const mongoose = require('mongoose');
         const uid = socket.user._id.toString();
-        if (room.blockedMembers.some((b) => b.toString() === uid)) return;
+        const now = new Date();
+        const msgId = new mongoose.Types.ObjectId();
 
-        const msgData = { user: socket.user._id, text: text.trim(), createdAt: new Date() };
+        const msgData = { _id: msgId, user: socket.user._id, text: text.trim(), reactions: [], createdAt: now };
         if (replyTo?.messageId && replyTo?.userName) {
-          msgData.replyTo = {
-            messageId: replyTo.messageId,
-            text: replyTo.text || '',
-            userName: replyTo.userName,
-          };
+          msgData.replyTo = { messageId: replyTo.messageId, text: replyTo.text || '', userName: replyTo.userName };
         }
-        room.messages.push(msgData);
-        room.lastMessage = { text: text.trim(), createdAt: msgData.createdAt };
 
-        const alreadyMember = room.members.some((m) => m.toString() === uid);
-        if (!alreadyMember) {
-          room.members.push(socket.user._id);
-          room.memberCount = room.members.length;
-        }
-        await room.save();
-
-        const saved = room.messages[room.messages.length - 1];
-        const populated = {
-          _id: saved._id,
-          text: saved.text,
-          reactions: [],
-          createdAt: saved.createdAt,
-          replyTo: saved.replyTo || null,
-          user: {
-            _id: socket.user._id,
-            name: socket.user.name,
-            username: socket.user.username,
-            profilePic: socket.user.profilePic,
+        const updated = await Hachi.findOneAndUpdate(
+          { _id: roomId, isActive: true, blockedMembers: { $ne: socket.user._id } },
+          {
+            $push: { messages: { $each: [msgData], $slice: -500 } },
+            $set: { lastMessage: { text: text.trim(), createdAt: now } },
+            $addToSet: { members: socket.user._id },
           },
+          { new: false }
+        );
+        if (!updated) return;
+
+        // Update memberCount if newly added
+        if (!updated.members.some((m) => m.toString() === uid)) {
+          await Hachi.findByIdAndUpdate(roomId, { memberCount: updated.members.length + 1 });
+        }
+
+        const populated = {
+          _id: msgId,
+          text: text.trim(),
+          reactions: [],
+          createdAt: now,
+          replyTo: msgData.replyTo || null,
+          user: { _id: socket.user._id, name: socket.user.name, username: socket.user.username, profilePic: socket.user.profilePic },
         };
         io.to(`hachi:${roomId}`).emit('hachiMessage', { roomId, message: populated });
       } catch (err) {
@@ -206,33 +201,24 @@ const initSocket = (server) => {
       if (!socket.user || !voiceUrl) return;
       try {
         const Hachi = require('../models/Hachi');
-        const room = await Hachi.findById(roomId);
-        if (!room || !room.isActive) return;
+        const mongoose = require('mongoose');
+        const now = new Date();
+        const msgId = new mongoose.Types.ObjectId();
+        const msgData = { _id: msgId, user: socket.user._id, voiceUrl, voiceDuration: voiceDuration || 0, reactions: [], createdAt: now };
 
-        const msg = { user: socket.user._id, voiceUrl, voiceDuration: voiceDuration || 0, createdAt: new Date() };
-        room.messages.push(msg);
-
-        const uid = socket.user._id.toString();
-        const alreadyMember = room.members.some((m) => m.toString() === uid);
-        if (!alreadyMember) {
-          room.members.push(socket.user._id);
-          room.memberCount = room.members.length;
-        }
-        await room.save();
-
-        const saved = room.messages[room.messages.length - 1];
-        const populated = {
-          _id: saved._id,
-          voiceUrl: saved.voiceUrl,
-          voiceDuration: saved.voiceDuration,
-          reactions: [],
-          createdAt: saved.createdAt,
-          user: {
-            _id: socket.user._id,
-            name: socket.user.name,
-            username: socket.user.username,
-            profilePic: socket.user.profilePic,
+        const updated = await Hachi.findOneAndUpdate(
+          { _id: roomId, isActive: true },
+          {
+            $push: { messages: { $each: [msgData], $slice: -500 } },
+            $addToSet: { members: socket.user._id },
           },
+          { new: false }
+        );
+        if (!updated) return;
+
+        const populated = {
+          _id: msgId, voiceUrl, voiceDuration: voiceDuration || 0, reactions: [], createdAt: now,
+          user: { _id: socket.user._id, name: socket.user.name, username: socket.user.username, profilePic: socket.user.profilePic },
         };
         io.to(`hachi:${roomId}`).emit('hachiMessage', { roomId, message: populated });
       } catch (err) {
@@ -245,25 +231,24 @@ const initSocket = (server) => {
       if (!socket.user || !imageUrl) return;
       try {
         const Hachi = require('../models/Hachi');
-        const room = await Hachi.findById(roomId);
-        if (!room || !room.isActive) return;
+        const mongoose = require('mongoose');
+        const now = new Date();
+        const msgId = new mongoose.Types.ObjectId();
+        const msgData = { _id: msgId, user: socket.user._id, image: imageUrl, isLive: !!isLive, reactions: [], createdAt: now };
 
-        const uid = socket.user._id.toString();
-        if (room.blockedMembers.some((b) => b.toString() === uid)) return;
+        const updated = await Hachi.findOneAndUpdate(
+          { _id: roomId, isActive: true, blockedMembers: { $ne: socket.user._id } },
+          {
+            $push: { messages: { $each: [msgData], $slice: -500 } },
+            $set: { lastMessage: { text: '📷', createdAt: now } },
+            $addToSet: { members: socket.user._id },
+          },
+          { new: false }
+        );
+        if (!updated) return;
 
-        const msg = { user: socket.user._id, image: imageUrl, isLive: !!isLive, createdAt: new Date() };
-        room.messages.push(msg);
-        room.lastMessage = { text: '📷', createdAt: msg.createdAt };
-
-        if (!room.members.some((m) => m.toString() === uid)) {
-          room.members.push(socket.user._id);
-          room.memberCount = room.members.length;
-        }
-        await room.save();
-
-        const saved = room.messages[room.messages.length - 1];
         const populated = {
-          _id: saved._id, image: saved.image, isLive: saved.isLive, reactions: [], createdAt: saved.createdAt,
+          _id: msgId, image: imageUrl, isLive: !!isLive, reactions: [], createdAt: now,
           user: { _id: socket.user._id, name: socket.user.name, username: socket.user.username, profilePic: socket.user.profilePic },
         };
         io.to(`hachi:${roomId}`).emit('hachiMessage', { roomId, message: populated });
@@ -277,26 +262,25 @@ const initSocket = (server) => {
       if (!socket.user || !videoUrl) return;
       try {
         const Hachi = require('../models/Hachi');
-        const room = await Hachi.findById(roomId);
-        if (!room || !room.isActive) return;
+        const mongoose = require('mongoose');
+        const now = new Date();
+        const msgId = new mongoose.Types.ObjectId();
+        const msgData = { _id: msgId, user: socket.user._id, video: videoUrl, videoThumbnail: videoThumbnail || '', isLive: !!isLive, reactions: [], createdAt: now };
 
-        const uid = socket.user._id.toString();
-        if (room.blockedMembers.some((b) => b.toString() === uid)) return;
+        const updated = await Hachi.findOneAndUpdate(
+          { _id: roomId, isActive: true, blockedMembers: { $ne: socket.user._id } },
+          {
+            $push: { messages: { $each: [msgData], $slice: -500 } },
+            $set: { lastMessage: { text: '🎥', createdAt: now } },
+            $addToSet: { members: socket.user._id },
+          },
+          { new: false }
+        );
+        if (!updated) return;
 
-        const msg = { user: socket.user._id, video: videoUrl, videoThumbnail: videoThumbnail || '', isLive: !!isLive, createdAt: new Date() };
-        room.messages.push(msg);
-        room.lastMessage = { text: '🎥', createdAt: msg.createdAt };
-
-        if (!room.members.some((m) => m.toString() === uid)) {
-          room.members.push(socket.user._id);
-          room.memberCount = room.members.length;
-        }
-        await room.save();
-
-        const saved = room.messages[room.messages.length - 1];
         const populated = {
-          _id: saved._id, video: saved.video, videoThumbnail: saved.videoThumbnail, isLive: saved.isLive,
-          reactions: [], createdAt: saved.createdAt,
+          _id: msgId, video: videoUrl, videoThumbnail: videoThumbnail || '', isLive: !!isLive,
+          reactions: [], createdAt: now,
           user: { _id: socket.user._id, name: socket.user.name, username: socket.user.username, profilePic: socket.user.profilePic },
         };
         io.to(`hachi:${roomId}`).emit('hachiMessage', { roomId, message: populated });
