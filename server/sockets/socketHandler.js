@@ -167,21 +167,22 @@ const initSocket = (server) => {
           msgData.replyTo = { messageId: replyTo.messageId, text: replyTo.text || '', userName: replyTo.userName };
         }
 
-        const updated = await Hachi.findOneAndUpdate(
-          { _id: roomId, isActive: true, blockedMembers: { $ne: socket.user._id } },
+        const room = await Hachi.findById(roomId).select('isActive blockedMembers members memberCount').lean();
+        if (!room || !room.isActive) return;
+        if ((room.blockedMembers || []).some((b) => b.toString() === uid)) return;
+
+        const isNewMember = !(room.members || []).some((m) => m.toString() === uid);
+        const updated = await Hachi.findByIdAndUpdate(
+          roomId,
           {
             $push: { messages: { $each: [msgData], $slice: -500 } },
             $set: { lastMessage: { text: text.trim(), createdAt: now } },
             $addToSet: { members: socket.user._id },
+            ...(isNewMember ? { $inc: { memberCount: 1 } } : {}),
           },
           { new: false }
         );
         if (!updated) return;
-
-        // Update memberCount if newly added
-        if (!updated.members.some((m) => m.toString() === uid)) {
-          await Hachi.findByIdAndUpdate(roomId, { memberCount: updated.members.length + 1 });
-        }
 
         const populated = {
           _id: msgId,
@@ -236,12 +237,19 @@ const initSocket = (server) => {
         const msgId = new mongoose.Types.ObjectId();
         const msgData = { _id: msgId, user: socket.user._id, image: imageUrl, isLive: !!isLive, reactions: [], createdAt: now };
 
-        const updated = await Hachi.findOneAndUpdate(
-          { _id: roomId, isActive: true, blockedMembers: { $ne: socket.user._id } },
+        const roomCheck = await Hachi.findById(roomId).select('isActive blockedMembers members').lean();
+        if (!roomCheck || !roomCheck.isActive) return;
+        const uid2 = socket.user._id.toString();
+        if ((roomCheck.blockedMembers || []).some((b) => b.toString() === uid2)) return;
+        const isNew2 = !(roomCheck.members || []).some((m) => m.toString() === uid2);
+
+        const updated = await Hachi.findByIdAndUpdate(
+          roomId,
           {
             $push: { messages: { $each: [msgData], $slice: -500 } },
             $set: { lastMessage: { text: '📷', createdAt: now } },
             $addToSet: { members: socket.user._id },
+            ...(isNew2 ? { $inc: { memberCount: 1 } } : {}),
           },
           { new: false }
         );
@@ -267,12 +275,19 @@ const initSocket = (server) => {
         const msgId = new mongoose.Types.ObjectId();
         const msgData = { _id: msgId, user: socket.user._id, video: videoUrl, videoThumbnail: videoThumbnail || '', isLive: !!isLive, reactions: [], createdAt: now };
 
-        const updated = await Hachi.findOneAndUpdate(
-          { _id: roomId, isActive: true, blockedMembers: { $ne: socket.user._id } },
+        const roomCheck3 = await Hachi.findById(roomId).select('isActive blockedMembers members').lean();
+        if (!roomCheck3 || !roomCheck3.isActive) return;
+        const uid3 = socket.user._id.toString();
+        if ((roomCheck3.blockedMembers || []).some((b) => b.toString() === uid3)) return;
+        const isNew3 = !(roomCheck3.members || []).some((m) => m.toString() === uid3);
+
+        const updated = await Hachi.findByIdAndUpdate(
+          roomId,
           {
             $push: { messages: { $each: [msgData], $slice: -500 } },
             $set: { lastMessage: { text: '🎥', createdAt: now } },
             $addToSet: { members: socket.user._id },
+            ...(isNew3 ? { $inc: { memberCount: 1 } } : {}),
           },
           { new: false }
         );
