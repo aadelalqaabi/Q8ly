@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   ActivityIndicator, TextInput, Modal, KeyboardAvoidingView,
-  Platform, ScrollView, Dimensions,
+  Platform, ScrollView, Dimensions, Vibration,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +15,11 @@ import { getDateLocale } from '../../i18n';
 import { useTheme } from '../../context/ThemeContext';
 import { useGuestGate } from '../../context/GuestGateContext';
 import * as Haptics from 'expo-haptics';
+
+const haptic = {
+  light:   () => Platform.OS === 'ios' ? Haptics.selectionAsync() : Vibration.vibrate(30),
+  success: () => Platform.OS === 'ios' ? Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success) : Vibration.vibrate([0, 40, 60, 40]),
+};
 
 const { width: SW } = Dimensions.get('window');
 const HACHI_COST    = 50; // points deducted per circle created
@@ -272,7 +277,7 @@ export default function HachiScreen({ navigation }) {
       const result = await dispatch(
         createRoom({ title: newTitle.trim(), category: newCategory, isPublic: true })
       ).unwrap();
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      haptic.success();
       setShowCreate(false);
       setNewTitle('');
       setNewCategory('general');
@@ -480,7 +485,7 @@ export default function HachiScreen({ navigation }) {
                     <TouchableOpacity
                       key={cat.key}
                       style={[styles.createCatTile, selected && styles.createCatTileSelected, isRTL && { transform: [{ scaleX: -1 }] }]}
-                      onPress={() => { Haptics.selectionAsync(); setNewCategory(cat.key); }}
+                      onPress={() => { haptic.light(); setNewCategory(cat.key); }}
                       activeOpacity={0.75}
                     >
                       <Ionicons name={cat.icon} size={22} color={selected ? C.accent : C.textMuted} />

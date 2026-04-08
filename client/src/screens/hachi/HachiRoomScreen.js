@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import {
   View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity,
   TextInput, KeyboardAvoidingView, Platform, ActivityIndicator,
-  Image, Modal, Alert, Keyboard, Share, Animated, PanResponder,
+  Image, Modal, Alert, Keyboard, Share, Animated, PanResponder, Vibration,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,6 +25,14 @@ import {
 import { getDateLocale } from '../../i18n';
 import { hachiAPI, uploadAPI } from '../../services/api';
 import { useTheme } from '../../context/ThemeContext';
+
+// Cross-platform haptics — expo-haptics on iOS, Vibration on Android
+const haptic = {
+  light:    () => Platform.OS === 'ios' ? Haptics.selectionAsync()           : Vibration.vibrate(30),
+  medium:   () => Platform.OS === 'ios' ? Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning) : Vibration.vibrate(60),
+  success:  () => Platform.OS === 'ios' ? Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success) : Vibration.vibrate([0, 40, 60, 40]),
+  warning:  () => Platform.OS === 'ios' ? Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning) : Vibration.vibrate([0, 60, 40, 60]),
+};
 
 const PALETTE = ['#0033A0', '#007A3D', '#FF6B35', '#2196F3', '#9C27B0', '#00BCD4', '#FF9800'];
 function avatarBg(name) {
@@ -352,7 +360,7 @@ export default function HachiRoomScreen({ navigation, route }) {
   const handleSend = useCallback(() => {
     const trimmed = text.trim();
     if (!trimmed) return;
-    Haptics.selectionAsync();
+    haptic.light();
 
     dispatch(addOptimisticMessage({
       roomId,
@@ -377,12 +385,12 @@ export default function HachiRoomScreen({ navigation, route }) {
   }, [text, roomId, currentUser, dispatch, replyingTo]);
 
   const handleReact = useCallback((messageId, emoji) => {
-    Haptics.selectionAsync();
+    haptic.light();
     sendHachiMessageReaction(roomId, messageId?.toString(), emoji);
   }, [roomId]);
 
   const handleLongPress = useCallback((message) => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    haptic.medium();
     setSelectedMsg(message);
   }, []);
 
@@ -393,7 +401,7 @@ export default function HachiRoomScreen({ navigation, route }) {
 
   const handleDeleteOwnMessage = useCallback(() => {
     if (!selectedMsg) return;
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    haptic.warning();
     const msgId = selectedMsg._id?.toString();
     setSelectedMsg(null);
     setConfirmDelete(false);
@@ -663,7 +671,7 @@ export default function HachiRoomScreen({ navigation, route }) {
           renderItem={({ item }) => (
             <SwipeableMessage
               onReply={() => {
-                Haptics.selectionAsync();
+                haptic.light();
                 setReplyingTo({
                   messageId: item._id?.toString(),
                   userName: item.user?.name || t('hachi.someoneDefault'),
