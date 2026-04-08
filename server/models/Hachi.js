@@ -58,9 +58,15 @@ const hachiSchema = new mongoose.Schema({
   },
   // Set when this circle first reaches #1 in velocity ranking → creator gets bonus
   trendingAwardedAt: { type: Date, default: null },
+  // Creator's location at time of creation (optional)
+  location: {
+    type: { type: String, enum: ['Point'], default: 'Point' },
+    coordinates: { type: [Number] }, // [lng, lat]
+  },
 }, { timestamps: true });
 
 hachiSchema.index({ isActive: 1, memberCount: -1, createdAt: -1 });
+hachiSchema.index({ location: '2dsphere' }, { sparse: true });
 
 module.exports = mongoose.model('Hachi', hachiSchema);
 module.exports.CATEGORIES = CATEGORIES;

@@ -14,7 +14,7 @@ function velocityScore(room, now) {
   return recentMsgs * 3 + (room.memberCount || 1);
 }
 
-// GET /api/hachi — list circles, sorted by velocity
+// GET /api/hachi — list circles, sorted by proximity (if lat/lng given) then velocity
 exports.getRooms = async (req, res) => {
   try {
     const query = { isActive: true };
@@ -24,11 +24,34 @@ exports.getRooms = async (req, res) => {
     if (req.query.creator) {
       query.creator = req.query.creator;
     }
-    const rawRooms = await Hachi.find(query)
-      .populate('creator', 'name username profilePic verifiedBadge')
-      .sort({ updatedAt: -1 })
-      .limit(80)
-      .lean();
+
+    const lat = parseFloat(req.query.lat);
+    const lng = parseFloat(req.query.lng);
+    const hasLocation = !isNaN(lat) && !isNaN(lng);
+    const MAX_DISTANCE_M = 20000; // 20 km radius
+
+    let rawRooms;
+    if (hasLocation) {
+      // Geo query: circles with location sorted by distance first, then all others
+      const [nearby, rest] = await Promise.all([
+        Hachi.find({ ...query, location: { $nearSphere: { $geometry: { type: 'Point', coordinates: [lng, lat] }, $maxDistance: MAX_DISTANCE_M } } })
+          .populate('creator', 'name username profilePic verifiedBadge')
+          .limit(80)
+          .lean(),
+        Hachi.find({ ...query, location: { $exists: false } })
+          .populate('creator', 'name username profilePic verifiedBadge')
+          .sort({ updatedAt: -1 })
+          .limit(40)
+          .lean(),
+      ]);
+      rawRooms = [...nearby, ...rest];
+    } else {
+      rawRooms = await Hachi.find(query)
+        .populate('creator', 'name username profilePic verifiedBadge')
+        .sort({ updatedAt: -1 })
+        .limit(80)
+        .lean();
+    }
 
     const now = Date.now();
 
@@ -132,11 +155,17 @@ exports.createRoom = async (req, res) => {
       invalidateUserCache(req.user._id);
     }
 
+    const { lat: cLat, lng: cLng } = req.body;
+    const locationField = cLat && cLng ? {
+      location: { type: 'Point', coordinates: [parseFloat(cLng), parseFloat(cLat)] },
+    } : {};
+
     const room = await Hachi.create({
       title: title.trim(),
       category,
       isPublic: isPublic !== false,
       creator: req.user._id,
+      ...locationField,
       members: [req.user._id],
       memberCount: 1,
     });

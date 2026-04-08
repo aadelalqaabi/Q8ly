@@ -2,9 +2,9 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { hachiAPI } from '../../services/api';
 import { updateUserLocally } from './authSlice';
 
-export const fetchRooms = createAsyncThunk('hachi/fetchRooms', async (category, { rejectWithValue }) => {
+export const fetchRooms = createAsyncThunk('hachi/fetchRooms', async ({ category, location } = {}, { rejectWithValue }) => {
   try {
-    const res = await hachiAPI.getRooms(category);
+    const res = await hachiAPI.getRooms(category, location);
     return res.rooms;
   } catch (e) {
     return rejectWithValue(e.message);

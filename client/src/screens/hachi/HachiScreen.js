@@ -15,6 +15,7 @@ import { getDateLocale } from '../../i18n';
 import { useTheme } from '../../context/ThemeContext';
 import { useGuestGate } from '../../context/GuestGateContext';
 import * as Haptics from 'expo-haptics';
+import * as Location from 'expo-location';
 
 const haptic = {
   light:   () => Platform.OS === 'ios' ? Haptics.selectionAsync() : Vibration.vibrate(30),
@@ -228,9 +229,24 @@ export default function HachiScreen({ navigation }) {
   const [newCategory,   setNewCategory]   = useState('general');
   const [creating,      setCreating]      = useState(false);
   const [activeCategory, setActiveCategory] = useState('all');
+  const [userLocation,  setUserLocation]  = useState(null);
 
   useEffect(() => {
-    dispatch(fetchRooms());
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+          const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          setUserLocation(loc);
+          dispatch(fetchRooms({ location: loc }));
+        } else {
+          dispatch(fetchRooms({}));
+        }
+      } catch {
+        dispatch(fetchRooms({}));
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -255,7 +271,7 @@ export default function HachiScreen({ navigation }) {
     setCreating(true);
     try {
       const result = await dispatch(
-        createRoom({ title: newTitle.trim(), category: newCategory, isPublic: true })
+        createRoom({ title: newTitle.trim(), category: newCategory, isPublic: true, ...(userLocation || {}) })
       ).unwrap();
       haptic.success();
       setShowCreate(false);
@@ -352,7 +368,7 @@ export default function HachiScreen({ navigation }) {
           style={{ backgroundColor: C.white }}
           contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom + 24, backgroundColor: C.white }}
           refreshing={isLoading}
-          onRefresh={() => { dispatch(fetchRooms()); }}
+          onRefresh={() => { dispatch(fetchRooms({ location: userLocation })); }}
           ItemSeparatorComponent={() => <View style={styles.sep} />}
         />
       )}

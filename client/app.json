@@ -22,7 +22,8 @@
         "NSPhotoLibraryUsageDescription": "KUWAI accesses your photo library so you can choose existing photos and videos to attach to your posts. For example, you can select up to 4 photos from your camera roll to share with your followers.",
         "NSPhotoLibraryAddUsageDescription": "KUWAI saves photos and videos to your library when you download media shared in posts. For example, a video shared in a circle can be saved directly to your Photos app.",
         "NSMicrophoneUsageDescription": "KUWAI uses your microphone to record audio when you create video posts. For example, when recording a video to share in your feed, your microphone captures the accompanying audio.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationWhenInUseUsageDescription": "KUWAI uses your location to show circles happening near you."
       }
     },
     "android": {
@@ -34,6 +35,8 @@
       "versionCode": 4,
       "permissions": [
         "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
         "RECORD_AUDIO",

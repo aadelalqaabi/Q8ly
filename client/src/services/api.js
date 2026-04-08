@@ -151,8 +151,11 @@ export const eventsAPI = {
 export const hachiAPI = {
   search: (q) => api.get('/hachi/search', { params: { q } }),
   getSubjects: () => api.get('/hachi/subjects'),
-  getRooms: (category) => api.get('/hachi', {
-    params: { ...(category && category !== 'all' ? { category } : {}) },
+  getRooms: (category, location) => api.get('/hachi', {
+    params: {
+      ...(category && category !== 'all' ? { category } : {}),
+      ...(location ? { lat: location.lat, lng: location.lng } : {}),
+    },
   }),
   getArchivedRooms: (category) => api.get('/hachi/archived', {
     params: { ...(category && category !== 'all' ? { category } : {}) },
