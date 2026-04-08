@@ -63,19 +63,20 @@ function CreatorBadge({ badge }) {
 
 // ── ActiveRow (unified Most Active row — same style for all 5) ─────────────────
 
-function ActiveRow({ room, isFirst, onPress, styles, C, isRTL, isLast }) {
+function ActiveRow({ room, rank, isFirst, onPress, styles, C, isRTL, isLast }) {
   const catIcon = CATEGORY_ICONS[room.category] || 'chatbubbles-outline';
   const members = room.memberCount || 1;
 
   return (
     <TouchableOpacity
-      style={[styles.activeRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }, isFirst && { backgroundColor: '#EEF2FA' }, isLast && { borderBottomWidth: 0 }]}
+      style={[styles.activeRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }, isFirst && { backgroundColor: '#EEF2FA' }, isLast && styles.activeRowLast]}
       onPress={onPress}
       activeOpacity={0.7}
     >
+      <Text style={[styles.activeRank, isFirst && { color: C.accent }]}>{rank}</Text>
 
-      <View style={[styles.activeIcon, { backgroundColor: C.fill }]}>
-        <Ionicons name={catIcon} size={Math.round(18 * SCALE)} color={C.textMuted} />
+      <View style={[styles.activeIcon, { backgroundColor: isFirst ? '#DDE7F5' : C.fill }]}>
+        <Ionicons name={catIcon} size={Math.round(18 * SCALE)} color={isFirst ? C.accent : C.textMuted} />
       </View>
 
       <View style={{ flex: 1, gap: 3 }}>
@@ -284,6 +285,7 @@ export default function HachiScreen({ navigation }) {
             <ActiveRow
               key={room._id}
               room={room}
+              rank={i + 1}
               isFirst={i === 0}
               onPress={() => goToRoom(room)}
               styles={styles} C={C} isRTL={isRTL}
@@ -563,6 +565,12 @@ const makeStyles = (C, isDark, isRTL = false) => StyleSheet.create({
     paddingVertical: Math.round(13 * SCALE),
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: C.separator,
+  },
+  activeRowLast: { borderBottomWidth: 0 },
+  activeRank: {
+    fontSize: Math.round(13 * SCALE), fontWeight: '700',
+    color: C.textMuted, width: Math.round(18 * SCALE),
+    textAlign: 'center', flexShrink: 0,
   },
   activeIcon: {
     width: Math.round(36 * SCALE), height: Math.round(36 * SCALE),
