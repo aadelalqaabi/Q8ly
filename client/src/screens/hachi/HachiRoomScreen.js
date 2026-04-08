@@ -104,7 +104,7 @@ function SwipeableMessage({ children, onReply }) {
 }
 
 // ── Single message row (feed/thread style) ──────────────────────────────────────
-function MessageRow({ message, isMine, onLongPress, currentUserId, onReact, onUserPress, onImagePress }) {
+function MessageRow({ message, isMine, onLongPress, currentUserId, onReact, onUserPress, onImagePress, onReplyPress }) {
   const { t } = useTranslation();
   const { colors: COLORS } = useTheme();
   const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
@@ -169,16 +169,20 @@ function MessageRow({ message, isMine, onLongPress, currentUserId, onReact, onUs
           hasMedia && !text && styles.msgBubbleMedia,
           _uploading && styles.msgBubbleUploading,
         ]}>
-          {/* Reply quote */}
+          {/* Reply quote — tap to scroll to original */}
           {message.replyTo?.userName && (
-            <View style={[styles.replyQuote, isMine && styles.replyQuoteMine]}>
+            <TouchableOpacity
+              style={[styles.replyQuote, isMine && styles.replyQuoteMine]}
+              onPress={() => onReplyPress?.(message.replyTo.messageId)}
+              activeOpacity={0.6}
+            >
               <Text style={[styles.replyQuoteName, isMine && { color: 'rgba(255,255,255,0.9)' }]} numberOfLines={1}>
                 {message.replyTo.userName}
               </Text>
               <Text style={[styles.replyQuoteText, isMine && { color: 'rgba(255,255,255,0.7)' }]} numberOfLines={1}>
                 {message.replyTo.text || '📷 Photo'}
               </Text>
-            </View>
+            </TouchableOpacity>
           )}
           {image && (
             <TouchableOpacity activeOpacity={0.92} onPress={() => onImagePress?.({ uri: image, type: 'image' })}>
@@ -398,6 +402,16 @@ export default function HachiRoomScreen({ navigation, route }) {
     if (!user?.username) return;
     navigation.navigate('ProfileDetail', { username: user.username });
   }, [navigation]);
+
+  const handleScrollToMessage = useCallback((messageId) => {
+    if (!messageId || !flatRef.current) return;
+    const messages = activeRoom?.messages || [];
+    const index = messages.findIndex((m) => m._id?.toString() === messageId?.toString());
+    if (index < 0) return;
+    try {
+      flatRef.current.scrollToIndex({ index, animated: true, viewPosition: 0.3 });
+    } catch {}
+  }, [activeRoom?.messages]);
 
   const handleDeleteOwnMessage = useCallback(() => {
     if (!selectedMsg) return;
@@ -687,6 +701,7 @@ export default function HachiRoomScreen({ navigation, route }) {
                 onReact={handleReact}
                 onUserPress={handleUserPress}
                 onImagePress={(media) => navigation.navigate('MediaViewer', { media: [media], initialIndex: 0 })}
+                onReplyPress={handleScrollToMessage}
               />
             </SwipeableMessage>
           )}
@@ -698,6 +713,9 @@ export default function HachiRoomScreen({ navigation, route }) {
           }
           contentContainerStyle={{ padding: 12, flexGrow: 1 }}
           showsVerticalScrollIndicator={false}
+          onScrollToIndexFailed={({ index }) => {
+            flatRef.current?.scrollToOffset({ offset: index * 80, animated: true });
+          }}
         />
 
         {/* Reply preview bar */}
