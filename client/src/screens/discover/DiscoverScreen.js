@@ -163,11 +163,6 @@ export default function DiscoverScreen({ navigation }) {
           {room.memberCount || 0} {t('discover.listening')} · {t(`hachi.cat${room.category?.charAt(0).toUpperCase()}${room.category?.slice(1)}`)}
         </Text>
       </View>
-      <View style={[styles.liveChip, !room.isActive && styles.liveChipOff]}>
-        <Text style={[styles.liveChipText, !room.isActive && styles.liveChipTextOff]}>
-          {room.isActive ? t('hachi.liveBadge') : t('hachi.endedBadge')}
-        </Text>
-      </View>
     </TouchableOpacity>
   );
 
