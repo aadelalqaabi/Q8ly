@@ -222,11 +222,12 @@ export default function HachiScreen({ navigation }) {
     label: t(`hachi.cat${key.charAt(0).toUpperCase()}${key.slice(1)}`),
   }));
 
-  const [showCreate,  setShowCreate]  = useState(false);
-  const [showLocked,  setShowLocked]  = useState(false);
-  const [newTitle,    setNewTitle]    = useState('');
-  const [newCategory, setNewCategory] = useState('general');
-  const [creating,    setCreating]    = useState(false);
+  const [showCreate,    setShowCreate]    = useState(false);
+  const [showLocked,    setShowLocked]    = useState(false);
+  const [newTitle,      setNewTitle]      = useState('');
+  const [newCategory,   setNewCategory]   = useState('general');
+  const [creating,      setCreating]      = useState(false);
+  const [activeCategory, setActiveCategory] = useState('all');
 
   useEffect(() => {
     dispatch(fetchRooms());
@@ -241,9 +242,12 @@ export default function HachiScreen({ navigation }) {
   }, []);
 
   // Hot circles: top 5 by velocity score (already sorted server-side)
-  const hotRooms = useMemo(
-    () => rooms.slice(0, 5),
-    [rooms]
+  const hotRooms = useMemo(() => rooms.slice(0, 5), [rooms]);
+
+  // Filtered rooms by category
+  const filteredRooms = useMemo(
+    () => activeCategory === 'all' ? rooms : rooms.filter((r) => r.category === activeCategory),
+    [rooms, activeCategory]
   );
 
   const handleCreate = useCallback(async () => {
@@ -270,38 +274,33 @@ export default function HachiScreen({ navigation }) {
   const goToRoom = (room) =>
     guestGate(() => navigation.navigate('HachiRoom', { roomId: room._id, title: room.title }));
 
-  // FlatList header: most active circles
-  const ListHeader = useMemo(() => {
-    const hasHot = hotRooms.length > 0;
-    if (!hasHot) return null;
-    return (
-      <View style={{ backgroundColor: C.white }}>
-        {/* Most active circles */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>{t('hachi.mostActive')}</Text>
-        </View>
-        <View style={styles.activeList}>
-          {hotRooms.map((room, i) => (
-            <ActiveRow
-              key={room._id}
-              room={room}
-              rank={i + 1}
-              isFirst={i === 0}
-              onPress={() => goToRoom(room)}
-              styles={styles} C={C} isRTL={isRTL}
-              isLast={i === hotRooms.length - 1}
-            />
-          ))}
-        </View>
-
-        {rooms.length > 0 && (
-          <View style={[styles.sectionHeader, { marginTop: 0, paddingTop: 12 }]}>
-            <Text style={styles.sectionTitle}>{t('hachi.allCircles')}</Text>
-          </View>
-        )}
-      </View>
-    );
-  }, [hotRooms, rooms.length, styles, C]);
+  // Category chips header
+  const chipKeys = ['all', ...CATEGORY_KEYS];
+  const ListHeader = useMemo(() => (
+    <View style={{ backgroundColor: C.white, paddingBottom: 4 }}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingVertical: 10, flexDirection: isRTL ? 'row-reverse' : 'row' }}
+      >
+        {chipKeys.map((key) => {
+          const active = activeCategory === key;
+          const label = key === 'all' ? t('hachi.catAll') : t(`hachi.cat${key.charAt(0).toUpperCase()}${key.slice(1)}`);
+          return (
+            <TouchableOpacity
+              key={key}
+              onPress={() => setActiveCategory(key)}
+              style={[styles.chip, active && styles.chipActive]}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+      <View style={styles.sep} />
+    </View>
+  ), [activeCategory, styles, C, isRTL]);
 
   const renderEmpty = () => (
     <View style={styles.empty}>
@@ -341,7 +340,7 @@ export default function HachiScreen({ navigation }) {
         <ActivityIndicator size="large" color={C.accent} style={{ marginTop: 60 }} />
       ) : (
         <FlatList
-          data={rooms}
+          data={filteredRooms}
           keyExtractor={(item) => item._id}
           renderItem={({ item }) => (
             <RoomRow room={item} onPress={() => goToRoom(item)} styles={styles} C={C} t={t} />
@@ -548,6 +547,16 @@ const makeStyles = (C, isDark, isRTL = false) => StyleSheet.create({
   },
   sectionEmoji: { fontSize: 16 },
   sectionTitle: { fontSize: 15, fontWeight: '700', letterSpacing: -0.2, color: C.text },
+
+  // Category chips
+  chip: {
+    paddingHorizontal: 14, paddingVertical: 7,
+    borderRadius: 20, backgroundColor: C.fill,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: C.separator,
+  },
+  chipActive: { backgroundColor: C.accent, borderColor: C.accent },
+  chipText: { fontSize: 13, fontWeight: '500', color: C.textMuted },
+  chipTextActive: { color: '#fff', fontWeight: '600' },
 
   // Most active section — unified list
   activeList: {

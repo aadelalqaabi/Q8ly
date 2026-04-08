@@ -6,6 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { useSelector } from 'react-redux';
 import { usersAPI, hachiAPI } from '../../services/api';
 import UserCard from '../../components/profile/UserCard';
 import { useTheme } from '../../context/ThemeContext';
@@ -56,6 +57,9 @@ export default function DiscoverScreen({ navigation }) {
   const { colors: COLORS } = useTheme();
   const styles = useMemo(() => makeStyles(COLORS, isRTL), [COLORS, isRTL]);
   const inputRef = useRef(null);
+
+  const { rooms } = useSelector((s) => s.hachi);
+  const hotRooms = useMemo(() => rooms.slice(0, 5), [rooms]);
 
   const [query, setQuery] = useState('');
   const [tab, setTab] = useState('circles');
@@ -186,9 +190,39 @@ export default function DiscoverScreen({ navigation }) {
         contentContainerStyle={{ padding: GRID_PAD, paddingBottom: insets.bottom + 40 }}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
-          <View style={styles.gridHeader}>
-            <Text style={styles.gridTitle}>{t('discover.categoriesTitle')}</Text>
-            <Text style={styles.gridSub}>{t('discover.categoriesSub')}</Text>
+          <View>
+            {hotRooms.length > 0 && (
+              <View style={styles.mostActiveSection}>
+                <Text style={styles.mostActiveTitle}>{t('hachi.mostActive')}</Text>
+                <View style={styles.mostActiveList}>
+                  {hotRooms.map((room, i) => (
+                    <TouchableOpacity
+                      key={room._id}
+                      style={[styles.activeRow, i === 0 && styles.activeRowFirst, i === hotRooms.length - 1 && styles.activeRowLast, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
+                      onPress={() => navigation.navigate('HachiRoom', { roomId: room._id, title: room.title })}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.activeRank, i === 0 && { color: COLORS.accent }]}>{i + 1}</Text>
+                      <View style={[styles.activeIcon, { backgroundColor: i === 0 ? '#DDE7F5' : COLORS.fill }]}>
+                        <Ionicons name={CATEGORY_ICONS[room.category] || 'chatbubbles-outline'} size={17} color={i === 0 ? COLORS.accent : COLORS.textMuted} />
+                      </View>
+                      <View style={{ flex: 1, gap: 2 }}>
+                        <Text style={[styles.activeRowTitle, { textAlign: isRTL ? 'right' : 'left' }, i === 0 && { fontWeight: '700' }]} numberOfLines={1}>{room.title}</Text>
+                        <Text style={styles.activeRowSub} numberOfLines={1}>{room.creator?.name || ''}</Text>
+                      </View>
+                      <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 3 }}>
+                        <Ionicons name="people" size={12} color={COLORS.textMuted} />
+                        <Text style={styles.activeRowMembers}>{room.memberCount || 1}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+            <View style={styles.gridHeader}>
+              <Text style={styles.gridTitle}>{t('discover.categoriesTitle')}</Text>
+              <Text style={styles.gridSub}>{t('discover.categoriesSub')}</Text>
+            </View>
           </View>
         }
         renderItem={({ item: cat }) => {
@@ -367,6 +401,26 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
 
   // ── Category grid ─────────────────────────────────────────────────────────
   gridHeader: { marginBottom: 16 },
+
+  // Most active in discover
+  mostActiveSection: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
+  mostActiveTitle: { fontSize: 15, fontWeight: '700', color: C.text, letterSpacing: -0.2, marginBottom: 10 },
+  mostActiveList: {
+    backgroundColor: C.fill, borderRadius: 16,
+    overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: C.separator,
+  },
+  activeRow: {
+    alignItems: 'center', gap: 10,
+    paddingHorizontal: 14, paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.separator,
+  },
+  activeRowFirst: { backgroundColor: '#EEF2FA' },
+  activeRowLast: { borderBottomWidth: 0 },
+  activeRank: { fontSize: 13, fontWeight: '700', color: C.textMuted, width: 18, textAlign: 'center', flexShrink: 0 },
+  activeIcon: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  activeRowTitle: { fontSize: 14, fontWeight: '600', color: C.text, letterSpacing: -0.1 },
+  activeRowSub: { fontSize: 12, color: C.textMuted },
+  activeRowMembers: { fontSize: 12, fontWeight: '600', color: C.textMuted },
   gridTitle: {
     fontSize: 22, fontWeight: '800', color: C.text,
     letterSpacing: -0.3, textAlign: isRTL ? 'right' : 'left',
