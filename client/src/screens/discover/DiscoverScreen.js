@@ -433,7 +433,7 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
 
   // Most active in discover
   mostActiveSection: { paddingTop: 16 },
-  mostActiveTitle: { fontSize: 15, fontWeight: '700', color: C.text, letterSpacing: -0.2, paddingHorizontal: 16, marginBottom: 4 },
+  mostActiveTitle: { fontSize: 15, fontWeight: '700', color: C.text, letterSpacing: -0.2, paddingHorizontal: 16, marginBottom: 4, textAlign: isRTL ? 'right' : 'left' },
   mostActiveList: { overflow: 'hidden' },
   activeRow: {
     alignItems: 'center', gap: 12,
