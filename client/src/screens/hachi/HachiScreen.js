@@ -69,23 +69,17 @@ function ActiveRow({ room, isFirst, onPress, styles, C, isRTL, isLast }) {
 
   return (
     <TouchableOpacity
-      style={[styles.activeRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }, isLast && { borderBottomWidth: 0 }]}
+      style={[styles.activeRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }, isFirst && { backgroundColor: '#EEF2FA' }, isLast && { borderBottomWidth: 0 }]}
       onPress={onPress}
       activeOpacity={0.7}
     >
-      {/* #1 badge */}
-      {isFirst ? (
-        <Text style={styles.activeFirstBadge}>#1</Text>
-      ) : (
-        <View style={styles.activeDotEmpty} />
-      )}
 
       <View style={[styles.activeIcon, { backgroundColor: C.fill }]}>
         <Ionicons name={catIcon} size={Math.round(18 * SCALE)} color={C.textMuted} />
       </View>
 
       <View style={{ flex: 1, gap: 3 }}>
-        <Text style={[styles.activeTitle, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={1}>
+        <Text style={[styles.activeTitle, { textAlign: isRTL ? 'right' : 'left' }, isFirst && { fontWeight: '700' }]} numberOfLines={1}>
           {room.title}
         </Text>
         <View style={[{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 4 }]}>
@@ -569,14 +563,6 @@ const makeStyles = (C, isDark, isRTL = false) => StyleSheet.create({
     paddingVertical: Math.round(13 * SCALE),
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: C.separator,
-  },
-  activeFirstBadge: {
-    fontSize: Math.round(11 * SCALE), fontWeight: '700',
-    color: C.accent, width: Math.round(22 * SCALE),
-    textAlign: 'center', flexShrink: 0,
-  },
-  activeDotEmpty: {
-    width: Math.round(22 * SCALE), flexShrink: 0,
   },
   activeIcon: {
     width: Math.round(36 * SCALE), height: Math.round(36 * SCALE),
