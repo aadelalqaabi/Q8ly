@@ -73,15 +73,15 @@ function ReactionPills({ reactions, currentUserId, onPress }) {
 function SwipeableMessage({ children, onReply }) {
   const translateX = useRef(new Animated.Value(0)).current;
   const triggered = useRef(false);
-  const THRESHOLD = 72;
+  const THRESHOLD = 64;
   const EDGE_ZONE = 30; // leave iOS back-swipe edge alone
 
   const panResponder = useRef(PanResponder.create({
     // Only capture clearly horizontal swipes that don't start at the screen edge
     onMoveShouldSetPanResponder: (_, g) =>
       g.x0 > EDGE_ZONE &&
-      g.dx > 18 &&
-      Math.abs(g.dx) > Math.abs(g.dy) * 2.5,
+      g.dx > 10 &&
+      Math.abs(g.dx) > Math.abs(g.dy) * 1.8,
     onPanResponderMove: (_, g) => {
       const dx = Math.max(0, Math.min(g.dx, THRESHOLD + 12));
       translateX.setValue(dx * 0.55);
