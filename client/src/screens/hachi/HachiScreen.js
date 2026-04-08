@@ -73,9 +73,9 @@ function ActiveRow({ room, isFirst, onPress, styles, C, isRTL, isLast }) {
       onPress={onPress}
       activeOpacity={0.7}
     >
-      {/* Blue dot for #1 */}
+      {/* #1 badge */}
       {isFirst ? (
-        <View style={styles.activeDot} />
+        <Text style={styles.activeFirstBadge}>#1</Text>
       ) : (
         <View style={styles.activeDotEmpty} />
       )}
@@ -570,12 +570,13 @@ const makeStyles = (C, isDark, isRTL = false) => StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: C.separator,
   },
-  activeDot: {
-    width: 7, height: 7, borderRadius: 4,
-    backgroundColor: C.accent, flexShrink: 0,
+  activeFirstBadge: {
+    fontSize: Math.round(11 * SCALE), fontWeight: '700',
+    color: C.accent, width: Math.round(22 * SCALE),
+    textAlign: 'center', flexShrink: 0,
   },
   activeDotEmpty: {
-    width: 7, height: 7, flexShrink: 0,
+    width: Math.round(22 * SCALE), flexShrink: 0,
   },
   activeIcon: {
     width: Math.round(36 * SCALE), height: Math.round(36 * SCALE),
