@@ -282,7 +282,7 @@ export default function HachiScreen({ navigation }) {
         horizontal
         showsHorizontalScrollIndicator={false}
         style={isRTL ? { transform: [{ scaleX: -1 }] } : null}
-        contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingVertical: 10 }}
+        contentContainerStyle={{ paddingHorizontal: 8, gap: 0, paddingVertical: 0 }}
       >
         {chipKeys.map((key) => {
           const active = activeCategory === key;
@@ -551,13 +551,12 @@ const makeStyles = (C, isDark, isRTL = false) => StyleSheet.create({
 
   // Category chips
   chip: {
-    paddingHorizontal: 14, paddingVertical: 7,
-    borderRadius: 20, backgroundColor: C.fill,
-    borderWidth: StyleSheet.hairlineWidth, borderColor: C.separator,
+    paddingHorizontal: 12, paddingVertical: 8,
+    borderBottomWidth: 2, borderBottomColor: 'transparent',
   },
-  chipActive: { backgroundColor: C.accent, borderColor: C.accent },
-  chipText: { fontSize: 13, fontWeight: '500', color: C.textMuted },
-  chipTextActive: { color: '#fff', fontWeight: '600' },
+  chipActive: { borderBottomColor: C.accent },
+  chipText: { fontSize: 14, fontWeight: '400', color: C.textMuted },
+  chipTextActive: { color: C.text, fontWeight: '700' },
 
   // Most active section — unified list
   activeList: {
