@@ -54,13 +54,15 @@ function normalize(text) {
 function matchesWord(text, word) {
   const normalizedText = normalize(text);
   const normalizedWord = normalize(word);
-  // Use word boundary for English; substring match for Arabic (no word boundaries in Arabic)
+  const escaped = normalizedWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const isArabic = /[\u0600-\u06FF]/.test(word);
   if (isArabic) {
-    return normalizedText.includes(normalizedWord);
+    // Word boundary for Arabic: must be surrounded by space, start, or end of string
+    const re = new RegExp(`(^|\\s)${escaped}(\\s|$)`);
+    return re.test(normalizedText);
   }
   // English: match whole words only
-  const re = new RegExp(`(?<![a-z])${normalizedWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![a-z])`, 'i');
+  const re = new RegExp(`(?<![a-z])${escaped}(?![a-z])`, 'i');
   return re.test(normalizedText);
 }
 
