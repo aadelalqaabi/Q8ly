@@ -70,17 +70,17 @@ function ReactionPills({ reactions, currentUserId, onPress }) {
 }
 
 // ── Swipeable wrapper (WhatsApp-style swipe-right to reply) ───────────────────
-function SwipeableMessage({ children, onReply }) {
+function SwipeableMessage({ children, onReply, onSwipeStart, onSwipeEnd }) {
   const translateX = useRef(new Animated.Value(0)).current;
   const triggered = useRef(false);
   const THRESHOLD = 60;
-  const EDGE_ZONE = 20; // reserve left 20px for iOS swipe-to-go-back
 
   const panResponder = useRef(PanResponder.create({
-    onMoveShouldSetPanResponder: (evt, g) =>
-      evt.nativeEvent.pageX > EDGE_ZONE &&
-      g.dx > 8 &&
-      Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
+    onMoveShouldSetPanResponder: (_, g) =>
+      g.dx > 8 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
+    onPanResponderGrant: () => {
+      onSwipeStart?.();
+    },
     onPanResponderMove: (_, g) => {
       const dx = Math.max(0, Math.min(g.dx, THRESHOLD + 12));
       translateX.setValue(dx * 0.55);
@@ -91,10 +91,12 @@ function SwipeableMessage({ children, onReply }) {
     },
     onPanResponderRelease: () => {
       triggered.current = false;
+      onSwipeEnd?.();
       Animated.spring(translateX, { toValue: 0, useNativeDriver: true, tension: 220, friction: 18 }).start();
     },
     onPanResponderTerminate: () => {
       triggered.current = false;
+      onSwipeEnd?.();
       Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start();
     },
   })).current;
@@ -687,6 +689,8 @@ export default function HachiRoomScreen({ navigation, route }) {
           keyExtractor={(item) => item._id?.toString() || Math.random().toString()}
           renderItem={({ item }) => (
             <SwipeableMessage
+              onSwipeStart={() => navigation.setOptions({ gestureEnabled: false })}
+              onSwipeEnd={() => navigation.setOptions({ gestureEnabled: true })}
               onReply={() => {
                 haptic.light();
                 setReplyingTo({
