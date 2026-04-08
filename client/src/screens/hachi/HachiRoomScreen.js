@@ -352,7 +352,7 @@ export default function HachiRoomScreen({ navigation, route }) {
   const handleSend = useCallback(() => {
     const trimmed = text.trim();
     if (!trimmed) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Haptics.selectionAsync();
 
     dispatch(addOptimisticMessage({
       roomId,
@@ -377,12 +377,12 @@ export default function HachiRoomScreen({ navigation, route }) {
   }, [text, roomId, currentUser, dispatch, replyingTo]);
 
   const handleReact = useCallback((messageId, emoji) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Haptics.selectionAsync();
     sendHachiMessageReaction(roomId, messageId?.toString(), emoji);
   }, [roomId]);
 
   const handleLongPress = useCallback((message) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     setSelectedMsg(message);
   }, []);
 
@@ -663,7 +663,7 @@ export default function HachiRoomScreen({ navigation, route }) {
           renderItem={({ item }) => (
             <SwipeableMessage
               onReply={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                Haptics.selectionAsync();
                 setReplyingTo({
                   messageId: item._id?.toString(),
                   userName: item.user?.name || t('hachi.someoneDefault'),
