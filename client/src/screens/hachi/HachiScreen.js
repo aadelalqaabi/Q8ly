@@ -22,6 +22,7 @@ const haptic = {
 };
 
 const { width: SW } = Dimensions.get('window');
+const SCALE         = SW / 390; // 390 = iPhone 14 base; Pro Max ~430 → ~1.10
 const HACHI_COST    = 50; // points deducted per circle created
 
 const CATEGORY_ICONS = {
@@ -60,62 +61,42 @@ function CreatorBadge({ badge }) {
   );
 }
 
-// ── FeatureCard (full-width, #1 most active) ───────────────────────────────────
+// ── ActiveRow (unified Most Active row — same style for all 5) ─────────────────
 
-function FeatureCard({ room, onPress, styles, C, t, isRTL }) {
+function ActiveRow({ room, isFirst, onPress, styles, C, isRTL, isLast }) {
   const catIcon = CATEGORY_ICONS[room.category] || 'chatbubbles-outline';
   const members = room.memberCount || 1;
-  const catLabel = t(`hachi.cat${(room.category || 'general').charAt(0).toUpperCase()}${(room.category || 'general').slice(1)}`);
 
   return (
-    <TouchableOpacity style={styles.featureCard} onPress={onPress} activeOpacity={0.82}>
-      <View style={[styles.featureCardTop, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-        <View style={[{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 8 }]}>
-          <Text style={styles.featureRank}>1</Text>
-          <View style={[styles.featureCatBadge, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-            <Ionicons name={catIcon} size={12} color={C.accent} />
-            <Text style={styles.featureCatLabel}>{catLabel}</Text>
-          </View>
+    <TouchableOpacity
+      style={[styles.activeRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }, isLast && { borderBottomWidth: 0 }]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      {/* Blue dot for #1 */}
+      {isFirst ? (
+        <View style={styles.activeDot} />
+      ) : (
+        <View style={styles.activeDotEmpty} />
+      )}
+
+      <View style={[styles.activeIcon, { backgroundColor: C.fill }]}>
+        <Ionicons name={catIcon} size={Math.round(18 * SCALE)} color={C.textMuted} />
+      </View>
+
+      <View style={{ flex: 1, gap: 3 }}>
+        <Text style={[styles.activeTitle, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={1}>
+          {room.title}
+        </Text>
+        <View style={[{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 4 }]}>
+          <Text style={styles.activeCreator} numberOfLines={1}>{room.creator?.name || ''}</Text>
+          <CreatorBadge badge={room.creator?.verifiedBadge} />
         </View>
-        <View style={[styles.featureMemberPill, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-          <Ionicons name="people" size={12} color={C.textMuted} />
-          <Text style={styles.featureMemberNum}>{members}</Text>
-        </View>
       </View>
 
-      <Text style={[styles.featureTitle, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={2}>
-        {room.title}
-      </Text>
-
-      <View style={[{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center' }]}>
-        <Text style={styles.featureCreator} numberOfLines={1}>{room.creator?.name || ''}</Text>
-        <CreatorBadge badge={room.creator?.verifiedBadge} />
-      </View>
-    </TouchableOpacity>
-  );
-}
-
-// ── RankedRow (#2–10 in Most Active list) ──────────────────────────────────────
-
-const RANK_COLORS = { 1: '#C0A000', 2: '#888', 3: '#A0522D' };
-
-function RankedRow({ room, rank, onPress, styles, C, isRTL, isLast }) {
-  const catIcon = CATEGORY_ICONS[room.category] || 'chatbubbles-outline';
-  const members = room.memberCount || 1;
-  const rankColor = RANK_COLORS[rank] || C.textMuted;
-
-  return (
-    <TouchableOpacity style={[styles.rankedRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }, isLast && { borderBottomWidth: 0 }]} onPress={onPress} activeOpacity={0.7}>
-      <Text style={[styles.rankedNum, { color: rankColor }]}>{rank}</Text>
-      <View style={[styles.rankedIcon, { backgroundColor: C.fill }]}>
-        <Ionicons name={catIcon} size={16} color={C.textMuted} />
-      </View>
-      <Text style={[styles.rankedTitle, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={1}>
-        {room.title}
-      </Text>
-      <View style={[styles.rankedMeta, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+      <View style={[styles.activeMeta, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
         <Ionicons name="people" size={12} color={C.textMuted} />
-        <Text style={styles.rankedMembers}>{members}</Text>
+        <Text style={styles.activeMembers}>{members}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -304,28 +285,17 @@ export default function HachiScreen({ navigation }) {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>{t('hachi.mostActive')}</Text>
         </View>
-        <View style={styles.hotSection}>
-          {/* Feature card: #1 */}
-          <FeatureCard
-            room={hotRooms[0]}
-            onPress={() => goToRoom(hotRooms[0])}
-            styles={styles} C={C} t={t} isRTL={isRTL}
-          />
-          {/* Ranked list: #2–10 */}
-          {hotRooms.length > 1 && (
-            <View style={styles.rankedList}>
-              {hotRooms.slice(1).map((room, i, arr) => (
-                <RankedRow
-                  key={room._id}
-                  room={room}
-                  rank={i + 2}
-                  onPress={() => goToRoom(room)}
-                  styles={styles} C={C} isRTL={isRTL}
-                  isLast={i === arr.length - 1}
-                />
-              ))}
-            </View>
-          )}
+        <View style={styles.activeList}>
+          {hotRooms.map((room, i) => (
+            <ActiveRow
+              key={room._id}
+              room={room}
+              isFirst={i === 0}
+              onPress={() => goToRoom(room)}
+              styles={styles} C={C} isRTL={isRTL}
+              isLast={i === hotRooms.length - 1}
+            />
+          ))}
         </View>
 
         {rooms.length > 0 && (
@@ -583,57 +553,45 @@ const makeStyles = (C, isDark, isRTL = false) => StyleSheet.create({
   sectionEmoji: { fontSize: 16 },
   sectionTitle: { fontSize: 15, fontWeight: '700', letterSpacing: -0.2, color: C.text },
 
-  // Most active section
-  hotSection: { paddingHorizontal: 16, gap: 10, paddingBottom: 0 },
-
-  // Feature card (#1 most active — full width)
-  featureCard: {
+  // Most active section — unified list
+  activeList: {
+    marginHorizontal: Math.round(16 * SCALE),
     backgroundColor: C.fill,
-    borderRadius: 16,
-    padding: 14,
-    gap: 8,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.separator,
-  },
-  featureCardTop: { alignItems: 'center', justifyContent: 'space-between' },
-  featureRank: { fontSize: 13, fontWeight: '700', color: '#C0A000' },
-  featureCatBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: '#EEF2FA', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5,
-  },
-  featureCatLabel: { fontSize: 11, fontWeight: '700', color: '#0033A0', textTransform: 'uppercase', letterSpacing: 0.4 },
-  featureMemberPill: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: C.white, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5,
-    borderWidth: StyleSheet.hairlineWidth, borderColor: C.separator,
-  },
-  featureMemberNum: { fontSize: 13, fontWeight: '700', color: C.text },
-  featureTitle: { fontSize: 16, fontWeight: '700', letterSpacing: -0.2, color: C.text, lineHeight: 22 },
-  featurePreview: { fontSize: 14, color: C.textMuted, lineHeight: 20 },
-  featureCreator: { fontSize: 13, fontWeight: '500', color: C.textMuted, flexShrink: 1 },
-
-  // Ranked list (#2–10)
-  rankedList: {
-    backgroundColor: C.fill,
-    borderRadius: 18,
+    borderRadius: Math.round(16 * SCALE),
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.separator,
   },
-  rankedRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingHorizontal: 14, paddingVertical: 12,
+  activeRow: {
+    alignItems: 'center',
+    gap: Math.round(11 * SCALE),
+    paddingHorizontal: Math.round(14 * SCALE),
+    paddingVertical: Math.round(13 * SCALE),
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: C.separator,
   },
-  rankedNum: { fontSize: 14, fontWeight: '800', width: 22, textAlign: 'center', flexShrink: 0 },
-  rankedIcon: {
-    width: 32, height: 32, borderRadius: 10,
+  activeDot: {
+    width: 7, height: 7, borderRadius: 4,
+    backgroundColor: C.accent, flexShrink: 0,
+  },
+  activeDotEmpty: {
+    width: 7, height: 7, flexShrink: 0,
+  },
+  activeIcon: {
+    width: Math.round(36 * SCALE), height: Math.round(36 * SCALE),
+    borderRadius: Math.round(11 * SCALE),
     justifyContent: 'center', alignItems: 'center', flexShrink: 0,
   },
-  rankedTitle: { flex: 1, fontSize: 14, fontWeight: '600', color: C.text, letterSpacing: -0.1 },
-  rankedMeta: { flexDirection: 'row', alignItems: 'center', gap: 3, flexShrink: 0 },
-  rankedMembers: { fontSize: 12, fontWeight: '600', color: C.textMuted },
+  activeTitle: {
+    fontSize: Math.round(14 * SCALE), fontWeight: '600',
+    color: C.text, letterSpacing: -0.1,
+  },
+  activeCreator: {
+    fontSize: Math.round(12 * SCALE), fontWeight: '400',
+    color: C.textMuted, flexShrink: 1,
+  },
+  activeMeta: { alignItems: 'center', gap: 3, flexShrink: 0 },
+  activeMembers: { fontSize: Math.round(12 * SCALE), fontWeight: '600', color: C.textMuted },
 
   // Room rows
   row: {
