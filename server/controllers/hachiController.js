@@ -28,7 +28,7 @@ exports.getRooms = async (req, res) => {
     const lat = parseFloat(req.query.lat);
     const lng = parseFloat(req.query.lng);
     const hasLocation = !isNaN(lat) && !isNaN(lng);
-    const MAX_DISTANCE_M = 20000; // 20 km radius
+    const MAX_DISTANCE_M = 3000; // 3 km radius
 
     let rawRooms;
     if (hasLocation) {
