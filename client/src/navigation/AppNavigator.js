@@ -138,7 +138,7 @@ function AppStack() {
       <Stack.Screen name="PostDetail" component={PostDetailScreen} options={{ title: '' }} />
       <Stack.Screen name="ProfileDetail" component={ProfileScreen} options={{ headerShown: false }} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="HachiRoom" component={HachiRoomScreen} options={{ title: '', headerShadowVisible: false, gestureEnabled: false }} />
+      <Stack.Screen name="HachiRoom" component={HachiRoomScreen} options={{ title: '', headerShadowVisible: false }} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Discover" component={DiscoverScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false }} />

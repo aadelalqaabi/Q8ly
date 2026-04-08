@@ -73,11 +73,14 @@ function ReactionPills({ reactions, currentUserId, onPress }) {
 function SwipeableMessage({ children, onReply }) {
   const translateX = useRef(new Animated.Value(0)).current;
   const triggered = useRef(false);
-  const THRESHOLD = 64;
+  const THRESHOLD = 60;
+  const EDGE_ZONE = 20; // reserve left 20px for iOS swipe-to-go-back
 
   const panResponder = useRef(PanResponder.create({
-    onMoveShouldSetPanResponder: (_, g) =>
-      g.dx > 10 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
+    onMoveShouldSetPanResponder: (evt, g) =>
+      evt.nativeEvent.pageX > EDGE_ZONE &&
+      g.dx > 8 &&
+      Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
     onPanResponderMove: (_, g) => {
       const dx = Math.max(0, Math.min(g.dx, THRESHOLD + 12));
       translateX.setValue(dx * 0.55);
