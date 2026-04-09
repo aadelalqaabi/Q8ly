@@ -46,7 +46,6 @@ const hachiSchema = new mongoose.Schema({
     eyes:  { type: Number, default: 0 },
     skull: { type: Number, default: 0 },
   },
-  pinnedMessages: [{ type: mongoose.Schema.Types.ObjectId }], // message _ids, max 3
   lastMessage: {
     text:      { type: String, default: '' },
     createdAt: { type: Date },

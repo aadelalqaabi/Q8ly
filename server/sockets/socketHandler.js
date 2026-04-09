@@ -320,18 +320,10 @@ const initSocket = (server) => {
         // Only message author or room creator can delete
         if (msg.user.toString() !== uid && !isCreator) return;
 
-        // Remove from pinned if pinned
-        room.pinnedMessages = (room.pinnedMessages || []).filter(
-          (p) => p.toString() !== messageId.toString()
-        );
         room.messages.pull(messageId);
         await room.save();
 
         io.to(`hachi:${roomId}`).emit('hachiMessageDeleted', { roomId, messageId });
-        io.to(`hachi:${roomId}`).emit('hachiPinUpdate', {
-          roomId,
-          pinnedMessages: room.pinnedMessages.map((p) => p.toString()),
-        });
       } catch (err) {
         console.error('hachiDeleteMessage error:', err.message);
       }
@@ -428,14 +420,7 @@ const initSocket = (server) => {
 
         // Optionally delete the user's messages
         if (deleteMessages) {
-          const removedIds = room.messages
-            .filter((m) => m.user.toString() === userId)
-            .map((m) => m._id.toString());
           room.messages = room.messages.filter((m) => m.user.toString() !== userId);
-          // Remove any pinned messages that belonged to this user
-          room.pinnedMessages = (room.pinnedMessages || []).filter(
-            (pid) => !removedIds.includes(pid.toString())
-          );
         }
 
         await room.save();
@@ -448,65 +433,10 @@ const initSocket = (server) => {
         io.to(`hachi:${roomId}`).emit('hachiMemberCount', { roomId, count: room.memberCount });
         io.to(`hachi:${roomId}`).emit('hachiMemberKicked', { roomId, userId });
         if (deleteMessages) {
-          io.to(`hachi:${roomId}`).emit('hachiMessagesRemoved', { roomId, userId, pinnedMessages: room.pinnedMessages });
+          io.to(`hachi:${roomId}`).emit('hachiMessagesRemoved', { roomId, userId });
         }
       } catch (err) {
         console.error('hachiKickMember error:', err.message);
-      }
-    });
-
-    // ── Moderator: pin / unpin a message (max 3) ──────────────────
-    socket.on('hachiPinMessage', async ({ roomId, messageId }) => {
-      if (!socket.user) return;
-      try {
-        const Hachi = require('../models/Hachi');
-        const room = await Hachi.findById(roomId);
-        if (!room || !room.isActive) return;
-        if (room.creator.toString() !== socket.user._id.toString()) return;
-
-        const msg = room.messages.id(messageId);
-        if (!msg) return;
-
-        const pinnedStrs = (room.pinnedMessages || []).map((p) => p.toString());
-        const alreadyPinned = pinnedStrs.includes(messageId.toString());
-
-        if (alreadyPinned) {
-          room.pinnedMessages = room.pinnedMessages.filter(
-            (p) => p.toString() !== messageId.toString()
-          );
-        } else {
-          if (pinnedStrs.length >= 3) {
-            socket.emit('hachiError', { message: 'لا يمكن تثبيت أكثر من 3 رسائل.' });
-            return;
-          }
-          room.pinnedMessages.push(messageId);
-        }
-
-        await room.save();
-        io.to(`hachi:${roomId}`).emit('hachiPinUpdate', {
-          roomId,
-          pinnedMessages: room.pinnedMessages.map((p) => p.toString()),
-        });
-
-        // Notify the message author that their message was pinned (not if they pinned their own)
-        if (!alreadyPinned && msg.user.toString() !== socket.user._id.toString()) {
-          try {
-            const Notification = require('../models/Notification');
-            const notif = await Notification.create({
-              userId: msg.user,
-              type: 'pin',
-              fromUser: socket.user._id,
-              circle: roomId,
-              message: room.title,
-            });
-            await notif.populate('fromUser', 'name username profilePic');
-            io.to(`user:${msg.user}`).emit('notification', notif);
-          } catch (notifErr) {
-            console.error('Pin notification error:', notifErr.message);
-          }
-        }
-      } catch (err) {
-        console.error('hachiPinMessage error:', err.message);
       }
     });
 

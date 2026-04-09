@@ -15,11 +15,11 @@ import {
   fetchRoom,
   addOptimisticMessage, addMessageRealtime, updateMemberCount, updateReactions,
   updateMessageReaction, clearActiveRoom,
-  removeUserMessages, updatePinnedMessages, deleteMessage,
+  removeUserMessages, deleteMessage,
 } from '../../store/slices/hachiSlice';
 import {
   getSocket, joinHachiRoom, leaveHachiRoom, sendHachiMessage,
-  sendHachiMessageReaction, sendHachiKick, sendHachiPin,
+  sendHachiMessageReaction, sendHachiKick,
   sendHachiImage, sendHachiVideo,
 } from '../../services/socket';
 import { getDateLocale } from '../../i18n';
@@ -257,14 +257,6 @@ export default function HachiRoomScreen({ navigation, route }) {
 
   const isCreator = (activeRoom?.creator?._id || activeRoom?.creator)?.toString() === currentUser?._id?.toString();
 
-  // Must be before any conditional returns (hooks rule)
-  const pinnedMessages = useMemo(() => {
-    if (!activeRoom?.pinnedMessages?.length) return [];
-    return activeRoom.pinnedMessages
-      .map((pid) => activeRoom.messages?.find((m) => m._id?.toString() === pid?.toString()))
-      .filter(Boolean);
-  }, [activeRoom?.pinnedMessages, activeRoom?.messages]);
-
   // ── Socket listeners ───────────────────────────────────────────────────────
   useEffect(() => {
     dispatch(fetchRoom(roomId));
@@ -290,11 +282,8 @@ export default function HachiRoomScreen({ navigation, route }) {
     };
     const onMessagesRemoved = (data) => {
       if (data.roomId === roomId) {
-        dispatch(removeUserMessages({ userId: data.userId, pinnedMessages: data.pinnedMessages }));
+        dispatch(removeUserMessages({ userId: data.userId }));
       }
-    };
-    const onPinUpdate = (data) => {
-      if (data.roomId === roomId) dispatch(updatePinnedMessages(data));
     };
     const onMsgDeleted = (data) => {
       if (data.roomId === roomId) dispatch(deleteMessage(data));
@@ -309,7 +298,6 @@ export default function HachiRoomScreen({ navigation, route }) {
     socket.on('hachiMessageReaction', onMsgReaction);
     socket.on('hachiKicked', onKicked);
     socket.on('hachiMessagesRemoved', onMessagesRemoved);
-    socket.on('hachiPinUpdate', onPinUpdate);
     socket.on('hachiMessageDeleted', onMsgDeleted);
     socket.on('connect', onReconnect);
 
@@ -320,7 +308,6 @@ export default function HachiRoomScreen({ navigation, route }) {
       socket.off('hachiMessageReaction', onMsgReaction);
       socket.off('hachiKicked', onKicked);
       socket.off('hachiMessagesRemoved', onMessagesRemoved);
-      socket.off('hachiPinUpdate', onPinUpdate);
       socket.off('hachiMessageDeleted', onMsgDeleted);
       socket.off('connect', onReconnect);
     };
@@ -615,11 +602,6 @@ export default function HachiRoomScreen({ navigation, route }) {
     );
   }, [roomId]);
 
-  const handlePin = useCallback((message) => {
-    setSelectedMsg(null);
-    sendHachiPin(roomId, message._id);
-  }, [roomId]);
-
   // ── Loading ────────────────────────────────────────────────────────────────
   if (roomLoading && !activeRoom) {
     return (
@@ -688,37 +670,6 @@ export default function HachiRoomScreen({ navigation, route }) {
                 <Ionicons name="lock-closed" size={12} color={COLORS.textMuted} />
               </>
             )}
-          </View>
-        )}
-
-        {/* Pinned messages banner */}
-        {pinnedMessages.length > 0 && (
-          <View style={styles.pinnedBanner}>
-            <View style={styles.pinnedHeader}>
-              <Ionicons name="pin" size={12} color={COLORS.accent} />
-              <Text style={styles.pinnedLabel}>{t('hachi.pinned')}</Text>
-            </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.pinnedScroll}
-            >
-              {pinnedMessages.map((msg) => (
-                <View key={msg._id?.toString()} style={styles.pinnedBubble}>
-                  <Text style={styles.pinnedAuthor} numberOfLines={1}>{msg.user?.name || ''}</Text>
-                  <Text style={styles.pinnedText} numberOfLines={2}>{msg.text}</Text>
-                  {isCreator && (
-                    <TouchableOpacity
-                      style={styles.pinnedUnpin}
-                      onPress={() => sendHachiPin(roomId, msg._id)}
-                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                    >
-                      <Ionicons name="close-circle" size={15} color={COLORS.textMuted} />
-                    </TouchableOpacity>
-                  )}
-                </View>
-              ))}
-            </ScrollView>
           </View>
         )}
 
@@ -881,24 +832,6 @@ export default function HachiRoomScreen({ navigation, route }) {
                       <Text style={styles.kickText}>{t('common.delete')}</Text>
                     </TouchableOpacity>
                   )}
-
-                  {/* Creator: Pin / Unpin */}
-                  {isCreator && selectedMsg?.text && (() => {
-                    const isPinned = activeRoom?.pinnedMessages?.some(
-                      (p) => p?.toString() === selectedMsg._id?.toString()
-                    );
-                    return (
-                      <TouchableOpacity
-                        style={styles.modRow}
-                        onPress={() => handlePin(selectedMsg)}
-                      >
-                        <Ionicons name="pin-outline" size={17} color={COLORS.accent} />
-                        <Text style={[styles.modText, { color: COLORS.accent }]}>
-                          {isPinned ? t('hachi.unpinMessage') : t('hachi.pinMessage')}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })()}
 
                   {/* Creator: Kick (other users only) */}
                   {isCreator && selectedMsgIsOther && (
@@ -1323,45 +1256,6 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
   confirmBtnDelete: { backgroundColor: '#FF3B30' },
   confirmBtnCancelText: { fontSize: 15, fontWeight: '600', color: C.text },
   confirmBtnDeleteText: { fontSize: 15, fontWeight: '700', color: '#fff' },
-
-  // Pinned messages banner
-  pinnedBanner: {
-    backgroundColor: C.accent + '0A',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: C.accent + '25',
-    paddingTop: 8,
-    paddingBottom: 10,
-  },
-  pinnedHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 14,
-    marginBottom: 6,
-  },
-  pinnedLabel: { fontSize: 11, fontWeight: '800', color: C.accent, letterSpacing: 0.5, textTransform: 'uppercase' },
-  pinnedScroll: {
-    paddingHorizontal: 12,
-    gap: 8,
-  },
-  pinnedBubble: {
-    width: 180,
-    backgroundColor: C.white,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: C.accent + '22',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    paddingEnd: 28,
-    position: 'relative',
-  },
-  pinnedAuthor: { fontSize: 11, fontWeight: '700', color: C.accent, marginBottom: 3 },
-  pinnedText: { fontSize: 13, color: C.text, lineHeight: 18 },
-  pinnedUnpin: {
-    position: 'absolute',
-    top: 6,
-    end: 6,
-  },
 
   // Join requests modal
   reqModal: {

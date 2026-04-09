@@ -179,20 +179,11 @@ const hachiSlice = createSlice({
       state.waitingApproval = payload;
     },
     removeUserMessages(state, { payload }) {
-      // payload: { userId, pinnedMessages }
+      // payload: { userId }
       if (state.activeRoom) {
         state.activeRoom.messages = state.activeRoom.messages.filter(
           (m) => (m.user?._id ?? m.user)?.toString() !== payload.userId?.toString()
         );
-        if (payload.pinnedMessages !== undefined) {
-          state.activeRoom.pinnedMessages = payload.pinnedMessages;
-        }
-      }
-    },
-    updatePinnedMessages(state, { payload }) {
-      // payload: { roomId, pinnedMessages: [id strings] }
-      if (state.activeRoom?._id === payload.roomId) {
-        state.activeRoom.pinnedMessages = payload.pinnedMessages;
       }
     },
     deleteMessage(state, { payload }) {
@@ -297,7 +288,6 @@ export const {
   removeJoinRequest,
   setWaitingApproval,
   removeUserMessages,
-  updatePinnedMessages,
   deleteMessage,
   clearActiveRoom,
 } = hachiSlice.actions;
