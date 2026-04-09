@@ -236,7 +236,7 @@ function MessageRow({ message, isMine, onLongPress, currentUserId, onUserPress, 
         </View>
 
         {/* Action buttons + like count */}
-        {!message._uploading && (
+        {!message._uploading && (!isMine || likeCount > 0) && (
           <View style={[styles.msgActions, isMine && styles.msgActionsMine]}>
             {!isMine && (
               <TouchableOpacity
@@ -257,7 +257,7 @@ function MessageRow({ message, isMine, onLongPress, currentUserId, onUserPress, 
               </TouchableOpacity>
             )}
             {likeCount > 0 && (
-              <View style={styles.likeCount}>
+              <View style={[styles.likeCount, { marginLeft: isMine ? 0 : 4 }]}>
                 <Ionicons name="heart" size={11} color={isLiked ? '#FF2D55' : COLORS.textMuted} />
                 <Text style={[styles.likeCountText, isLiked && styles.likeCountTextActive]}>{likeCount}</Text>
               </View>
