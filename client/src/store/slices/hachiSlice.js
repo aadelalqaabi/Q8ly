@@ -240,13 +240,22 @@ const hachiSlice = createSlice({
       .addCase(fetchRoom.pending, (state) => { state.roomLoading = true; })
       .addCase(fetchRoom.fulfilled, (state, { payload }) => {
         state.roomLoading = false;
+        // Normalize reactions: DB returns { emoji, users[] } with no count field
+        const normalizeReactions = (msgs) => (msgs || []).map((m) => ({
+          ...m,
+          reactions: (m.reactions || []).map((r) => ({
+            emoji: r.emoji,
+            users: (r.users || []).map(String),
+            count: (r.users || []).length,
+          })),
+        }));
         // Preserve any optimistic messages that haven't been confirmed yet
         const optimisticMsgs = (state.activeRoom?.messages || []).filter(
           (m) => typeof m._id === 'string' && m._id.startsWith('optimistic_')
         );
-        state.activeRoom = payload;
+        state.activeRoom = { ...payload, messages: normalizeReactions(payload.messages) };
         if (optimisticMsgs.length) {
-          state.activeRoom.messages = [...(payload.messages || []), ...optimisticMsgs];
+          state.activeRoom.messages = [...normalizeReactions(payload.messages), ...optimisticMsgs];
         }
         // Initialise join requests from loaded room data (creator re-opening the screen)
         if (payload.joinRequests?.length) {
