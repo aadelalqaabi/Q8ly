@@ -329,74 +329,73 @@ const initSocket = (server) => {
       }
     });
 
-    // ── Per-message emoji reactions ───────────────────────────────
+    // ── Per-message like (❤️) ─────────────────────────────────────
     socket.on('hachiMessageReact', async ({ roomId, messageId, emoji }) => {
       if (!socket.user || !emoji) return;
       try {
-        const Hachi = require('../models/Hachi');
-        const room = await Hachi.findById(roomId);
-        if (!room) return;
+        const Hachi    = require('../models/Hachi');
+        const mongoose = require('mongoose');
+        const uid      = socket.user._id.toString();
+        const msgOid   = new mongoose.Types.ObjectId(messageId);
 
-        const msg = room.messages.id(messageId);
-        if (!msg) return;
+        // Check if user already reacted with this emoji
+        const existing = await Hachi.findOne(
+          { _id: roomId, 'messages._id': msgOid, 'messages.reactions.emoji': emoji },
+          { 'messages.$': 1 }
+        ).lean();
 
-        const uid = socket.user._id.toString();
-        const existing = msg.reactions.find((r) => r.emoji === emoji);
+        const msgDoc    = existing?.messages?.[0];
+        const reaction  = msgDoc?.reactions?.find((r) => r.emoji === emoji);
+        const alreadyLiked = reaction?.users?.some((u) => u.toString() === uid);
 
-        let reactionAdded = false;
-        if (existing) {
-          const idx = existing.users.findIndex((u) => u.toString() === uid);
-          if (idx >= 0) {
-            existing.users.splice(idx, 1);
-            if (existing.users.length === 0) {
-              msg.reactions = msg.reactions.filter((r) => r.emoji !== emoji);
-            }
-          } else {
-            existing.users.push(socket.user._id);
-            reactionAdded = true;
-          }
+        let update;
+        if (!reaction) {
+          // Reaction doesn't exist yet — push new reaction entry
+          update = await Hachi.findOneAndUpdate(
+            { _id: roomId, 'messages._id': msgOid },
+            { $push: { 'messages.$.reactions': { emoji, users: [socket.user._id] } } },
+            { new: true, projection: { 'messages.$': 1 } }
+          ).lean();
+        } else if (alreadyLiked) {
+          // Toggle off — remove user from reaction's users
+          update = await Hachi.findOneAndUpdate(
+            { _id: roomId, 'messages._id': msgOid, 'messages.reactions.emoji': emoji },
+            { $pull: { 'messages.$.reactions.$[r].users': socket.user._id } },
+            { new: true, arrayFilters: [{ 'r.emoji': emoji }], projection: { 'messages.$': 1 } }
+          ).lean();
         } else {
-          msg.reactions.push({ emoji, users: [socket.user._id] });
-          reactionAdded = true;
+          // Add user to existing reaction
+          update = await Hachi.findOneAndUpdate(
+            { _id: roomId, 'messages._id': msgOid, 'messages.reactions.emoji': emoji },
+            { $addToSet: { 'messages.$.reactions.$[r].users': socket.user._id } },
+            { new: true, arrayFilters: [{ 'r.emoji': emoji }], projection: { 'messages.$': 1 } }
+          ).lean();
         }
 
-        await room.save();
+        // Re-fetch the message to get accurate reaction state
+        const fresh = await Hachi.findOne(
+          { _id: roomId, 'messages._id': msgOid },
+          { 'messages.$': 1 }
+        ).lean();
+        const freshMsg = fresh?.messages?.[0];
+        if (!freshMsg) return;
 
-        // Award +1 point to message author when a new reaction is added (not self)
-        const msgAuthorIdStr = msg.user.toString();
-        if (reactionAdded && msgAuthorIdStr !== uid) {
-          const User = require('../models/User');
-          User.findByIdAndUpdate(msg.user, { $inc: { hachiPoints: 1 } }).exec();
-        }
-
-        // Broadcast updated reactions (include user IDs so clients can derive isReacted)
-        const reactionsOut = msg.reactions.map((r) => ({
+        const reactionsOut = (freshMsg.reactions || []).map((r) => ({
           emoji: r.emoji,
           count: r.users.length,
           users: r.users.map((u) => u.toString()),
         }));
+
         io.to(`hachi:${roomId}`).emit('hachiMessageReaction', { roomId, messageId, reactions: reactionsOut });
 
-        // Notify the message author about the reaction (not if they reacted to their own message)
-        const msgAuthorId = msg.user.toString();
-        if (msgAuthorId !== uid) {
-          try {
-            const Notification = require('../models/Notification');
-            const notif = await Notification.create({
-              userId: msg.user,
-              type: 'message_reaction',
-              fromUser: socket.user._id,
-              circle: roomId,
-              message: emoji,
-            });
-            await notif.populate('fromUser', 'name username profilePic');
-            io.to(`user:${msgAuthorId}`).emit('notification', notif);
-          } catch (notifErr) {
-            console.error('Message reaction notification error:', notifErr.message);
-          }
+        // Award point to message author for new like (not self-like)
+        const reactionAdded = !alreadyLiked;
+        if (reactionAdded && freshMsg.user?.toString() !== uid) {
+          const User = require('../models/User');
+          User.findByIdAndUpdate(freshMsg.user, { $inc: { hachiPoints: 1 } }).exec();
         }
       } catch (err) {
-        console.error('hachiMessageReact error:', err.message);
+        console.error('hachiMessageReact error:', err.message, err.stack);
       }
     });
 

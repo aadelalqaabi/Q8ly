@@ -14,7 +14,7 @@ import * as Haptics from 'expo-haptics';
 import {
   fetchRoom,
   addOptimisticMessage, addMessageRealtime, updateMemberCount, updateReactions,
-  updateMessageReaction, clearActiveRoom,
+  updateMessageReaction, toggleLikeOptimistic, clearActiveRoom,
   removeUserMessages, deleteMessage,
 } from '../../store/slices/hachiSlice';
 import {
@@ -412,8 +412,9 @@ export default function HachiRoomScreen({ navigation, route }) {
 
   const handleLike = useCallback((messageId) => {
     haptic.light();
+    dispatch(toggleLikeOptimistic({ messageId: messageId?.toString(), userId: currentUser?._id?.toString() }));
     sendHachiMessageReaction(roomId, messageId?.toString(), '❤️');
-  }, [roomId]);
+  }, [roomId, currentUser, dispatch]);
 
   const handleLongPress = useCallback((message) => {
     haptic.medium();

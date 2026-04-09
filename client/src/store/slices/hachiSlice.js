@@ -157,11 +157,33 @@ const hachiSlice = createSlice({
       }
     },
     updateMessageReaction(state, { payload }) {
-      if (state.activeRoom?._id === payload.roomId) {
-        const msg = state.activeRoom.messages.find(
-          (m) => m._id?.toString() === payload.messageId?.toString()
-        );
-        if (msg) msg.reactions = payload.reactions;
+      if (!state.activeRoom) return;
+      const msg = state.activeRoom.messages.find(
+        (m) => m._id?.toString() === payload.messageId?.toString()
+      );
+      if (msg) msg.reactions = payload.reactions;
+    },
+    toggleLikeOptimistic(state, { payload }) {
+      // payload: { messageId, userId }
+      if (!state.activeRoom) return;
+      const msg = state.activeRoom.messages.find(
+        (m) => m._id?.toString() === payload.messageId?.toString()
+      );
+      if (!msg) return;
+      if (!msg.reactions) msg.reactions = [];
+      let like = msg.reactions.find((r) => r.emoji === '❤️');
+      if (!like) {
+        msg.reactions.push({ emoji: '❤️', users: [payload.userId], count: 1 });
+      } else {
+        const idx = like.users.indexOf(payload.userId);
+        if (idx >= 0) {
+          like.users.splice(idx, 1);
+          like.count = like.users.length;
+          if (like.count === 0) msg.reactions = msg.reactions.filter((r) => r.emoji !== '❤️');
+        } else {
+          like.users.push(payload.userId);
+          like.count = like.users.length;
+        }
       }
     },
     addJoinRequest(state, { payload }) {
@@ -284,6 +306,7 @@ export const {
   updateMemberCount,
   updateReactions,
   updateMessageReaction,
+  toggleLikeOptimistic,
   addJoinRequest,
   removeJoinRequest,
   setWaitingApproval,
