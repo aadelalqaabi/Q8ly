@@ -109,7 +109,7 @@ function SwipeableMessage({ children, onReply, onSwipeStart, onSwipeEnd }) {
 }
 
 // ── Single message row (feed/thread style) ──────────────────────────────────────
-function MessageRow({ message, isMine, onLongPress, currentUserId, onReact, onUserPress, onImagePress, onReplyPress }) {
+function MessageRow({ message, isMine, onLongPress, currentUserId, onReact, onUserPress, onImagePress, onReplyPress, onReply, onOpenReact, onShare, highlighted, shakeAnim }) {
   const { t } = useTranslation();
   const { colors: COLORS } = useTheme();
   const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
@@ -129,12 +129,12 @@ function MessageRow({ message, isMine, onLongPress, currentUserId, onReact, onUs
     </View>
   );
 
-  return (
+  const rowContent = (
     <TouchableOpacity
       style={[styles.msgRow, isMine && styles.msgRowMine]}
-      onLongPress={() => onLongPress(message)}
-      delayLongPress={300}
-      activeOpacity={0.85}
+      onLongPress={isMine ? () => onLongPress(message) : undefined}
+      delayLongPress={350}
+      activeOpacity={1}
     >
       {/* Others: avatar on left */}
       {!isMine && (
@@ -223,6 +223,33 @@ function MessageRow({ message, isMine, onLongPress, currentUserId, onReact, onUs
           )}
         </View>
 
+        {/* Inline action buttons — only on other people's messages */}
+        {!isMine && !message._uploading && (
+          <View style={[styles.msgActions, isMine && styles.msgActionsMine]}>
+            <TouchableOpacity
+              style={styles.msgActionBtn}
+              onPress={onReply}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            >
+              <Ionicons name="return-down-back-outline" size={14} color={COLORS.textMuted} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.msgActionBtn}
+              onPress={onOpenReact}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            >
+              <Ionicons name="happy-outline" size={14} color={COLORS.textMuted} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.msgActionBtn}
+              onPress={onShare}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            >
+              <Ionicons name="share-outline" size={14} color={COLORS.textMuted} />
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Reactions */}
         <ReactionPills
           reactions={reactions}
@@ -232,6 +259,14 @@ function MessageRow({ message, isMine, onLongPress, currentUserId, onReact, onUs
       </View>
     </TouchableOpacity>
   );
+  if (highlighted && shakeAnim) {
+    return (
+      <Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
+        {rowContent}
+      </Animated.View>
+    );
+  }
+  return rowContent;
 }
 
 export default function HachiRoomScreen({ navigation, route }) {
@@ -252,6 +287,9 @@ export default function HachiRoomScreen({ navigation, route }) {
   const [uploading, setUploading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null); // { messageId, userName, text }
+  const [reactPickerMsg, setReactPickerMsg]     = useState(null);
+  const [highlightedMsgId, setHighlightedMsgId] = useState(route.params?.highlightMessageId || null);
+  const shakeAnim = useRef(new Animated.Value(0)).current;
 
   const isCreator = (activeRoom?.creator?._id || activeRoom?.creator)?.toString() === currentUser?._id?.toString();
 
@@ -346,12 +384,40 @@ export default function HachiRoomScreen({ navigation, route }) {
     }
   }, [activeRoom?.messages?.length]);
 
+  // Highlight + shake message when opened via deep link
+  useEffect(() => {
+    const hid = route.params?.highlightMessageId;
+    if (!hid || !activeRoom?.messages?.length) return;
+    const index = (activeRoom.messages || []).findIndex(
+      (m) => m._id?.toString() === hid
+    );
+    if (index < 0) return;
+    setTimeout(() => {
+      try { flatRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.4 }); } catch {}
+      // Shake sequence
+      Animated.sequence([
+        Animated.timing(shakeAnim, { toValue: 6,  duration: 60,  useNativeDriver: true }),
+        Animated.timing(shakeAnim, { toValue: -6, duration: 60,  useNativeDriver: true }),
+        Animated.timing(shakeAnim, { toValue: 4,  duration: 50,  useNativeDriver: true }),
+        Animated.timing(shakeAnim, { toValue: -4, duration: 50,  useNativeDriver: true }),
+        Animated.timing(shakeAnim, { toValue: 2,  duration: 40,  useNativeDriver: true }),
+        Animated.timing(shakeAnim, { toValue: 0,  duration: 40,  useNativeDriver: true }),
+      ]).start(() => setTimeout(() => setHighlightedMsgId(null), 1200));
+    }, 500);
+  }, [route.params?.highlightMessageId, activeRoom?.messages?.length]);
+
   const handleShare = async () => {
     const url = `https://kuwai.app/circle/${roomId}`;
     try {
       await Share.share(Platform.OS === 'ios' ? { url } : { message: url });
     } catch { /* silent */ }
   };
+
+  // Restrict swipe-back to left edge only (Instagram-style) so it doesn't
+  // conflict with swipe-to-reply gestures in the middle of the screen
+  useEffect(() => {
+    navigation.setOptions({ gestureEnabled: true, gestureResponseDistance: 20 });
+  }, []);
 
   useEffect(() => {
     if (!activeRoom) return;
@@ -417,6 +483,16 @@ export default function HachiRoomScreen({ navigation, route }) {
       flatRef.current.scrollToIndex({ index, animated: true, viewPosition: 0.3 });
     } catch {}
   }, [activeRoom?.messages]);
+
+  const handleShareMessage = useCallback((message) => {
+    const url = `https://kuwai.app/circle/${roomId}?msg=${message._id}`;
+    const preview = message.text ? `"${message.text.slice(0, 120)}"` : '📷 Media';
+    Share.share(
+      Platform.OS === 'ios'
+        ? { url, message: preview }
+        : { message: `${preview}\n${url}` }
+    );
+  }, [roomId]);
 
   const handleDeleteOwnMessage = useCallback(() => {
     if (!selectedMsg) return;
@@ -688,19 +764,7 @@ export default function HachiRoomScreen({ navigation, route }) {
           data={messages}
           keyExtractor={(item) => item._id?.toString() || Math.random().toString()}
           renderItem={({ item }) => (
-            <SwipeableMessage
-              onSwipeStart={() => navigation.setOptions({ gestureEnabled: false })}
-              onSwipeEnd={() => navigation.setOptions({ gestureEnabled: true })}
-              onReply={() => {
-                haptic.light();
-                setReplyingTo({
-                  messageId: item._id?.toString(),
-                  userName: item.user?.name || t('hachi.someoneDefault'),
-                  text: item.text || '',
-                });
-              }}
-            >
-              <MessageRow
+                <MessageRow
                 message={item}
                 isMine={(item.user?._id || item.user)?.toString() === currentUser?._id?.toString()}
                 currentUserId={currentUser?._id}
@@ -709,8 +773,19 @@ export default function HachiRoomScreen({ navigation, route }) {
                 onUserPress={handleUserPress}
                 onImagePress={(media) => navigation.navigate('MediaViewer', { media: [media], initialIndex: 0 })}
                 onReplyPress={handleScrollToMessage}
+                onReply={() => {
+                  haptic.light();
+                  setReplyingTo({
+                    messageId: item._id?.toString(),
+                    userName: item.user?.name || t('hachi.someoneDefault'),
+                    text: item.text || '',
+                  });
+                }}
+                onOpenReact={() => { haptic.light(); setReactPickerMsg(item); }}
+                onShare={() => handleShareMessage(item)}
+                highlighted={highlightedMsgId === item._id?.toString()}
+                shakeAnim={shakeAnim}
               />
-            </SwipeableMessage>
           )}
           ListEmptyComponent={
             <View style={styles.emptyMessages}>
@@ -831,22 +906,6 @@ export default function HachiRoomScreen({ navigation, route }) {
             /* ── Normal action sheet ── */
             <TouchableOpacity activeOpacity={1} onPress={() => {}}>
               <View style={styles.actionSheet}>
-                {/* Emoji quick-react row */}
-                <View style={styles.emojiRow}>
-                  {QUICK_EMOJIS.map((emoji) => (
-                    <TouchableOpacity
-                      key={emoji}
-                      style={styles.emojiBtn}
-                      onPress={() => {
-                        handleReact(selectedMsg._id, emoji);
-                        setSelectedMsg(null);
-                      }}
-                    >
-                      <Text style={styles.emojiPickerEmoji}>{emoji}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
                 {/* Message actions */}
                 <View style={styles.modActions}>
                   {/* Delete own message → show confirmation */}
@@ -895,6 +954,39 @@ export default function HachiRoomScreen({ navigation, route }) {
               </View>
             </TouchableOpacity>
           )}
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Emoji quick-react picker */}
+      <Modal
+        visible={!!reactPickerMsg}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setReactPickerMsg(null)}
+      >
+        <TouchableOpacity
+          style={styles.actionOverlay}
+          activeOpacity={1}
+          onPress={() => setReactPickerMsg(null)}
+        >
+          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+            <View style={styles.emojiPickerSheet}>
+              <View style={styles.emojiRow}>
+                {QUICK_EMOJIS.map((emoji) => (
+                  <TouchableOpacity
+                    key={emoji}
+                    style={styles.emojiBtn}
+                    onPress={() => {
+                      handleReact(reactPickerMsg._id, emoji);
+                      setReactPickerMsg(null);
+                    }}
+                  >
+                    <Text style={styles.emojiPickerEmoji}>{emoji}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
 
@@ -1193,6 +1285,33 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
     backgroundColor: C.fill,
   },
   viewOnlyText: { fontSize: 13, color: C.textMuted },
+
+  // Message inline action buttons
+  msgActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    marginTop: 3,
+    marginBottom: 2,
+  },
+  msgActionsMine: { justifyContent: 'flex-end' },
+  msgActionBtn: {
+    padding: 4,
+    borderRadius: 8,
+  },
+
+  // Emoji picker sheet (compact)
+  emojiPickerSheet: {
+    backgroundColor: C.white,
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
+  },
 
   // Message action sheet (emoji picker + kick)
   actionOverlay: {

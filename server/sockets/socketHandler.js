@@ -167,8 +167,8 @@ const initSocket = (server) => {
           msgData.replyTo = { messageId: replyTo.messageId, text: replyTo.text || '', userName: replyTo.userName };
         }
 
-        const room = await Hachi.findById(roomId).select('isActive blockedMembers members memberCount').lean();
-        if (!room || !room.isActive) return;
+        const room = await Hachi.findById(roomId).select('blockedMembers members memberCount').lean();
+        if (!room) return;
         if ((room.blockedMembers || []).some((b) => b.toString() === uid)) return;
 
         const isNewMember = !(room.members || []).some((m) => m.toString() === uid);
@@ -343,7 +343,7 @@ const initSocket = (server) => {
       try {
         const Hachi = require('../models/Hachi');
         const room = await Hachi.findById(roomId);
-        if (!room || !room.isActive) return;
+        if (!room) return;
 
         const msg = room.messages.id(messageId);
         if (!msg) return;
