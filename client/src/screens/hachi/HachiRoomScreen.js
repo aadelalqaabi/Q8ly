@@ -235,8 +235,8 @@ function MessageRow({ message, isMine, onLongPress, currentUserId, onUserPress, 
         </Animated.View>
         </View>
 
-        {/* Action buttons + like count */}
-        {!message._uploading && (!isMine || likeCount > 0) && (
+        {/* Action buttons + like count — always shown for others, shown for mine when liked */}
+        {!message._uploading && (
           <View style={[styles.msgActions, isMine && styles.msgActionsMine]}>
             {!isMine && (
               <TouchableOpacity
@@ -247,6 +247,12 @@ function MessageRow({ message, isMine, onLongPress, currentUserId, onUserPress, 
                 <Ionicons name="return-down-back-outline" size={14} color={COLORS.textMuted} />
               </TouchableOpacity>
             )}
+            <View style={styles.likeCount}>
+              <Ionicons name={isLiked ? 'heart' : 'heart-outline'} size={13} color={isLiked ? '#FF2D55' : COLORS.textMuted} />
+              {likeCount > 0 && (
+                <Text style={[styles.likeCountText, isLiked && styles.likeCountTextActive]}>{likeCount}</Text>
+              )}
+            </View>
             {!isMine && (
               <TouchableOpacity
                 style={styles.msgActionBtn}
@@ -255,12 +261,6 @@ function MessageRow({ message, isMine, onLongPress, currentUserId, onUserPress, 
               >
                 <Ionicons name="share-outline" size={14} color={COLORS.textMuted} />
               </TouchableOpacity>
-            )}
-            {likeCount > 0 && (
-              <View style={[styles.likeCount, { marginLeft: isMine ? 0 : 4 }]}>
-                <Ionicons name="heart" size={11} color={isLiked ? '#FF2D55' : COLORS.textMuted} />
-                <Text style={[styles.likeCountText, isLiked && styles.likeCountTextActive]}>{likeCount}</Text>
-              </View>
             )}
           </View>
         )}
