@@ -181,15 +181,12 @@ function MessageRow({ message, isMine, onLongPress, currentUserId, onUserPress, 
                 onPress={() => onReplyPress?.(message.replyTo.messageId)}
                 activeOpacity={0.6}
               >
-                <View style={[styles.replyQuoteBar, isMine && styles.replyQuoteBarMine]} />
-                <View style={styles.replyQuoteBody}>
-                  <Text style={[styles.replyQuoteName, isMine && styles.replyQuoteNameMine]} numberOfLines={1}>
-                    {message.replyTo.userName}
-                  </Text>
-                  <Text style={[styles.replyQuoteText, isMine && styles.replyQuoteTextMine]} numberOfLines={1}>
-                    {message.replyTo.text || '📷 Photo'}
-                  </Text>
-                </View>
+                <Text style={[styles.replyQuoteName, isMine && styles.replyQuoteNameMine]} numberOfLines={1}>
+                  {message.replyTo.userName}
+                </Text>
+                <Text style={[styles.replyQuoteText, isMine && styles.replyQuoteTextMine]} numberOfLines={1}>
+                  {message.replyTo.text || '📷 Photo'}
+                </Text>
               </TouchableOpacity>
             )}
             {image && (
@@ -1091,34 +1088,24 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
   },
   msgBubbleUploading: { opacity: 0.6 },
 
-  // Reply quote inside bubble — WhatsApp style
+  // Reply quote inside bubble — matches the reply bar below input
   replyQuote: {
-    flexDirection: 'row',
-    borderRadius: 10,
-    overflow: 'hidden',
-    marginBottom: 5,
-    marginHorizontal: -4,
-    backgroundColor: 'rgba(0,0,0,0.07)',
+    borderLeftWidth: 3,
+    borderLeftColor: C.accent,
+    paddingLeft: 8,
+    paddingVertical: 2,
+    marginBottom: 6,
   },
-  replyQuoteBar: {
-    width: 3,
-    backgroundColor: C.accent,
-  },
-  replyQuoteBody: {
-    flex: 1,
-    paddingHorizontal: 7,
-    paddingVertical: 4,
-  },
+  replyQuoteBar: { display: 'none' },   // bar is now the borderLeft on replyQuote
+  replyQuoteBody: {},
   replyQuoteMine: {
-    backgroundColor: 'rgba(0,0,0,0.15)',
+    borderLeftColor: 'rgba(255,255,255,0.7)',
   },
-  replyQuoteBarMine: {
-    backgroundColor: 'rgba(255,255,255,0.6)',
-  },
-  replyQuoteName: { fontSize: 11.5, fontWeight: '700', color: C.accent, letterSpacing: 0 },
+  replyQuoteBarMine: {},
+  replyQuoteName: { fontSize: 12, fontWeight: '700', color: C.accent },
   replyQuoteNameMine: { color: 'rgba(255,255,255,1)' },
-  replyQuoteText: { fontSize: 11.5, color: C.textMuted, marginTop: 1 },
-  replyQuoteTextMine: { color: 'rgba(255,255,255,0.6)' },
+  replyQuoteText: { fontSize: 12, color: C.textMuted, marginTop: 1 },
+  replyQuoteTextMine: { color: 'rgba(255,255,255,0.65)' },
 
   // Reply preview bar above input
   replyBar: {
