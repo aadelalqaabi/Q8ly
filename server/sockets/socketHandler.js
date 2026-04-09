@@ -308,24 +308,60 @@ const initSocket = (server) => {
     socket.on('hachiDeleteMessage', async ({ roomId, messageId }) => {
       if (!socket.user) return;
       try {
-        const Hachi = require('../models/Hachi');
-        const room = await Hachi.findById(roomId);
+        const Hachi    = require('../models/Hachi');
+        const mongoose = require('mongoose');
+        const uid      = socket.user._id.toString();
+        const msgOid   = new mongoose.Types.ObjectId(messageId);
+
+        // Verify the message exists and belongs to this user (or user is creator)
+        const room = await Hachi.findOne(
+          { _id: roomId },
+          { creator: 1, messages: { $elemMatch: { _id: msgOid } } }
+        ).lean();
         if (!room) return;
 
-        const msg = room.messages.id(messageId);
+        const msg = room.messages?.[0];
         if (!msg) return;
 
-        const uid = socket.user._id.toString();
         const isCreator = room.creator.toString() === uid;
-        // Only message author or room creator can delete
         if (msg.user.toString() !== uid && !isCreator) return;
 
-        room.messages.pull(messageId);
-        await room.save();
+        // Atomic pull — no full-doc save needed
+        await Hachi.updateOne(
+          { _id: roomId },
+          { $pull: { messages: { _id: msgOid } } }
+        );
 
         io.to(`hachi:${roomId}`).emit('hachiMessageDeleted', { roomId, messageId });
       } catch (err) {
         console.error('hachiDeleteMessage error:', err.message);
+      }
+    });
+
+    // ── Report a message ────────────────────────────────────────────
+    socket.on('hachiReportMessage', async ({ roomId, messageId, reason }) => {
+      if (!socket.user) return;
+      try {
+        const Report   = require('../models/Report');
+        const mongoose = require('mongoose');
+        // Prevent duplicate reports from same user
+        const exists = await Report.exists({
+          reportedBy: socket.user._id,
+          targetType: 'circle_message',
+          targetMessage: new mongoose.Types.ObjectId(messageId),
+        });
+        if (exists) return;
+        await Report.create({
+          reportedBy: socket.user._id,
+          targetType: 'circle_message',
+          targetRoom: roomId,
+          targetMessage: messageId,
+          reason: reason || 'other',
+        });
+        // Ack only to reporter
+        socket.emit('hachiReportAck', { messageId });
+      } catch (err) {
+        console.error('hachiReportMessage error:', err.message);
       }
     });
 

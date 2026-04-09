@@ -10,7 +10,7 @@ const reportSchema = new mongoose.Schema(
     // What is being reported
     targetType: {
       type: String,
-      enum: ['post', 'comment', 'user'],
+      enum: ['post', 'comment', 'user', 'circle_message'],
       required: true,
     },
     targetPost: {
@@ -26,6 +26,15 @@ const reportSchema = new mongoose.Schema(
     targetUser: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
+      default: null,
+    },
+    targetRoom: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Hachi',
+      default: null,
+    },
+    targetMessage: {
+      type: mongoose.Schema.Types.ObjectId,
       default: null,
     },
     // Reason

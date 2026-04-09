@@ -6,6 +6,7 @@ const {
   getPosts, removePost, getReportedPosts, dismissReport, getSuggestions, updateSuggestion,
   sendPushNotification, getVerificationRequests, handleVerificationRequest,
   getCircles, forceCloseCircle,
+  getCircleReports, dismissCircleReport, deleteCircleMessage,
 } = require('../controllers/adminController');
 const { getAllAds, createAd, updateAd, deleteAd } = require('../controllers/adController');
 
@@ -40,6 +41,11 @@ router.post('/push', sendPushNotification);
 // Circles management
 router.get('/circles', getCircles);
 router.delete('/circles/:id', forceCloseCircle);
+
+// Circle message reports
+router.get('/circle-reports', getCircleReports);
+router.patch('/circle-reports/:id/dismiss', dismissCircleReport);
+router.post('/circle-reports/delete-message', deleteCircleMessage);
 
 // Ads management
 router.get('/ads', getAllAds);

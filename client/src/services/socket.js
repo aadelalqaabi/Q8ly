@@ -111,4 +111,8 @@ export const sendHachiVideo = (roomId, videoUrl, videoThumbnail, isLive = false)
   if (socket) socket.emit('hachiSendVideo', { roomId, videoUrl, videoThumbnail, isLive });
 };
 
+export const sendHachiReport = (roomId, messageId, reason = 'other') => {
+  if (socket) socket.emit('hachiReportMessage', { roomId, messageId, reason });
+};
+
 export default { initSocket, getSocket, disconnectSocket, joinSpaceRoom, leaveSpaceRoom, joinPostRoom, leavePostRoom, sendTyping, joinHachiRoom, leaveHachiRoom, sendHachiMessage, sendHachiVoice, sendHachiReaction, sendHachiMessageReaction, sendHachiKick, approveHachiJoin, rejectHachiJoin, sendHachiImage, sendHachiVideo };

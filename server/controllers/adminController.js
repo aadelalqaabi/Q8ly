@@ -4,6 +4,7 @@ const Admin = require('../models/Admin');
 const Post = require('../models/Post');
 const Suggestion = require('../models/Suggestion');
 const Hachi = require('../models/Hachi');
+const Report = require('../models/Report');
 const { sendToAll, sendPush } = require('../services/pushService');
 
 // POST /api/admin/login
@@ -443,6 +444,57 @@ exports.forceCloseCircle = async (req, res) => {
   }
 };
 
+// GET /api/admin/circle-reports?page=1&limit=20
+exports.getCircleReports = async (req, res) => {
+  try {
+    const page  = parseInt(req.query.page)  || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const [reports, total] = await Promise.all([
+      Report.find({ targetType: 'circle_message', status: 'pending' })
+        .populate('reportedBy', 'name username profilePic')
+        .populate('targetRoom', 'title category')
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
+      Report.countDocuments({ targetType: 'circle_message', status: 'pending' }),
+    ]);
+    res.json({ success: true, reports, total, page, pages: Math.ceil(total / limit) });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// PATCH /api/admin/circle-reports/:id/dismiss
+exports.dismissCircleReport = async (req, res) => {
+  try {
+    const report = await Report.findById(req.params.id);
+    if (!report) return res.status(404).json({ success: false, message: 'Report not found' });
+    report.status = 'dismissed';
+    await report.save();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// DELETE circle message via report action
+exports.deleteCircleMessage = async (req, res) => {
+  try {
+    const { reportId, roomId, messageId } = req.body;
+    const mongoose = require('mongoose');
+    await Hachi.updateOne(
+      { _id: roomId },
+      { $pull: { messages: { _id: new mongoose.Types.ObjectId(messageId) } } }
+    );
+    if (reportId) {
+      await Report.findByIdAndUpdate(reportId, { status: 'actioned' });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 // PATCH /api/admin/suggestions/:id
 exports.updateSuggestion = async (req, res) => {
   try {
@@ -459,3 +511,4 @@ exports.updateSuggestion = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+

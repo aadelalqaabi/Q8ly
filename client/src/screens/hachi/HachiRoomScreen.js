@@ -20,7 +20,7 @@ import {
 import {
   getSocket, joinHachiRoom, leaveHachiRoom, sendHachiMessage,
   sendHachiMessageReaction, sendHachiKick,
-  sendHachiImage, sendHachiVideo,
+  sendHachiImage, sendHachiVideo, sendHachiReport,
 } from '../../services/socket';
 import { getDateLocale } from '../../i18n';
 import { hachiAPI, uploadAPI } from '../../services/api';
@@ -165,7 +165,7 @@ function MessageRow({ message, isMine, onLongPress, currentUserId, onUserPress, 
         <View style={{ position: 'relative', overflow: 'visible' }}>
           <TouchableOpacity
             onPress={handleBubbleTap}
-            onLongPress={isMine ? () => onLongPress(message) : undefined}
+            onLongPress={() => onLongPress(message)}
             delayLongPress={400}
             activeOpacity={0.85}
             style={[
@@ -181,12 +181,15 @@ function MessageRow({ message, isMine, onLongPress, currentUserId, onUserPress, 
                 onPress={() => onReplyPress?.(message.replyTo.messageId)}
                 activeOpacity={0.6}
               >
-                <Text style={[styles.replyQuoteName, isMine && { color: 'rgba(255,255,255,0.9)' }]} numberOfLines={1}>
-                  {message.replyTo.userName}
-                </Text>
-                <Text style={[styles.replyQuoteText, isMine && { color: 'rgba(255,255,255,0.7)' }]} numberOfLines={1}>
-                  {message.replyTo.text || '📷 Photo'}
-                </Text>
+                <View style={[styles.replyQuoteBar, isMine && styles.replyQuoteBarMine]} />
+                <View style={styles.replyQuoteBody}>
+                  <Text style={[styles.replyQuoteName, isMine && styles.replyQuoteNameMine]} numberOfLines={1}>
+                    {message.replyTo.userName}
+                  </Text>
+                  <Text style={[styles.replyQuoteText, isMine && styles.replyQuoteTextMine]} numberOfLines={2}>
+                    {message.replyTo.text || '📷 Photo'}
+                  </Text>
+                </View>
               </TouchableOpacity>
             )}
             {image && (
@@ -479,6 +482,22 @@ export default function HachiRoomScreen({ navigation, route }) {
         : { message: `${preview}\n${url}` }
     );
   }, [roomId]);
+
+  const handleReport = useCallback((message) => {
+    const msgId = (message._id)?.toString();
+    setSelectedMsg(null);
+    Alert.alert(
+      t('hachi.reportTitle') || 'Report message',
+      t('hachi.reportSub') || 'Why are you reporting this message?',
+      [
+        { text: t('common.cancel') || 'Cancel', style: 'cancel' },
+        { text: t('hachi.reportSpam') || 'Spam',          onPress: () => { sendHachiReport(roomId, msgId, 'spam');           haptic.success(); } },
+        { text: t('hachi.reportHate') || 'Hate speech',   onPress: () => { sendHachiReport(roomId, msgId, 'hate_speech');    haptic.success(); } },
+        { text: t('hachi.reportExplicit') || 'Explicit',  onPress: () => { sendHachiReport(roomId, msgId, 'explicit_content'); haptic.success(); } },
+        { text: t('hachi.reportOther') || 'Other',        onPress: () => { sendHachiReport(roomId, msgId, 'other');          haptic.success(); } },
+      ]
+    );
+  }, [roomId, t]);
 
   const handleDeleteOwnMessage = useCallback(() => {
     if (!selectedMsg) return;
@@ -868,6 +887,17 @@ export default function HachiRoomScreen({ navigation, route }) {
                     </TouchableOpacity>
                   )}
 
+                  {/* Report other's message */}
+                  {selectedMsgIsOther && (
+                    <TouchableOpacity
+                      style={styles.modRow}
+                      onPress={() => handleReport(selectedMsg)}
+                    >
+                      <Ionicons name="flag-outline" size={17} color="#FF9500" />
+                      <Text style={[styles.kickText, { color: '#FF9500' }]}>{t('hachi.reportTitle') || 'Report'}</Text>
+                    </TouchableOpacity>
+                  )}
+
                   {/* Creator: Kick (other users only) */}
                   {isCreator && selectedMsgIsOther && (
                     <TouchableOpacity
@@ -1061,20 +1091,33 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
 
   // Reply quote inside bubble
   replyQuote: {
-    borderLeftWidth: 3,
-    borderLeftColor: 'rgba(0,51,160,0.4)',
-    paddingLeft: 8,
-    paddingVertical: 4,
+    flexDirection: 'row',
     marginBottom: 6,
-    backgroundColor: 'rgba(0,0,0,0.04)',
-    borderRadius: 6,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(0,0,0,0.06)',
+  },
+  replyQuoteBar: {
+    width: 3,
+    backgroundColor: C.accent,
+    borderTopLeftRadius: 8,
+    borderBottomLeftRadius: 8,
+  },
+  replyQuoteBody: {
+    flex: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
   },
   replyQuoteMine: {
-    borderLeftColor: 'rgba(255,255,255,0.5)',
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  replyQuoteBarMine: {
+    backgroundColor: 'rgba(255,255,255,0.7)',
   },
   replyQuoteName: { fontSize: 12, fontWeight: '700', color: C.accent },
+  replyQuoteNameMine: { color: 'rgba(255,255,255,0.95)' },
   replyQuoteText: { fontSize: 12, color: C.textMuted, marginTop: 1 },
+  replyQuoteTextMine: { color: 'rgba(255,255,255,0.65)' },
 
   // Reply preview bar above input
   replyBar: {
