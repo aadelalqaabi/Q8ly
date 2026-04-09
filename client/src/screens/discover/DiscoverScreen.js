@@ -373,7 +373,7 @@ export default function DiscoverScreen({ navigation }) {
                     </View>
                     <View style={{ flex: 1, gap: 2 }}>
                       <Text style={[styles.activeRowTitle, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={1}>{room.title}</Text>
-                      <Text style={styles.activeRowSub} numberOfLines={1}>{room.creator?.name || ''}</Text>
+                      <Text style={[styles.activeRowSub, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={1}>{room.creator?.name || ''}</Text>
                     </View>
                     <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 3 }}>
                       <Ionicons name="people" size={12} color={COLORS.textMuted} />
