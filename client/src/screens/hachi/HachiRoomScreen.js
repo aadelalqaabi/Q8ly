@@ -505,9 +505,11 @@ export default function HachiRoomScreen({ navigation, route }) {
     const msgId = selectedMsg._id?.toString();
     setSelectedMsg(null);
     setConfirmDelete(false);
+    // Remove immediately from UI — server will confirm via socket
+    dispatch(deleteMessage({ roomId, messageId: msgId }));
     const socket = getSocket();
     if (socket) socket.emit('hachiDeleteMessage', { roomId, messageId: msgId });
-  }, [roomId, selectedMsg]);
+  }, [roomId, selectedMsg, dispatch]);
 
   const handleCamera = useCallback(async () => {
     let tempId = null;
