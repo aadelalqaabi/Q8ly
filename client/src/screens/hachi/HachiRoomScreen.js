@@ -89,32 +89,9 @@ function MessageRow({ message, isMine, onLongPress, currentUserId, onUserPress, 
   const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
   const { user, text, image, video, videoThumbnail, isLive, reactions, createdAt, _uploading } = message;
 
-  // Like derived from reactions (stored as single ❤️ reaction internally)
-  const likeReaction = reactions?.find((r) => r.emoji === '❤️');
-  const likeCount = likeReaction?.count || 0;
-  const isLiked = likeReaction?.users?.includes(currentUserId?.toString()) || false;
-
-  // Double-tap detection
-  const lastTap = useRef(null);
-  const heartScale = useRef(new Animated.Value(0)).current;
-  const heartOpacity = useRef(new Animated.Value(0)).current;
-
-  const handleTap = () => {
-    const now = Date.now();
-    if (lastTap.current && now - lastTap.current < 300) {
-      lastTap.current = null;
-      onLike?.();
-      heartScale.setValue(0);
-      heartOpacity.setValue(1);
-      Animated.sequence([
-        Animated.spring(heartScale, { toValue: 1, useNativeDriver: true, tension: 200, friction: 7 }),
-        Animated.delay(350),
-        Animated.timing(heartOpacity, { toValue: 0, duration: 250, useNativeDriver: true }),
-      ]).start(() => heartScale.setValue(0));
-    } else {
-      lastTap.current = now;
-    }
-  };
+  const likeReaction = (reactions || []).find((r) => r.emoji === '❤️');
+  const likeCount    = likeReaction?.count || 0;
+  const isLiked      = !!(likeReaction?.users?.includes(currentUserId?.toString()));
 
   const timeStr = createdAt
     ? new Date(createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -131,12 +108,7 @@ function MessageRow({ message, isMine, onLongPress, currentUserId, onUserPress, 
   );
 
   const rowContent = (
-    <TouchableOpacity
-      style={[styles.msgRow, isMine && styles.msgRowMine]}
-      onLongPress={isMine ? () => onLongPress(message) : undefined}
-      delayLongPress={350}
-      activeOpacity={1}
-    >
+    <View style={[styles.msgRow, isMine && styles.msgRowMine]}>
       {/* Others: avatar on left */}
       {!isMine && (
         <TouchableOpacity onPress={() => onUserPress(user)} activeOpacity={0.7} style={styles.msgAvatarWrap}>
@@ -168,9 +140,10 @@ function MessageRow({ message, isMine, onLongPress, currentUserId, onUserPress, 
           <Text style={[styles.msgTime, isMine && styles.msgTimeMine]}>{timeStr}</Text>
         </View>
 
-        {/* Bubble / content — TouchableOpacity for double-tap like (no onLongPress = no delay) */}
+        {/* Bubble */}
         <TouchableOpacity
-          onPress={handleTap}
+          onLongPress={isMine ? () => onLongPress(message) : undefined}
+          delayLongPress={400}
           activeOpacity={0.85}
           style={[
             styles.msgBubble,
@@ -225,49 +198,31 @@ function MessageRow({ message, isMine, onLongPress, currentUserId, onUserPress, 
               {t('common.uploading') || 'Sending…'}
             </Text>
           )}
-        {/* Heart pop animation — centered over bubble */}
-        <Animated.View
-          pointerEvents="none"
-          style={[styles.heartOverlay, isMine && styles.heartOverlayMine, {
-            opacity: heartOpacity,
-            transform: [{ scale: heartScale }],
-          }]}
-        >
-          <Ionicons name="heart" size={48} color="#FF2D55" />
-        </Animated.View>
         </TouchableOpacity>
 
-        {/* Action buttons + like count — always shown for others, shown for mine when liked */}
-        {!message._uploading && (
+        {/* Action row: reply · ❤️ count · share */}
+        {!_uploading && (
           <View style={[styles.msgActions, isMine && styles.msgActionsMine]}>
             {!isMine && (
-              <TouchableOpacity
-                style={styles.msgActionBtn}
-                onPress={onReply}
-                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-              >
+              <TouchableOpacity onPress={onReply} style={styles.msgActionBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Ionicons name="return-down-back-outline" size={14} color={COLORS.textMuted} />
               </TouchableOpacity>
             )}
-            <View style={styles.likeCount}>
-              <Ionicons name={isLiked ? 'heart' : 'heart-outline'} size={13} color={isLiked ? '#FF2D55' : COLORS.textMuted} />
+            <TouchableOpacity onPress={onLike} style={styles.msgActionBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name={isLiked ? 'heart' : 'heart-outline'} size={14} color={isLiked ? '#FF2D55' : COLORS.textMuted} />
               {likeCount > 0 && (
                 <Text style={[styles.likeCountText, isLiked && styles.likeCountTextActive]}>{likeCount}</Text>
               )}
-            </View>
+            </TouchableOpacity>
             {!isMine && (
-              <TouchableOpacity
-                style={styles.msgActionBtn}
-                onPress={onShare}
-                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-              >
+              <TouchableOpacity onPress={onShare} style={styles.msgActionBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Ionicons name="share-outline" size={14} color={COLORS.textMuted} />
               </TouchableOpacity>
             )}
           </View>
         )}
       </View>
-    </TouchableOpacity>
+    </View>
   );
   if (highlighted && shakeAnim) {
     return (
@@ -1271,32 +1226,14 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
   },
   msgActionsMine: { justifyContent: 'flex-end' },
   msgActionBtn: {
-    padding: 4,
-    borderRadius: 8,
-  },
-
-  // Like count badge
-  likeCount: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 10,
-    backgroundColor: C.fill,
+    padding: 4,
+    borderRadius: 8,
   },
   likeCountText: { fontSize: 11, fontWeight: '600', color: C.textMuted },
   likeCountTextActive: { color: '#FF2D55' },
-
-  // Heart pop overlay (positioned over bubble)
-  heartOverlay: {
-    position: 'absolute',
-    left: 0, right: 0, top: 0, bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  heartOverlayMine: {},
 
   // Emoji picker sheet (compact)
   emojiPickerSheet: {
