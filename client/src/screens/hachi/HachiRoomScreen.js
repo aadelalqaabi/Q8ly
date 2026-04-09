@@ -42,32 +42,6 @@ function avatarBg(name) {
   return PALETTE[Math.abs(h) % PALETTE.length];
 }
 
-const QUICK_EMOJIS = ['❤️', '😂', '🔥', '👍', '😮', '💀'];
-
-// ── Reaction pills below a message ────────────────────────────────────────────
-function ReactionPills({ reactions, currentUserId, onPress }) {
-  const { colors: COLORS } = useTheme();
-  const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
-  if (!reactions?.length) return null;
-  return (
-    <View style={styles.pillsRow}>
-      {reactions.map((r) => {
-        const reacted = r.users?.includes(currentUserId?.toString());
-        return (
-          <TouchableOpacity
-            key={r.emoji}
-            style={[styles.pill, reacted && styles.pillActive]}
-            onPress={() => onPress(r.emoji)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.pillEmoji}>{r.emoji}</Text>
-            <Text style={[styles.pillCount, reacted && styles.pillCountActive]}>{r.count}</Text>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
-}
 
 // ── Swipeable wrapper (WhatsApp-style swipe-right to reply) ───────────────────
 function SwipeableMessage({ children, onReply, onSwipeStart, onSwipeEnd }) {
@@ -108,12 +82,39 @@ function SwipeableMessage({ children, onReply, onSwipeStart, onSwipeEnd }) {
   );
 }
 
-// ── Single message row (feed/thread style) ──────────────────────────────────────
-function MessageRow({ message, isMine, onLongPress, currentUserId, onReact, onUserPress, onImagePress, onReplyPress, onReply, onOpenReact, onShare, highlighted, shakeAnim }) {
+// ── Single message row ────────────────────────────────────────────────────────
+function MessageRow({ message, isMine, onLongPress, currentUserId, onUserPress, onImagePress, onReplyPress, onReply, onLike, onShare, highlighted, shakeAnim }) {
   const { t } = useTranslation();
   const { colors: COLORS } = useTheme();
   const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
   const { user, text, image, video, videoThumbnail, isLive, reactions, createdAt, _uploading } = message;
+
+  // Like derived from reactions (stored as single ❤️ reaction internally)
+  const likeReaction = reactions?.find((r) => r.emoji === '❤️');
+  const likeCount = likeReaction?.count || 0;
+  const isLiked = likeReaction?.users?.includes(currentUserId?.toString()) || false;
+
+  // Double-tap detection
+  const lastTap = useRef(null);
+  const heartScale = useRef(new Animated.Value(0)).current;
+  const heartOpacity = useRef(new Animated.Value(0)).current;
+
+  const handleTap = () => {
+    const now = Date.now();
+    if (lastTap.current && now - lastTap.current < 300) {
+      lastTap.current = null;
+      onLike?.();
+      heartScale.setValue(0);
+      heartOpacity.setValue(1);
+      Animated.sequence([
+        Animated.spring(heartScale, { toValue: 1, useNativeDriver: true, tension: 200, friction: 7 }),
+        Animated.delay(350),
+        Animated.timing(heartOpacity, { toValue: 0, duration: 250, useNativeDriver: true }),
+      ]).start(() => heartScale.setValue(0));
+    } else {
+      lastTap.current = now;
+    }
+  };
 
   const timeStr = createdAt
     ? new Date(createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -132,6 +133,7 @@ function MessageRow({ message, isMine, onLongPress, currentUserId, onReact, onUs
   const rowContent = (
     <TouchableOpacity
       style={[styles.msgRow, isMine && styles.msgRowMine]}
+      onPress={handleTap}
       onLongPress={isMine ? () => onLongPress(message) : undefined}
       delayLongPress={350}
       activeOpacity={1}
@@ -221,41 +223,47 @@ function MessageRow({ message, isMine, onLongPress, currentUserId, onReact, onUs
               {t('common.uploading') || 'Sending…'}
             </Text>
           )}
+        {/* Heart pop animation — centered over bubble */}
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.heartOverlay, isMine && styles.heartOverlayMine, {
+            opacity: heartOpacity,
+            transform: [{ scale: heartScale }],
+          }]}
+        >
+          <Ionicons name="heart" size={48} color="#FF2D55" />
+        </Animated.View>
         </View>
 
-        {/* Inline action buttons — only on other people's messages */}
-        {!isMine && !message._uploading && (
+        {/* Action buttons + like count */}
+        {!message._uploading && (
           <View style={[styles.msgActions, isMine && styles.msgActionsMine]}>
-            <TouchableOpacity
-              style={styles.msgActionBtn}
-              onPress={onReply}
-              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-            >
-              <Ionicons name="return-down-back-outline" size={14} color={COLORS.textMuted} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.msgActionBtn}
-              onPress={onOpenReact}
-              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-            >
-              <Ionicons name="happy-outline" size={14} color={COLORS.textMuted} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.msgActionBtn}
-              onPress={onShare}
-              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-            >
-              <Ionicons name="share-outline" size={14} color={COLORS.textMuted} />
-            </TouchableOpacity>
+            {!isMine && (
+              <TouchableOpacity
+                style={styles.msgActionBtn}
+                onPress={onReply}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              >
+                <Ionicons name="return-down-back-outline" size={14} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            )}
+            {!isMine && (
+              <TouchableOpacity
+                style={styles.msgActionBtn}
+                onPress={onShare}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              >
+                <Ionicons name="share-outline" size={14} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            )}
+            {likeCount > 0 && (
+              <View style={styles.likeCount}>
+                <Ionicons name="heart" size={11} color={isLiked ? '#FF2D55' : COLORS.textMuted} />
+                <Text style={[styles.likeCountText, isLiked && styles.likeCountTextActive]}>{likeCount}</Text>
+              </View>
+            )}
           </View>
         )}
-
-        {/* Reactions */}
-        <ReactionPills
-          reactions={reactions}
-          currentUserId={currentUserId}
-          onPress={(emoji) => onReact(message._id, emoji)}
-        />
       </View>
     </TouchableOpacity>
   );
@@ -287,7 +295,6 @@ export default function HachiRoomScreen({ navigation, route }) {
   const [uploading, setUploading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null); // { messageId, userName, text }
-  const [reactPickerMsg, setReactPickerMsg]     = useState(null);
   const [highlightedMsgId, setHighlightedMsgId] = useState(route.params?.highlightMessageId || null);
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
@@ -459,9 +466,9 @@ export default function HachiRoomScreen({ navigation, route }) {
     setReplyingTo(null);
   }, [text, roomId, currentUser, dispatch, replyingTo]);
 
-  const handleReact = useCallback((messageId, emoji) => {
+  const handleLike = useCallback((messageId) => {
     haptic.light();
-    sendHachiMessageReaction(roomId, messageId?.toString(), emoji);
+    sendHachiMessageReaction(roomId, messageId?.toString(), '❤️');
   }, [roomId]);
 
   const handleLongPress = useCallback((message) => {
@@ -769,7 +776,6 @@ export default function HachiRoomScreen({ navigation, route }) {
                 isMine={(item.user?._id || item.user)?.toString() === currentUser?._id?.toString()}
                 currentUserId={currentUser?._id}
                 onLongPress={handleLongPress}
-                onReact={handleReact}
                 onUserPress={handleUserPress}
                 onImagePress={(media) => navigation.navigate('MediaViewer', { media: [media], initialIndex: 0 })}
                 onReplyPress={handleScrollToMessage}
@@ -781,7 +787,7 @@ export default function HachiRoomScreen({ navigation, route }) {
                     text: item.text || '',
                   });
                 }}
-                onOpenReact={() => { haptic.light(); setReactPickerMsg(item); }}
+                onLike={() => handleLike(item._id)}
                 onShare={() => handleShareMessage(item)}
                 highlighted={highlightedMsgId === item._id?.toString()}
                 shakeAnim={shakeAnim}
@@ -954,39 +960,6 @@ export default function HachiRoomScreen({ navigation, route }) {
               </View>
             </TouchableOpacity>
           )}
-        </TouchableOpacity>
-      </Modal>
-
-      {/* Emoji quick-react picker */}
-      <Modal
-        visible={!!reactPickerMsg}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setReactPickerMsg(null)}
-      >
-        <TouchableOpacity
-          style={styles.actionOverlay}
-          activeOpacity={1}
-          onPress={() => setReactPickerMsg(null)}
-        >
-          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
-            <View style={styles.emojiPickerSheet}>
-              <View style={styles.emojiRow}>
-                {QUICK_EMOJIS.map((emoji) => (
-                  <TouchableOpacity
-                    key={emoji}
-                    style={styles.emojiBtn}
-                    onPress={() => {
-                      handleReact(reactPickerMsg._id, emoji);
-                      setReactPickerMsg(null);
-                    }}
-                  >
-                    <Text style={styles.emojiPickerEmoji}>{emoji}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
 
@@ -1299,6 +1272,29 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
     padding: 4,
     borderRadius: 8,
   },
+
+  // Like count badge
+  likeCount: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 10,
+    backgroundColor: C.fill,
+  },
+  likeCountText: { fontSize: 11, fontWeight: '600', color: C.textMuted },
+  likeCountTextActive: { color: '#FF2D55' },
+
+  // Heart pop overlay (positioned over bubble)
+  heartOverlay: {
+    position: 'absolute',
+    left: 0, right: 0, top: 0, bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  heartOverlayMine: {},
 
   // Emoji picker sheet (compact)
   emojiPickerSheet: {
