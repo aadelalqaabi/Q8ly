@@ -133,7 +133,6 @@ function MessageRow({ message, isMine, onLongPress, currentUserId, onUserPress, 
   const rowContent = (
     <TouchableOpacity
       style={[styles.msgRow, isMine && styles.msgRowMine]}
-      onPress={handleTap}
       onLongPress={isMine ? () => onLongPress(message) : undefined}
       delayLongPress={350}
       activeOpacity={1}
@@ -169,13 +168,16 @@ function MessageRow({ message, isMine, onLongPress, currentUserId, onUserPress, 
           <Text style={[styles.msgTime, isMine && styles.msgTimeMine]}>{timeStr}</Text>
         </View>
 
-        {/* Bubble / content */}
-        <View style={[
-          styles.msgBubble,
-          isMine && styles.msgBubbleMine,
-          hasMedia && !text && styles.msgBubbleMedia,
-          _uploading && styles.msgBubbleUploading,
-        ]}>
+        {/* Bubble / content — TouchableOpacity for double-tap like (no onLongPress = no delay) */}
+        <TouchableOpacity
+          onPress={handleTap}
+          activeOpacity={0.85}
+          style={[
+            styles.msgBubble,
+            isMine && styles.msgBubbleMine,
+            hasMedia && !text && styles.msgBubbleMedia,
+            _uploading && styles.msgBubbleUploading,
+          ]}>
           {/* Reply quote — tap to scroll to original */}
           {message.replyTo?.userName && (
             <TouchableOpacity
@@ -233,7 +235,7 @@ function MessageRow({ message, isMine, onLongPress, currentUserId, onUserPress, 
         >
           <Ionicons name="heart" size={48} color="#FF2D55" />
         </Animated.View>
-        </View>
+        </TouchableOpacity>
 
         {/* Action buttons + like count — always shown for others, shown for mine when liked */}
         {!message._uploading && (
