@@ -487,14 +487,14 @@ export default function HachiRoomScreen({ navigation, route }) {
     const msgId = (message._id)?.toString();
     setSelectedMsg(null);
     Alert.alert(
-      t('hachi.reportTitle') || 'Report message',
-      t('hachi.reportSub') || 'Why are you reporting this message?',
+      t('hachi.reportTitle'),
+      t('hachi.reportSub'),
       [
-        { text: t('common.cancel') || 'Cancel', style: 'cancel' },
-        { text: t('hachi.reportSpam') || 'Spam',          onPress: () => { sendHachiReport(roomId, msgId, 'spam');           haptic.success(); } },
-        { text: t('hachi.reportHate') || 'Hate speech',   onPress: () => { sendHachiReport(roomId, msgId, 'hate_speech');    haptic.success(); } },
-        { text: t('hachi.reportExplicit') || 'Explicit',  onPress: () => { sendHachiReport(roomId, msgId, 'explicit_content'); haptic.success(); } },
-        { text: t('hachi.reportOther') || 'Other',        onPress: () => { sendHachiReport(roomId, msgId, 'other');          haptic.success(); } },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('hachi.reportSpam'),     onPress: () => { sendHachiReport(roomId, msgId, 'spam');             haptic.success(); } },
+        { text: t('hachi.reportHate'),     onPress: () => { sendHachiReport(roomId, msgId, 'hate_speech');      haptic.success(); } },
+        { text: t('hachi.reportExplicit'), onPress: () => { sendHachiReport(roomId, msgId, 'explicit_content'); haptic.success(); } },
+        { text: t('hachi.reportOther'),    onPress: () => { sendHachiReport(roomId, msgId, 'other');            haptic.success(); } },
       ]
     );
   }, [roomId, t]);
@@ -896,7 +896,7 @@ export default function HachiRoomScreen({ navigation, route }) {
                       onPress={() => handleReport(selectedMsg)}
                     >
                       <Ionicons name="flag-outline" size={17} color="#FF9500" />
-                      <Text style={[styles.kickText, { color: '#FF9500' }]}>{t('hachi.reportTitle') || 'Report'}</Text>
+                      <Text style={[styles.kickText, { color: '#FF9500' }]}>{t('hachi.reportTitle')}</Text>
                     </TouchableOpacity>
                   )}
 
