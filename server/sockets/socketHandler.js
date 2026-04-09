@@ -338,46 +338,46 @@ const initSocket = (server) => {
         const uid      = socket.user._id.toString();
         const msgOid   = new mongoose.Types.ObjectId(messageId);
 
-        // Check if user already reacted with this emoji
-        const existing = await Hachi.findOne(
-          { _id: roomId, 'messages._id': msgOid, 'messages.reactions.emoji': emoji },
-          { 'messages.$': 1 }
+        // Fetch exact message using $elemMatch so we get the right subdoc
+        const room = await Hachi.findOne(
+          { _id: roomId },
+          { messages: { $elemMatch: { _id: msgOid } } }
         ).lean();
 
-        const msgDoc    = existing?.messages?.[0];
-        const reaction  = msgDoc?.reactions?.find((r) => r.emoji === emoji);
+        const msg      = room?.messages?.[0];
+        if (!msg) return;
+
+        const reaction    = msg.reactions?.find((r) => r.emoji === emoji);
         const alreadyLiked = reaction?.users?.some((u) => u.toString() === uid);
 
-        let update;
         if (!reaction) {
-          // Reaction doesn't exist yet — push new reaction entry
-          update = await Hachi.findOneAndUpdate(
+          // No reaction entry yet — create it
+          await Hachi.updateOne(
             { _id: roomId, 'messages._id': msgOid },
-            { $push: { 'messages.$.reactions': { emoji, users: [socket.user._id] } } },
-            { new: true, projection: { 'messages.$': 1 } }
-          ).lean();
+            { $push: { 'messages.$.reactions': { emoji, users: [socket.user._id] } } }
+          );
         } else if (alreadyLiked) {
-          // Toggle off — remove user from reaction's users
-          update = await Hachi.findOneAndUpdate(
-            { _id: roomId, 'messages._id': msgOid, 'messages.reactions.emoji': emoji },
-            { $pull: { 'messages.$.reactions.$[r].users': socket.user._id } },
-            { new: true, arrayFilters: [{ 'r.emoji': emoji }], projection: { 'messages.$': 1 } }
-          ).lean();
+          // User already liked — remove them (toggle off)
+          await Hachi.updateOne(
+            { _id: roomId },
+            { $pull: { 'messages.$[msg].reactions.$[r].users': socket.user._id } },
+            { arrayFilters: [{ 'msg._id': msgOid }, { 'r.emoji': emoji }] }
+          );
         } else {
-          // Add user to existing reaction
-          update = await Hachi.findOneAndUpdate(
-            { _id: roomId, 'messages._id': msgOid, 'messages.reactions.emoji': emoji },
-            { $addToSet: { 'messages.$.reactions.$[r].users': socket.user._id } },
-            { new: true, arrayFilters: [{ 'r.emoji': emoji }], projection: { 'messages.$': 1 } }
-          ).lean();
+          // Reaction exists but user hasn't liked — add them
+          await Hachi.updateOne(
+            { _id: roomId },
+            { $addToSet: { 'messages.$[msg].reactions.$[r].users': socket.user._id } },
+            { arrayFilters: [{ 'msg._id': msgOid }, { 'r.emoji': emoji }] }
+          );
         }
 
-        // Re-fetch the message to get accurate reaction state
-        const fresh = await Hachi.findOne(
-          { _id: roomId, 'messages._id': msgOid },
-          { 'messages.$': 1 }
+        // Re-fetch the message to broadcast accurate state
+        const updated = await Hachi.findOne(
+          { _id: roomId },
+          { messages: { $elemMatch: { _id: msgOid } } }
         ).lean();
-        const freshMsg = fresh?.messages?.[0];
+        const freshMsg = updated?.messages?.[0];
         if (!freshMsg) return;
 
         const reactionsOut = (freshMsg.reactions || []).map((r) => ({
@@ -388,9 +388,8 @@ const initSocket = (server) => {
 
         io.to(`hachi:${roomId}`).emit('hachiMessageReaction', { roomId, messageId, reactions: reactionsOut });
 
-        // Award point to message author for new like (not self-like)
-        const reactionAdded = !alreadyLiked;
-        if (reactionAdded && freshMsg.user?.toString() !== uid) {
+        // Award hachiPoint to message author for a new like (not self-like)
+        if (!alreadyLiked && freshMsg.user?.toString() !== uid) {
           const User = require('../models/User');
           User.findByIdAndUpdate(freshMsg.user, { $inc: { hachiPoints: 1 } }).exec();
         }

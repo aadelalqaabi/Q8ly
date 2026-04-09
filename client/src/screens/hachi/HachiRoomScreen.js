@@ -88,10 +88,31 @@ function MessageRow({ message, isMine, onLongPress, currentUserId, onUserPress, 
   const { colors: COLORS } = useTheme();
   const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
   const { user, text, image, video, videoThumbnail, isLive, reactions, createdAt, _uploading } = message;
+  const tapTimer = useRef(null);
+  const likeAnim = useRef(new Animated.Value(0)).current;
 
   const likeReaction = (reactions || []).find((r) => r.emoji === '❤️');
   const likeCount    = likeReaction?.count || 0;
   const isLiked      = !!(likeReaction?.users?.includes(currentUserId?.toString()));
+
+  const handleBubbleTap = () => {
+    if (isMine) return;
+    if (tapTimer.current) {
+      clearTimeout(tapTimer.current);
+      tapTimer.current = null;
+      // Double tap — like with haptic + heart overlay animation
+      haptic.success();
+      likeAnim.setValue(0);
+      Animated.sequence([
+        Animated.spring(likeAnim, { toValue: 1, useNativeDriver: true, speed: 30, bounciness: 12 }),
+        Animated.delay(400),
+        Animated.timing(likeAnim, { toValue: 0, duration: 250, useNativeDriver: true }),
+      ]).start();
+      onLike?.();
+    } else {
+      tapTimer.current = setTimeout(() => { tapTimer.current = null; }, 300);
+    }
+  };
 
   const timeStr = createdAt
     ? new Date(createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -141,64 +162,77 @@ function MessageRow({ message, isMine, onLongPress, currentUserId, onUserPress, 
         </View>
 
         {/* Bubble */}
-        <TouchableOpacity
-          onLongPress={isMine ? () => onLongPress(message) : undefined}
-          delayLongPress={400}
-          activeOpacity={0.85}
-          style={[
-            styles.msgBubble,
-            isMine && styles.msgBubbleMine,
-            hasMedia && !text && styles.msgBubbleMedia,
-            _uploading && styles.msgBubbleUploading,
-          ]}>
-          {/* Reply quote — tap to scroll to original */}
-          {message.replyTo?.userName && (
-            <TouchableOpacity
-              style={[styles.replyQuote, isMine && styles.replyQuoteMine]}
-              onPress={() => onReplyPress?.(message.replyTo.messageId)}
-              activeOpacity={0.6}
-            >
-              <Text style={[styles.replyQuoteName, isMine && { color: 'rgba(255,255,255,0.9)' }]} numberOfLines={1}>
-                {message.replyTo.userName}
-              </Text>
-              <Text style={[styles.replyQuoteText, isMine && { color: 'rgba(255,255,255,0.7)' }]} numberOfLines={1}>
-                {message.replyTo.text || '📷 Photo'}
-              </Text>
-            </TouchableOpacity>
-          )}
-          {image && (
-            <TouchableOpacity activeOpacity={0.92} onPress={() => onImagePress?.({ uri: image, type: 'image' })}>
-              <Image source={{ uri: image }} style={styles.msgImage} resizeMode="cover" />
-              <View style={[styles.mediaBadge, isLive ? styles.mediaBadgeLive : styles.mediaBadgeUploaded]}>
-                <Ionicons name={isLive ? 'radio-outline' : 'cloud-upload-outline'} size={9} color="#fff" />
-                <Text style={styles.mediaBadgeText}>{t(isLive ? 'hachi.badgeLive' : 'hachi.badgeUploaded')}</Text>
-              </View>
-            </TouchableOpacity>
-          )}
-          {video && (
-            <TouchableOpacity activeOpacity={0.9} onPress={() => onImagePress?.({ uri: video, type: 'video' })}>
-              <Image source={{ uri: videoThumbnail || video }} style={styles.msgImage} resizeMode="cover" />
-              <View style={styles.playOverlay}>
-                <View style={styles.playBtn}>
-                  <Ionicons name="play" size={22} color="#fff" />
+        <View style={{ position: 'relative', overflow: 'visible' }}>
+          <TouchableOpacity
+            onPress={handleBubbleTap}
+            onLongPress={isMine ? () => onLongPress(message) : undefined}
+            delayLongPress={400}
+            activeOpacity={0.85}
+            style={[
+              styles.msgBubble,
+              isMine && styles.msgBubbleMine,
+              hasMedia && !text && styles.msgBubbleMedia,
+              _uploading && styles.msgBubbleUploading,
+            ]}>
+            {/* Reply quote — tap to scroll to original */}
+            {message.replyTo?.userName && (
+              <TouchableOpacity
+                style={[styles.replyQuote, isMine && styles.replyQuoteMine]}
+                onPress={() => onReplyPress?.(message.replyTo.messageId)}
+                activeOpacity={0.6}
+              >
+                <Text style={[styles.replyQuoteName, isMine && { color: 'rgba(255,255,255,0.9)' }]} numberOfLines={1}>
+                  {message.replyTo.userName}
+                </Text>
+                <Text style={[styles.replyQuoteText, isMine && { color: 'rgba(255,255,255,0.7)' }]} numberOfLines={1}>
+                  {message.replyTo.text || '📷 Photo'}
+                </Text>
+              </TouchableOpacity>
+            )}
+            {image && (
+              <TouchableOpacity activeOpacity={0.92} onPress={() => onImagePress?.({ uri: image, type: 'image' })}>
+                <Image source={{ uri: image }} style={styles.msgImage} resizeMode="cover" />
+                <View style={[styles.mediaBadge, isLive ? styles.mediaBadgeLive : styles.mediaBadgeUploaded]}>
+                  <Ionicons name={isLive ? 'radio-outline' : 'cloud-upload-outline'} size={9} color="#fff" />
+                  <Text style={styles.mediaBadgeText}>{t(isLive ? 'hachi.badgeLive' : 'hachi.badgeUploaded')}</Text>
                 </View>
-              </View>
-              <View style={[styles.mediaBadge, isLive ? styles.mediaBadgeLive : styles.mediaBadgeUploaded]}>
-                <Ionicons name={isLive ? 'radio-outline' : 'cloud-upload-outline'} size={9} color="#fff" />
-                <Text style={styles.mediaBadgeText}>{t(isLive ? 'hachi.badgeLive' : 'hachi.badgeUploaded')}</Text>
-              </View>
-            </TouchableOpacity>
-          )}
-          {_uploading && !image && !video && (
-            <ActivityIndicator size="small" color={isMine ? 'rgba(255,255,255,0.7)' : COLORS.accent} />
-          )}
-          {!!text && <Text style={[styles.msgText, isMine && styles.msgTextMine]}>{text}</Text>}
-          {_uploading && (
-            <Text style={[styles.msgUploadingText, isMine && { color: 'rgba(255,255,255,0.6)' }]}>
-              {t('common.uploading') || 'Sending…'}
-            </Text>
-          )}
-        </TouchableOpacity>
+              </TouchableOpacity>
+            )}
+            {video && (
+              <TouchableOpacity activeOpacity={0.9} onPress={() => onImagePress?.({ uri: video, type: 'video' })}>
+                <Image source={{ uri: videoThumbnail || video }} style={styles.msgImage} resizeMode="cover" />
+                <View style={styles.playOverlay}>
+                  <View style={styles.playBtn}>
+                    <Ionicons name="play" size={22} color="#fff" />
+                  </View>
+                </View>
+                <View style={[styles.mediaBadge, isLive ? styles.mediaBadgeLive : styles.mediaBadgeUploaded]}>
+                  <Ionicons name={isLive ? 'radio-outline' : 'cloud-upload-outline'} size={9} color="#fff" />
+                  <Text style={styles.mediaBadgeText}>{t(isLive ? 'hachi.badgeLive' : 'hachi.badgeUploaded')}</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+            {_uploading && !image && !video && (
+              <ActivityIndicator size="small" color={isMine ? 'rgba(255,255,255,0.7)' : COLORS.accent} />
+            )}
+            {!!text && <Text style={[styles.msgText, isMine && styles.msgTextMine]}>{text}</Text>}
+            {_uploading && (
+              <Text style={[styles.msgUploadingText, isMine && { color: 'rgba(255,255,255,0.6)' }]}>
+                {t('common.uploading') || 'Sending…'}
+              </Text>
+            )}
+          </TouchableOpacity>
+          {/* Double-tap like overlay — centered ON the bubble */}
+          <Animated.View pointerEvents="none" style={[
+            styles.likePopOverlay,
+            {
+              opacity: likeAnim,
+              transform: [{ scale: likeAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.3, 1.3, 1] }) }],
+            },
+          ]}>
+            <Ionicons name="heart" size={44} color="rgba(255,45,85,0.9)" />
+          </Animated.View>
+        </View>
 
         {/* Action row: reply · ❤️ count · share */}
         {!_uploading && (
@@ -1168,6 +1202,7 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
   },
   likeCountText: { fontSize: 11, fontWeight: '600', color: C.textMuted },
   likeCountTextActive: { color: '#FF2D55' },
+  likePopOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', zIndex: 10 },
 
   // Emoji picker sheet (compact)
   emojiPickerSheet: {
