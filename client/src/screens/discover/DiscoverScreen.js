@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
   View, Text, StyleSheet, FlatList, ScrollView, TextInput, Dimensions,
-  TouchableOpacity, ActivityIndicator, Keyboard, TouchableWithoutFeedback,
+  TouchableOpacity, ActivityIndicator, Keyboard, TouchableWithoutFeedback, RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -75,6 +75,7 @@ export default function DiscoverScreen({ navigation }) {
   // Count active circles per category (loaded once)
   const [categoryCounts, setCategoryCounts] = useState({});
   const [countsLoaded, setCountsLoaded] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const loadCategoryCounts = useCallback(async () => {
     try {
@@ -97,6 +98,12 @@ export default function DiscoverScreen({ navigation }) {
     });
     return unsub;
   }, [navigation]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadCategoryCounts();
+    setRefreshing(false);
+  }, [loadCategoryCounts]);
 
   const loadCategoryRooms = useCallback(async (cat) => {
     setCategoryLoading(true);
@@ -355,7 +362,12 @@ export default function DiscoverScreen({ navigation }) {
 
       {/* Content */}
       {!isSearchMode ? (
-        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
+        <ScrollView
+          style={{ flex: 1 }}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.accent} />}
+        >
           {hotRooms.length > 0 && (
             <View style={styles.mostActiveSection}>
               <Text style={styles.mostActiveTitle}>{t('hachi.mostActive')}</Text>
