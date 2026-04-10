@@ -150,11 +150,9 @@ exports.createRoom = async (req, res) => {
           required: HACHI_POINTS_COST,
         });
       }
-      // Deduct points and bust the auth cache so the stale balance isn't reused
-      await User.findByIdAndUpdate(req.user._id, { $inc: { hachiPoints: -HACHI_POINTS_COST } });
-      invalidateUserCache(req.user._id);
     }
 
+    // Create the room FIRST — only deduct points if creation succeeds
     const { lat: cLat, lng: cLng } = req.body;
     const locationField = cLat && cLng ? {
       location: { type: 'Point', coordinates: [parseFloat(cLng), parseFloat(cLat)] },
@@ -172,8 +170,18 @@ exports.createRoom = async (req, res) => {
 
     await room.populate('creator', 'name username profilePic verifiedBadge');
 
-    // Fetch updated points to return to client
-    const updatedUser = await User.findById(req.user._id).select('hachiPoints');
+    // Deduct points now that the room exists
+    let updatedUser;
+    if (!hasBadge) {
+      updatedUser = await User.findByIdAndUpdate(
+        req.user._id,
+        { $inc: { hachiPoints: -HACHI_POINTS_COST } },
+        { new: true }
+      ).select('hachiPoints');
+      invalidateUserCache(req.user._id);
+    } else {
+      updatedUser = await User.findById(req.user._id).select('hachiPoints');
+    }
 
     const io = req.app.get('io');
     io.emit('hachiNewRoom', { ...room.toObject(), messages: undefined });

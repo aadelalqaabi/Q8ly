@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   ActivityIndicator, TextInput, Modal, KeyboardAvoidingView,
-  Platform, ScrollView, Dimensions, Vibration,
+  Platform, ScrollView, Dimensions, Vibration, Alert,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
@@ -278,8 +278,9 @@ export default function HachiScreen({ navigation }) {
       setNewTitle('');
       setNewCategory('general');
       navigation.navigate('HachiRoom', { roomId: result._id, title: result.title });
-    } catch { /* silent */ }
-    finally { setCreating(false); }
+    } catch (err) {
+      Alert.alert(t('common.error'), err?.message || t('common.tryAgain'));
+    } finally { setCreating(false); }
   }, [newTitle, newCategory, creating]);
 
   const handleAddPress = () => {
