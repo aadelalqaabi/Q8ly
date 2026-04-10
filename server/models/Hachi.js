@@ -59,8 +59,8 @@ const hachiSchema = new mongoose.Schema({
   trendingAwardedAt: { type: Date, default: null },
   // Creator's location at time of creation (optional)
   location: {
-    type: { type: String, enum: ['Point'], default: 'Point' },
-    coordinates: { type: [Number] }, // [lng, lat]
+    type: { type: String, enum: ['Point'] },
+    coordinates: { type: [Number] },
   },
 }, { timestamps: true });
 

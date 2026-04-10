@@ -279,7 +279,7 @@ export default function HachiScreen({ navigation }) {
       setNewCategory('general');
       navigation.navigate('HachiRoom', { roomId: result._id, title: result.title });
     } catch (err) {
-      Alert.alert(t('common.error'), err?.message || t('common.tryAgain'));
+      Alert.alert(t('common.error'), typeof err === 'string' ? err : (err?.message || t('common.error')));
     } finally { setCreating(false); }
   }, [newTitle, newCategory, creating]);
 
