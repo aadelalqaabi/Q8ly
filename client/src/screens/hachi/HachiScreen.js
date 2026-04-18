@@ -15,7 +15,9 @@ import { getDateLocale } from '../../i18n';
 import { useTheme } from '../../context/ThemeContext';
 import { useGuestGate } from '../../context/GuestGateContext';
 import * as Haptics from 'expo-haptics';
-import * as Location from 'expo-location';
+// expo-location loaded lazily to avoid crashing on Android if native module is missing
+let Location = null;
+try { Location = require('expo-location'); } catch { /* not available */ }
 
 const haptic = {
   light:   () => Platform.OS === 'ios' ? Haptics.selectionAsync() : Vibration.vibrate(30),
@@ -234,6 +236,7 @@ export default function HachiScreen({ navigation }) {
   useEffect(() => {
     (async () => {
       try {
+        if (!Location) throw new Error('no location module');
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status === 'granted') {
           const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
