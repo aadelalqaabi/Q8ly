@@ -76,6 +76,12 @@
         }
       ],
       "expo-font",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "KUWAI uses your location to show you nearby circles and let you create location-based discussions."
+        }
+      ],
       "expo-localization",
       "expo-secure-store"
     ],
