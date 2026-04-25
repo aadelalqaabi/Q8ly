@@ -222,23 +222,23 @@ const authSlice = createSlice({
           state.token = action.payload.token;
           state.needsName = !action.payload.user?.name;
         } else {
-          // No saved session — enter guest mode automatically
-          state.isGuest = true;
+          // No saved session — require sign-up
+          state.isGuest = false;
         }
       })
       .addCase(restoreSession.rejected, (state) => {
         state.isLoading = false;
         state.isSessionRestored = true;
         state.isAuthenticated = false;
-        state.isGuest = true; // Session expired — guest mode until they log in
+        state.isGuest = false; // Session expired — require sign-in
         state.user = null;
         state.token = null;
       });
 
-    // Logout → back to guest browsing, not phone screen
+    // Logout → back to sign-in
     builder.addCase(logout.fulfilled, (state) => {
       state.isAuthenticated = false;
-      state.isGuest = true;
+      state.isGuest = false;
       state.user = null;
       state.token = null;
     });

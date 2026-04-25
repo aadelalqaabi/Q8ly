@@ -244,7 +244,7 @@ export default function AppNavigator() {
   }
 
   // Invite gate — before auth, after language
-  if (!hasInvite && !isAuthenticated && !isGuest) {
+  if (!hasInvite && !isAuthenticated) {
     return (
       <NavigationContainer>
         <InviteCodeScreen onValid={() => setHasInvite(true)} />
@@ -253,7 +253,7 @@ export default function AppNavigator() {
   }
 
   let content;
-  if (!isAuthenticated && !isGuest) content = <AuthStack />;
+  if (!isAuthenticated) content = <AuthStack />;
   else if (isAuthenticated && needsName) content = (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="NameSetup" component={NameScreen} />
