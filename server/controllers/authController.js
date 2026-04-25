@@ -512,10 +512,11 @@ const joinWaitlist = async (req, res, next) => {
     const position = await Waitlist.countDocuments({ status: 'waiting' });
     res.status(201).json({ success: true, message: 'Added to waitlist', position });
   } catch (error) {
+    console.error('[Waitlist] Error:', error.message, error.stack);
     if (error.code === 11000) {
       return res.json({ success: true, message: 'Already on waitlist' });
     }
-    next(error);
+    res.status(500).json({ success: false, message: error.message || 'Server error' });
   }
 };
 
