@@ -259,7 +259,7 @@ export default function AppNavigator() {
       <Stack.Screen name="NameSetup" component={NameScreen} />
     </Stack.Navigator>
   );
-  else if (!onboardingDone) content = <OnboardingScreen onDone={() => setOnboardingDone(true)} />;
+  else if (isAuthenticated && !onboardingDone) content = <OnboardingScreen onDone={() => setOnboardingDone(true)} />;
   else content = <AppStack />;
 
   return (
