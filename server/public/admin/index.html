@@ -134,6 +134,10 @@
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
         Push
       </div>
+      <div class="nav-item" onclick="showPage('waitlist')">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        Waitlist
+      </div>
     </nav>
 
     <div style="margin-top:auto;padding-top:16px;border-top:1px solid #E5E5EA">
@@ -283,6 +287,30 @@
       </div>
     </div>
 
+    <!-- Waitlist -->
+    <div id="page-waitlist" class="page">
+      <h2 style="font-size:22px;font-weight:700;margin-bottom:20px">Waitlist</h2>
+      <div style="display:flex;gap:10px;margin-bottom:16px">
+        <button class="btn" onclick="loadWaitlist('waiting')" style="padding:8px 16px;font-size:13px">Waiting</button>
+        <button class="btn" onclick="loadWaitlist('invited')" style="padding:8px 16px;font-size:13px">Invited</button>
+        <button class="btn" onclick="loadWaitlist('all')" style="padding:8px 16px;font-size:13px">All</button>
+      </div>
+      <div id="waitlist-count" style="font-size:13px;color:#6C6C70;margin-bottom:12px"></div>
+      <div class="card" style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:14px" id="waitlist-table">
+          <thead><tr style="border-bottom:1px solid #E5E5EA;text-align:left">
+            <th style="padding:10px">#</th>
+            <th style="padding:10px">Phone</th>
+            <th style="padding:10px">Lang</th>
+            <th style="padding:10px">Status</th>
+            <th style="padding:10px">Signed Up</th>
+            <th style="padding:10px">Actions</th>
+          </tr></thead>
+          <tbody id="waitlist-body"></tbody>
+        </table>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -387,6 +415,7 @@ function showPage(page) {
   else if (page === 'suggestions') loadSuggestions('all', 1);
   else if (page === 'circles') loadCircles(1);
   else if (page === 'ads') loadAds();
+  else if (page === 'waitlist') loadWaitlist('waiting');
   else if (page === 'push') { /* form, nothing to load */ }
 }
 
@@ -1146,6 +1175,40 @@ window.onload = () => {
     });
   }
 };
+
+// ─── Waitlist ─────────────────────────────────────────────────────────────────
+async function loadWaitlist(status = 'waiting') {
+  try {
+    const res = await apiFetch(`/admin/waitlist?status=${status}`);
+    document.getElementById('waitlist-count').textContent = `${res.total} entries (${status})`;
+    const tbody = document.getElementById('waitlist-body');
+    tbody.innerHTML = res.entries.map((e, i) => `
+      <tr style="border-bottom:1px solid #F2F2F7">
+        <td style="padding:10px;color:#6C6C70">${i + 1}</td>
+        <td style="padding:10px;font-weight:600;direction:ltr">${e.phone}</td>
+        <td style="padding:10px">${e.lang || 'ar'}</td>
+        <td style="padding:10px">
+          <span style="padding:3px 8px;border-radius:6px;font-size:12px;font-weight:600;
+            background:${e.status === 'waiting' ? '#FFF3CD' : e.status === 'invited' ? '#D4EDDA' : '#CCE5FF'};
+            color:${e.status === 'waiting' ? '#856404' : e.status === 'invited' ? '#155724' : '#004085'}">
+            ${e.status}
+          </span>
+        </td>
+        <td style="padding:10px;font-size:13px;color:#6C6C70">${new Date(e.createdAt).toLocaleDateString()}</td>
+        <td style="padding:10px">
+          ${e.status === 'waiting' ? `<button class="btn" style="padding:4px 12px;font-size:12px" onclick="markInvited('${e._id}')">Mark Invited</button>` : ''}
+        </td>
+      </tr>
+    `).join('');
+  } catch (e) { console.error(e); }
+}
+
+async function markInvited(id) {
+  try {
+    await apiFetch(`/admin/waitlist/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'invited' }), headers: { 'Content-Type': 'application/json' } });
+    loadWaitlist('waiting');
+  } catch (e) { alert('Error: ' + e.message); }
+}
 </script>
 </body>
 </html>

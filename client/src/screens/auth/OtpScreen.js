@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { verifyOtp, clearError } from '../../store/slices/authSlice';
 import { authAPI } from '../../services/api';
 import { useTheme } from '../../context/ThemeContext';
@@ -78,7 +79,8 @@ export default function OtpScreen({ navigation, route }) {
   const submit = async (code) => {
     if (code.length !== CODE_LENGTH || submittedRef.current) return;
     submittedRef.current = true;
-    const result = await dispatch(verifyOtp({ phone, code }));
+    const inviteCode = await AsyncStorage.getItem('@kn_invite_code');
+    const result = await dispatch(verifyOtp({ phone, code, inviteCode }));
     if (result.meta.requestStatus === 'rejected') {
       setDigits(Array(CODE_LENGTH).fill(''));
       submittedRef.current = false;

@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { formatDistanceToNow } from 'date-fns';
-import { fetchRooms, fetchMoments, createRoom, addRoomRealtime } from '../../store/slices/hachiSlice';
+import { fetchRooms, fetchMoments, createRoom, addRoomRealtime, fetchJoinedRooms } from '../../store/slices/hachiSlice';
 import { getSocket } from '../../services/socket';
 import { getDateLocale } from '../../i18n';
 import { useTheme } from '../../context/ThemeContext';
@@ -102,9 +102,19 @@ function ActiveRow({ room, rank, isFirst, onPress, styles, C, isRTL, isLast }) {
 
 // ── RoomRow ────────────────────────────────────────────────────────────────────
 
-function RoomRow({ room, onPress, styles, C, t }) {
+function isNearby(room, userLocation) {
+  if (!userLocation || !room.location?.coordinates) return false;
+  const [lng, lat] = room.location.coordinates;
+  const dLat = lat - userLocation.lat;
+  const dLng = lng - userLocation.lng;
+  // ~5km radius (rough approximation for Kuwait's latitude)
+  return (dLat * dLat + dLng * dLng) < 0.002;
+}
+
+function RoomRow({ room, onPress, styles, C, t, userLocation }) {
   const catIcon = CATEGORY_ICONS[room.category] || 'chatbubbles-outline';
   const members = room.memberCount || 1;
+  const nearby = isNearby(room, userLocation);
 
   return (
     <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
@@ -118,6 +128,13 @@ function RoomRow({ room, onPress, styles, C, t }) {
           <CreatorBadge badge={room.creator?.verifiedBadge} />
           <Text style={styles.rowSubMuted}> · </Text>
           <Text style={styles.rowSubMuted} numberOfLines={1}>{relTime(room.updatedAt || room.createdAt)}</Text>
+          {nearby && (
+            <>
+              <Text style={styles.rowSubMuted}> · </Text>
+              <Ionicons name="location" size={11} color={C.accent} />
+              <Text style={[styles.rowSubMuted, { color: C.accent, fontWeight: '600' }]}> {t('hachi.nearby')}</Text>
+            </>
+          )}
         </View>
       </View>
       <View style={styles.rowMeta}>
@@ -207,7 +224,7 @@ export default function HachiScreen({ navigation }) {
   const insets      = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
   const isRTL       = i18n.language === 'ar';
-  const { rooms, isLoading } = useSelector((s) => s.hachi);
+  const { rooms, isLoading, joinedRooms } = useSelector((s) => s.hachi);
   const { user: currentUser } = useSelector((s) => s.auth);
   const { unreadCount } = useSelector((s) => s.notifications);
   const { colors: C, isDark } = useTheme();
@@ -227,6 +244,7 @@ export default function HachiScreen({ navigation }) {
 
   const [showCreate,    setShowCreate]    = useState(false);
   const [showLocked,    setShowLocked]    = useState(false);
+  const [showPoints,    setShowPoints]    = useState(false);
   const [newTitle,      setNewTitle]      = useState('');
   const [newCategory,   setNewCategory]   = useState('general');
   const [creating,      setCreating]      = useState(false);
@@ -250,6 +268,7 @@ export default function HachiScreen({ navigation }) {
         dispatch(fetchRooms({}));
       }
     })();
+    if (currentUser) dispatch(fetchJoinedRooms());
   }, []);
 
   useEffect(() => {
@@ -298,6 +317,7 @@ export default function HachiScreen({ navigation }) {
   const chipKeys = CATEGORY_KEYS; // already includes 'all' as first item
   const ListHeader = useMemo(() => (
     <View style={{ backgroundColor: C.white, paddingBottom: 4 }}>
+      {/* Category chips */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -321,7 +341,7 @@ export default function HachiScreen({ navigation }) {
       </ScrollView>
       <View style={styles.sep} />
     </View>
-  ), [activeCategory, styles, C, isRTL]);
+  ), [activeCategory, joinedRooms, styles, C, isRTL]);
 
   const renderEmpty = () => (
     <View style={styles.empty}>
@@ -341,10 +361,12 @@ export default function HachiScreen({ navigation }) {
         <Text style={styles.wordmark}>{isRTL ? 'كواي' : 'KUWAI'}</Text>
         <View style={styles.headerRight}>
           {currentUser && (
-            <View style={styles.pointsChip}>
-              <Ionicons name="star" size={12} color={C.accent} />
-              <Text style={styles.pointsChipText}>{hachiPoints}</Text>
-            </View>
+            <TouchableOpacity onPress={() => setShowPoints(true)} activeOpacity={0.7}>
+              <View style={styles.pointsChip}>
+                <Ionicons name="star" size={12} color={C.accent} />
+                <Text style={styles.pointsChipText}>{hachiPoints}</Text>
+              </View>
+            </TouchableOpacity>
           )}
           <TouchableOpacity
             onPress={handleAddPress}
@@ -364,7 +386,7 @@ export default function HachiScreen({ navigation }) {
           data={filteredRooms}
           keyExtractor={(item) => item._id}
           renderItem={({ item }) => (
-            <RoomRow room={item} onPress={() => goToRoom(item)} styles={styles} C={C} t={t} />
+            <RoomRow room={item} onPress={() => goToRoom(item)} styles={styles} C={C} t={t} userLocation={userLocation} />
           )}
           ListHeaderComponent={ListHeader}
           ListEmptyComponent={renderEmpty}
@@ -392,6 +414,56 @@ export default function HachiScreen({ navigation }) {
             <View style={{ flex: 1 }} />
           </View>
           <LockedOverlay points={hachiPoints} styles={styles} C={C} />
+        </View>
+      </Modal>
+
+      {/* ── Points info sheet ── */}
+      <Modal
+        visible={showPoints}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowPoints(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={[styles.modalHeader, { paddingTop: 16 }]}>
+            <TouchableOpacity onPress={() => setShowPoints(false)}>
+              <Ionicons name="close-circle" size={28} color={C.textMuted} />
+            </TouchableOpacity>
+            <View style={{ flex: 1 }} />
+          </View>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 40 }}>
+            <View style={{ alignItems: 'center', marginBottom: 24 }}>
+              <Ionicons name="star" size={32} color={C.accent} />
+              <Text style={{ fontSize: 48, fontWeight: '900', letterSpacing: -2, marginTop: 4, color: C.text }}>{hachiPoints}</Text>
+              <Text style={{ fontSize: 14, fontWeight: '500', marginTop: 2, color: C.textMuted }}>{t('points.yourPoints')}</Text>
+            </View>
+            <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: C.separator, marginBottom: 20 }} />
+            <Text style={{ fontSize: 18, fontWeight: '700', marginBottom: 14, color: C.text, textAlign: isRTL ? 'right' : 'left' }}>{t('points.howToEarn')}</Text>
+            {[
+              { icon: 'create-outline', key: 'post', pts: '+2' },
+              { icon: 'heart-outline', key: 'like', pts: '+1' },
+              { icon: 'chatbubble-outline', key: 'comment', pts: '+1' },
+              { icon: 'chatbubbles-outline', key: 'circleMsg', pts: '+1' },
+              { icon: 'today-outline', key: 'daily', pts: '+10' },
+            ].map((item) => (
+              <View key={item.key} style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: C.fill, justifyContent: 'center', alignItems: 'center' }}>
+                  <Ionicons name={item.icon} size={20} color={C.accent} />
+                </View>
+                <Text style={{ flex: 1, fontSize: 15, fontWeight: '500', color: C.text, textAlign: isRTL ? 'right' : 'left' }}>{t(`points.${item.key}`)}</Text>
+                <Text style={{ fontSize: 15, fontWeight: '800', color: C.accent }}>{item.pts}</Text>
+              </View>
+            ))}
+            <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: C.separator, marginVertical: 20 }} />
+            <Text style={{ fontSize: 18, fontWeight: '700', marginBottom: 14, color: C.text, textAlign: isRTL ? 'right' : 'left' }}>{t('points.howToSpend')}</Text>
+            <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 12 }}>
+              <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: C.fill, justifyContent: 'center', alignItems: 'center' }}>
+                <Ionicons name="add-circle-outline" size={20} color={C.accent} />
+              </View>
+              <Text style={{ flex: 1, fontSize: 15, fontWeight: '500', color: C.text, textAlign: isRTL ? 'right' : 'left' }}>{t('points.createCircle')}</Text>
+              <Text style={{ fontSize: 15, fontWeight: '800', color: C.error }}>-50</Text>
+            </View>
+          </ScrollView>
         </View>
       </Modal>
 
@@ -790,4 +862,6 @@ const makeStyles = (C, isDark, isRTL = false) => StyleSheet.create({
   createRulesTitle: { fontSize: 13, fontWeight: '700', color: C.text },
   createRuleRow: { alignItems: 'flex-start', gap: 8, paddingVertical: 5 },
   createRuleText: { flex: 1, fontSize: 13, color: C.textMuted, lineHeight: 19 },
+
+  // Points sheet
 });

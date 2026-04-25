@@ -53,4 +53,23 @@ router.post('/ads', createAd);
 router.patch('/ads/:id', updateAd);
 router.delete('/ads/:id', deleteAd);
 
+// Waitlist
+const Waitlist = require('../models/Waitlist');
+router.get('/waitlist', async (req, res) => {
+  try {
+    const filter = req.query.status && req.query.status !== 'all' ? { status: req.query.status } : {};
+    const entries = await Waitlist.find(filter).sort({ createdAt: -1 }).limit(200).lean();
+    const total = await Waitlist.countDocuments(filter);
+    res.json({ success: true, entries, total });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+router.patch('/waitlist/:id/status', async (req, res) => {
+  try {
+    const update = { status: req.body.status };
+    if (req.body.status === 'invited') update.invitedAt = new Date();
+    const entry = await Waitlist.findByIdAndUpdate(req.params.id, update, { new: true });
+    res.json({ success: true, entry });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
 module.exports = router;

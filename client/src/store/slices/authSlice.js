@@ -38,9 +38,9 @@ export const sendOtp = createAsyncThunk('auth/sendOtp', async (phone, { rejectWi
   }
 });
 
-export const verifyOtp = createAsyncThunk('auth/verifyOtp', async ({ phone, code, name, referralCode }, { rejectWithValue }) => {
+export const verifyOtp = createAsyncThunk('auth/verifyOtp', async ({ phone, code, name, referralCode, inviteCode }, { rejectWithValue }) => {
   try {
-    const response = await authAPI.verifyOtp(phone, code, name, referralCode);
+    const response = await authAPI.verifyOtp(phone, code, name, referralCode, inviteCode);
     await AsyncStorage.setItem('token', response.token);
     await AsyncStorage.setItem('user', JSON.stringify(response.user));
     // Save into multi-account store

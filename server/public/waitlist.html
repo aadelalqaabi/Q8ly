@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KUWAI - Waitlist</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+      background: #0033A0;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .container {
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+    }
+    .logo {
+      font-size: 48px;
+      font-weight: 900;
+      letter-spacing: -3px;
+      margin-bottom: 8px;
+    }
+    .tagline {
+      font-size: 14px;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 48px;
+    }
+    .title {
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+    .gold-line {
+      width: 36px;
+      height: 3px;
+      background: #CBA052;
+      border-radius: 2px;
+      margin: 0 auto 16px;
+    }
+    .subtitle {
+      font-size: 16px;
+      color: rgba(255,255,255,0.7);
+      line-height: 1.6;
+      margin-bottom: 32px;
+    }
+    .form { width: 100%; }
+    .input-wrap {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .input-wrap input {
+      flex: 1;
+      background: rgba(255,255,255,0.12);
+      border: none;
+      border-radius: 14px;
+      padding: 16px 20px;
+      font-size: 18px;
+      color: #fff;
+      outline: none;
+      direction: ltr;
+      text-align: center;
+      letter-spacing: 1px;
+    }
+    .input-wrap input::placeholder { color: rgba(255,255,255,0.3); }
+    .input-wrap input:focus { background: rgba(255,255,255,0.18); }
+    .btn {
+      width: 100%;
+      background: #fff;
+      color: #0033A0;
+      border: none;
+      border-radius: 14px;
+      padding: 16px;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.9; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .message {
+      margin-top: 16px;
+      font-size: 15px;
+      font-weight: 500;
+      padding: 12px 16px;
+      border-radius: 12px;
+      display: none;
+    }
+    .message.success { display: block; background: rgba(52,199,89,0.2); color: #34C759; }
+    .message.error { display: block; background: rgba(255,59,48,0.2); color: #FF3B30; }
+    .lang-switch {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(255,255,255,0.12);
+      border: none;
+      color: rgba(255,255,255,0.7);
+      font-size: 14px;
+      font-weight: 500;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .lang-switch:hover { background: rgba(255,255,255,0.2); }
+    .footer {
+      margin-top: 48px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.4);
+    }
+    .footer a { color: rgba(255,255,255,0.6); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <button class="lang-switch" onclick="toggleLang()" id="langBtn">English</button>
+
+  <div class="container">
+    <div class="logo">KUWAI</div>
+    <div class="tagline" id="tagline">هنا تتحدث الكويت</div>
+
+    <div class="title" id="title">انضم لقائمة الانتظار</div>
+    <div class="gold-line"></div>
+    <div class="subtitle" id="subtitle">KUWAI بالدعوة فقط. سجّل رقمك وبنرسل لك الكود أول ما يجيك دورك.</div>
+
+    <div class="form">
+      <div class="input-wrap">
+        <input type="tel" id="phone" placeholder="+965" maxlength="15" />
+      </div>
+      <button class="btn" id="submitBtn" onclick="submit()">
+        <span id="btnText">سجّل</span>
+      </button>
+      <div class="message" id="msg"></div>
+    </div>
+
+    <div class="footer">
+      <span id="footerText">صنع في الكويت، للكويت</span><br>
+      <a href="https://apps.apple.com/us/app/kuwai/id6760574615" id="appLink">حمّل التطبيق</a>
+    </div>
+  </div>
+
+  <script>
+    const API = window.location.origin + '/api';
+    let lang = 'ar';
+
+    const strings = {
+      ar: {
+        tagline: 'هنا تتحدث الكويت',
+        title: 'انضم لقائمة الانتظار',
+        subtitle: 'KUWAI بالدعوة فقط. سجّل رقمك وبنرسل لك الكود أول ما يجيك دورك.',
+        btn: 'سجّل',
+        footer: 'صنع في الكويت، للكويت',
+        appLink: 'حمّل التطبيق',
+        langBtn: 'English',
+        success: 'أنت بالقائمة! بنتواصل معك قريب.',
+        already: 'رقمك مسجّل بالفعل. بنتواصل معك قريب.',
+        error: 'حدث خطأ. حاول مرة ثانية.',
+        invalid: 'أدخل رقم هاتف صحيح',
+      },
+      en: {
+        tagline: 'Kuwait speaks here',
+        title: 'Join the waitlist',
+        subtitle: 'KUWAI is invite-only. Enter your number and we\'ll send you a code when it\'s your turn.',
+        btn: 'Join',
+        footer: 'Made in Kuwait, for Kuwait',
+        appLink: 'Download the app',
+        langBtn: 'العربية',
+        success: 'You\'re on the list! We\'ll reach out soon.',
+        already: 'You\'re already on the list. We\'ll reach out soon.',
+        error: 'Something went wrong. Try again.',
+        invalid: 'Enter a valid phone number',
+      },
+    };
+
+    function toggleLang() {
+      lang = lang === 'ar' ? 'en' : 'ar';
+      document.documentElement.lang = lang;
+      document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+      const s = strings[lang];
+      document.getElementById('tagline').textContent = s.tagline;
+      document.getElementById('title').textContent = s.title;
+      document.getElementById('subtitle').textContent = s.subtitle;
+      document.getElementById('btnText').textContent = s.btn;
+      document.getElementById('footerText').textContent = s.footer;
+      document.getElementById('appLink').textContent = s.appLink;
+      document.getElementById('langBtn').textContent = s.langBtn;
+      // Clear message
+      const msg = document.getElementById('msg');
+      msg.className = 'message';
+    }
+
+    async function submit() {
+      const phone = document.getElementById('phone').value.trim();
+      const msg = document.getElementById('msg');
+      const btn = document.getElementById('submitBtn');
+      const s = strings[lang];
+
+      if (!phone || phone.length < 8) {
+        msg.textContent = s.invalid;
+        msg.className = 'message error';
+        return;
+      }
+
+      btn.disabled = true;
+      msg.className = 'message';
+
+      try {
+        const res = await fetch(API + '/auth/waitlist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone, lang }),
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          const isAlready = data.message === 'Already on waitlist';
+          msg.textContent = isAlready ? s.already : s.success;
+          msg.className = 'message success';
+          if (!isAlready) document.getElementById('phone').value = '';
+        } else {
+          msg.textContent = s.error;
+          msg.className = 'message error';
+        }
+      } catch {
+        msg.textContent = s.error;
+        msg.className = 'message error';
+      }
+
+      btn.disabled = false;
+    }
+
+    // Enter key
+    document.getElementById('phone').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') submit();
+    });
+  </script>
+</body>
+</html>

@@ -108,10 +108,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   wordmark: {
-    fontSize: 72,
-    fontWeight: '800',
+    fontSize: 96,
+    fontWeight: '900',
     color: '#fff',
-    letterSpacing: -3,
+    letterSpacing: -5,
     marginBottom: 12,
   },
   taglinePair: {
@@ -127,16 +127,16 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   welcomeAr: {
-    fontSize: 22,
-    fontWeight: '700',
+    fontSize: 26,
+    fontWeight: '800',
     color: '#fff',
-    marginBottom: 4,
+    marginBottom: 6,
     writingDirection: 'rtl',
   },
   welcomeEn: {
-    fontSize: 16,
+    fontSize: 18,
     color: 'rgba(255,255,255,0.65)',
-    fontWeight: '400',
+    fontWeight: '500',
   },
 
   btnRow: {

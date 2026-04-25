@@ -3,7 +3,7 @@ const { body } = require('express-validator');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
 const validate = require('../middleware/validate');
-const { register, login, getMe, updatePassword, updatePushToken, sendOtp, verifyOtp, dummyAuth, claimDailyBonus, redeemReferral } = require('../controllers/authController');
+const { register, login, getMe, updatePassword, updatePushToken, sendOtp, verifyOtp, dummyAuth, claimDailyBonus, redeemReferral, validateInvite, buyInvite, joinWaitlist } = require('../controllers/authController');
 
 router.post(
   '/register',
@@ -71,5 +71,10 @@ router.post('/dummy-auth', dummyAuth);
 // Point economy
 router.post('/daily-bonus', protect, claimDailyBonus);
 router.post('/redeem-referral', protect, redeemReferral);
+
+// Invite system
+router.post('/validate-invite', validateInvite);
+router.post('/buy-invite', protect, buyInvite);
+router.post('/waitlist', joinWaitlist);
 
 module.exports = router;

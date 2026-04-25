@@ -1,7 +1,7 @@
 import { useContext, useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Modal, TextInput, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Switch,
+  Modal, TextInput, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Switch, Share,
 } from 'react-native';
 import { useDispatch } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
@@ -154,6 +154,36 @@ export default function SettingsScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
       >
+        {/* Invite section */}
+        {currentUser?.inviteCode && (
+          <>
+            <SectionLabel label={t('settings.invites')} colors={colors} isRTL={isRTL} />
+            <View style={styles.card}>
+              <View style={[styles.inviteRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.inviteCode, { color: colors.text, textAlign: isRTL ? 'right' : 'left' }]}>{currentUser.inviteCode}</Text>
+                  <Text style={[styles.inviteRemaining, { color: colors.textMuted, textAlign: isRTL ? 'right' : 'left' }]}>
+                    {t('settings.invitesLeft', { count: currentUser.invitesRemaining ?? 0 })}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.inviteShareBtn, { backgroundColor: colors.accent }]}
+                  onPress={() => {
+                    const msg = isRTL
+                      ? `انضم لـ KUWAI باستخدام كود الدعوة: ${currentUser.inviteCode}\nhttps://apps.apple.com/us/app/kuwai/id6760574615`
+                      : `Join KUWAI with my invite code: ${currentUser.inviteCode}\nhttps://apps.apple.com/us/app/kuwai/id6760574615`;
+                    Share.share({ message: msg });
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="share-outline" size={18} color="#fff" />
+                  <Text style={styles.inviteShareText}>{t('settings.shareInvite')}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </>
+        )}
+
         {/* Appearance section */}
         <SectionLabel label={t('settings.appearance')} colors={colors} isRTL={isRTL} />
         <View style={styles.card}>
@@ -499,4 +529,9 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
     borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
     fontSize: 16, minHeight: 140,
   },
+  inviteRow: { alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
+  inviteCode: { fontSize: 22, fontWeight: '800', letterSpacing: 3 },
+  inviteRemaining: { fontSize: 13, fontWeight: '500', marginTop: 2 },
+  inviteShareBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10 },
+  inviteShareText: { color: '#fff', fontSize: 14, fontWeight: '600' },
 });

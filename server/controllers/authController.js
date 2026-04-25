@@ -10,8 +10,14 @@ const EARLY_ADOPTER_GRANT = 500;
 const STANDARD_GRANT = 100;
 const DAILY_BONUS = 10;
 const REFERRAL_BONUS = 100;        // both sides
+const FOUNDER_INVITES = 50;        // founder gets extra invites
+const INVITE_COST_POINTS = 50;     // points to buy 1 extra invite
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+function generateInviteCode() {
+  return crypto.randomBytes(3).toString('hex').toUpperCase(); // 6 char e.g. "B7E2C1"
+}
 
 function generateReferralCode() {
   return crypto.randomBytes(3).toString('hex').toUpperCase(); // 6 char e.g. "A3F9B2"
@@ -233,7 +239,7 @@ const sendOtp = async (req, res, next) => {
 // @access  Public
 const verifyOtp = async (req, res, next) => {
   try {
-    const { phone, code, name, referralCode } = req.body;
+    const { phone, code, name, referralCode, inviteCode } = req.body;
     if (!phone || !code) {
       return res.status(400).json({ success: false, message: 'Phone and code are required' });
     }
@@ -251,6 +257,18 @@ const verifyOtp = async (req, res, next) => {
     const isNewUser = !user;
 
     if (!user) {
+      // ── Invite code required for new users ──
+      if (!inviteCode) {
+        return res.status(403).json({ success: false, message: 'Invite code required', needsInvite: true });
+      }
+      const inviter = await User.findOne({ inviteCode: inviteCode.toUpperCase() });
+      if (!inviter) {
+        return res.status(403).json({ success: false, message: 'Invalid invite code', needsInvite: true });
+      }
+      if (inviter.invitesRemaining <= 0) {
+        return res.status(403).json({ success: false, message: 'This invite code has no remaining invites', needsInvite: true });
+      }
+
       // Determine welcome grant: first 500 real users get 500, rest get 100
       const realUserCount = await User.countDocuments({ phoneVerified: true });
       const welcomeGrant = realUserCount < EARLY_ADOPTER_LIMIT ? EARLY_ADOPTER_GRANT : STANDARD_GRANT;
@@ -269,6 +287,14 @@ const verifyOtp = async (req, res, next) => {
         codeConflict = await User.exists({ referralCode: newReferralCode });
       }
 
+      // Generate unique invite code for the new user
+      let newInviteCode;
+      let inviteConflict = true;
+      while (inviteConflict) {
+        newInviteCode = generateInviteCode();
+        inviteConflict = await User.exists({ inviteCode: newInviteCode });
+      }
+
       user = await User.create({
         phone: normalized,
         phoneVerified: true,
@@ -276,6 +302,14 @@ const verifyOtp = async (req, res, next) => {
         username,
         hachiPoints: welcomeGrant,
         referralCode: newReferralCode,
+        inviteCode: newInviteCode,
+        invitesRemaining: 3,
+        invitedBy: inviter._id,
+      });
+
+      // Decrement inviter's remaining invites and award bonus
+      await User.findByIdAndUpdate(inviter._id, {
+        $inc: { invitesRemaining: -1, hachiPoints: REFERRAL_BONUS },
       });
 
       // Handle referral: if a valid referral code was provided, award both parties
@@ -424,4 +458,65 @@ const redeemReferral = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, getMe, updatePassword, updatePushToken, sendOtp, verifyOtp, dummyAuth, claimDailyBonus, redeemReferral };
+// @desc    Validate an invite code (no auth needed)
+// @route   POST /api/auth/validate-invite
+// @access  Public
+const validateInvite = async (req, res, next) => {
+  try {
+    const { inviteCode } = req.body;
+    if (!inviteCode) return res.status(400).json({ success: false, valid: false });
+    const inviter = await User.findOne({ inviteCode: inviteCode.toUpperCase().trim() });
+    if (!inviter || inviter.invitesRemaining <= 0) {
+      return res.json({ success: true, valid: false });
+    }
+    res.json({ success: true, valid: true, inviterName: inviter.name || inviter.username });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Buy an extra invite with points
+// @route   POST /api/auth/buy-invite
+// @access  Private
+const buyInvite = async (req, res, next) => {
+  try {
+    const user = req.user;
+    if ((user.hachiPoints || 0) < INVITE_COST_POINTS) {
+      return res.status(400).json({ success: false, message: 'Not enough points' });
+    }
+    user.hachiPoints -= INVITE_COST_POINTS;
+    user.invitesRemaining = (user.invitesRemaining || 0) + 1;
+    await user.save({ validateBeforeSave: false });
+    res.json({ success: true, invitesRemaining: user.invitesRemaining, hachiPoints: user.hachiPoints });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Join waitlist
+// @route   POST /api/auth/waitlist
+// @access  Public
+const joinWaitlist = async (req, res, next) => {
+  try {
+    const Waitlist = require('../models/Waitlist');
+    const { phone, lang } = req.body;
+    if (!phone) return res.status(400).json({ success: false, message: 'Phone is required' });
+    const normalized = normalizePhone(phone);
+
+    const existing = await Waitlist.findOne({ phone: normalized });
+    if (existing) {
+      return res.json({ success: true, message: 'Already on waitlist', position: await Waitlist.countDocuments({ status: 'waiting', createdAt: { $lte: existing.createdAt } }) });
+    }
+
+    await Waitlist.create({ phone: normalized, lang: lang || 'ar' });
+    const position = await Waitlist.countDocuments({ status: 'waiting' });
+    res.status(201).json({ success: true, message: 'Added to waitlist', position });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.json({ success: true, message: 'Already on waitlist' });
+    }
+    next(error);
+  }
+};
+
+module.exports = { register, login, getMe, updatePassword, updatePushToken, sendOtp, verifyOtp, dummyAuth, claimDailyBonus, redeemReferral, validateInvite, buyInvite, joinWaitlist };

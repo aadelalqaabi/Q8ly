@@ -18,6 +18,8 @@ import { useTheme } from '../context/ThemeContext';
 import { registerForPushNotifications } from '../services/notificationService';
 import * as Notifications from 'expo-notifications';
 
+import OnboardingScreen, { ONBOARDING_KEY } from '../screens/onboarding/OnboardingScreen';
+import InviteCodeScreen, { INVITE_KEY } from '../screens/auth/InviteCodeScreen';
 import LanguageSelectScreen from '../screens/auth/LanguageSelectScreen';
 import PhoneScreen from '../screens/auth/PhoneScreen';
 import OtpScreen from '../screens/auth/OtpScreen';
@@ -172,12 +174,20 @@ export default function AppNavigator() {
   const { colors: COLORS } = useTheme();
   const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
   const [langChosen, setLangChosen] = useState(null); // null = still checking
+  const [onboardingDone, setOnboardingDone] = useState(null);
+  const [hasInvite, setHasInvite] = useState(null);
 
   useEffect(() => {
     dispatch(restoreSession());
     AsyncStorage.getItem(LANG_KEY)
       .then((val) => { setLangChosen(val === 'ar' || val === 'en'); })
       .catch(() => { setLangChosen(false); });
+    AsyncStorage.getItem(ONBOARDING_KEY)
+      .then((val) => { setOnboardingDone(val === 'true'); })
+      .catch(() => { setOnboardingDone(false); });
+    AsyncStorage.getItem(INVITE_KEY)
+      .then((val) => { setHasInvite(!!val); })
+      .catch(() => { setHasInvite(false); });
   }, []);
 
   // Claim daily login bonus silently whenever the user is authenticated
@@ -214,7 +224,7 @@ export default function AppNavigator() {
     return () => sub.remove();
   }, []);
 
-  if (!isSessionRestored || langChosen === null) {
+  if (!isSessionRestored || langChosen === null || onboardingDone === null || hasInvite === null) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator size="large" color={COLORS.accent} />
@@ -233,6 +243,15 @@ export default function AppNavigator() {
     );
   }
 
+  // Invite gate — before auth, after language
+  if (!hasInvite && !isAuthenticated && !isGuest) {
+    return (
+      <NavigationContainer>
+        <InviteCodeScreen onValid={() => setHasInvite(true)} />
+      </NavigationContainer>
+    );
+  }
+
   let content;
   if (!isAuthenticated && !isGuest) content = <AuthStack />;
   else if (isAuthenticated && needsName) content = (
@@ -240,6 +259,7 @@ export default function AppNavigator() {
       <Stack.Screen name="NameSetup" component={NameScreen} />
     </Stack.Navigator>
   );
+  else if (!onboardingDone) content = <OnboardingScreen onDone={() => setOnboardingDone(true)} />;
   else content = <AppStack />;
 
   return (

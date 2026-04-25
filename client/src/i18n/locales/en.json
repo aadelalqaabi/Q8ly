@@ -29,7 +29,9 @@
     "retry": "Retry",
     "noFilterPosts": "No posts",
     "noFilterPostsSub": "No posts from {{label}} accounts right now.",
-    "newPosts": "{{count}} new post"
+    "newPosts": "{{count}} new post",
+    "liveCircle": "🔥 {{count}} people chatting now",
+    "joinCircle": "Join"
   },
 
   "post": {
@@ -131,6 +133,7 @@
     "search": "Search circles…",
     "newHachi": "New Circle",
     "start": "Start",
+    "myCircles": "My Circles",
     "noHachis": "No Circles right now",
     "noHachisSub": "Start a Circle and invite people",
     "noResults": "No results found",
@@ -221,7 +224,8 @@
     "badgeLive": "Live",
     "badgeUploaded": "Uploaded",
     "trendingBonus": "Your circle is on fire! +{{bonus}} points",
-    "trendingSubjects": "Trending"
+    "trendingSubjects": "Trending",
+    "nearby": "Nearby"
   },
 
   "notif": {
@@ -309,13 +313,16 @@
     "deleteAccountTitle": "Delete Account?",
     "deleteAccountMsg": "This will permanently delete your account, posts, and all your data. This action cannot be undone.",
     "deleteAccountConfirm": "Delete My Account",
-    "dirHint": "Language change requires an app restart for layout direction to update"
+    "dirHint": "Language change requires an app restart for layout direction to update",
+    "invites": "Invite Friends",
+    "invitesLeft": "{{count}} invites remaining",
+    "shareInvite": "Share"
   },
 
   "auth": {
     "tagline": "KUWAIt speaks here",
     "phoneTitle": "Your number, your identity",
-    "phoneSub": "In Kuwait, your +965 number is who you are. No passwords — just you, verified.",
+    "phoneSub": "In Kuwait, your +965 number is who you are. No passwords. Just you, verified.",
     "phoneHint": "+965 Kuwait numbers only",
     "trustSecure": "Secured OTP",
     "trustKuwait": "+965 Only",
@@ -327,7 +334,7 @@
     "privacy": "Privacy Policy",
     "otpTitle": "Enter the code",
     "otpSub": "Sent to",
-    "testMode": "Test mode — use 123456",
+    "testMode": "Test mode. Use 123456",
     "verifying": "Verifying…",
     "didntGet": "Didn't get it? Resend in",
     "resend": "Resend Code",
@@ -361,7 +368,7 @@
     "declineMsg": "This will delete the conversation.",
     "noMessages": "No messages yet",
     "seen": "Seen",
-    "pendingRequest": "Message request sent — waiting for them to accept",
+    "pendingRequest": "Message request sent. Waiting for them to accept",
     "sayHi": "Say hi 👋",
     "messagePlaceholder": "Message…"
   },
@@ -370,8 +377,45 @@
   },
   "guest": {
     "title": "Join the Conversation",
-    "subtitle": "Kuwait is talking — be part of the conversation.",
+    "subtitle": "Kuwait is talking. Be part of the conversation.",
     "join": "Join KUWAI",
     "browseAsGuest": "Browse without an account"
+  },
+
+  "onboarding": {
+    "skip": "Skip",
+    "next": "Next",
+    "start": "Let's go",
+    "circlesTitle": "Circles",
+    "circlesBody": "Jump into live conversations about what matters. Food, sports, tech, cars. If Kuwait is talking about it, there's a Circle for it.",
+    "locationTitle": "Nearby Circles",
+    "locationBody": "See Circles happening around you. Enable location to discover what's going on in your area right now.",
+    "enableLocation": "Enable Location",
+    "locationDeniedTitle": "Location Off",
+    "locationDeniedMsg": "You can enable it later in Settings.",
+    "pointsTitle": "Your Points",
+    "pointsBody": "You earn points by being active. Use them to create your own Circles and lead the conversation.",
+    "pointsLabel": "points"
+  },
+
+  "points": {
+    "yourPoints": "Your Points",
+    "howToEarn": "How to earn",
+    "howToSpend": "How to spend",
+    "post": "Create a post",
+    "like": "Like a post",
+    "comment": "Leave a comment",
+    "circleMsg": "Send a circle message",
+    "daily": "Daily login bonus",
+    "createCircle": "Create a Circle"
+  },
+
+  "invite": {
+    "title": "Got an invite?",
+    "subtitle": "KUWAI is invite-only. Enter your code to get in.",
+    "placeholder": "Invite code",
+    "enter": "Enter",
+    "invalidCode": "Invalid or expired invite code",
+    "noCode": "No code? Join the waitlist"
   }
 }

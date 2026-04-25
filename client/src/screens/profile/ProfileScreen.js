@@ -523,11 +523,7 @@ export default function ProfileScreen({ navigation, route }) {
           <TouchableOpacity style={styles.navBtn} onPress={handleShare} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Ionicons name="arrow-redo-outline" size={23} color={COLORS.textMuted} />
           </TouchableOpacity>
-          {isOwnProfile && (
-            <TouchableOpacity style={styles.navBtn} onPress={() => setShareCardVisible(true)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name="qr-code-outline" size={22} color={COLORS.textMuted} />
-            </TouchableOpacity>
-          )}
+          {/* QR code button disabled for now */}
           {isOwnProfile && (
             <TouchableOpacity style={styles.navBtn} onPress={() => navigation.navigate('Settings')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <Ionicons name="settings-outline" size={24} color={COLORS.textMuted} />
