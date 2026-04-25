@@ -54,20 +54,31 @@
     .form { width: 100%; }
     .input-wrap {
       display: flex;
-      gap: 10px;
+      gap: 0;
       margin-bottom: 12px;
+    }
+    .prefix {
+      background: rgba(255,255,255,0.2);
+      border-radius: 14px 0 0 14px;
+      padding: 16px 14px;
+      font-size: 18px;
+      font-weight: 600;
+      color: #fff;
+      direction: ltr;
+      letter-spacing: 1px;
+      flex-shrink: 0;
     }
     .input-wrap input {
       flex: 1;
       background: rgba(255,255,255,0.12);
       border: none;
-      border-radius: 14px;
+      border-radius: 0 14px 14px 0;
       padding: 16px 20px;
       font-size: 18px;
       color: #fff;
       outline: none;
       direction: ltr;
-      text-align: center;
+      text-align: left;
       letter-spacing: 1px;
     }
     .input-wrap input::placeholder { color: rgba(255,255,255,0.3); }
@@ -127,14 +138,15 @@
 
     <div class="title" id="title">انضم لقائمة الانتظار</div>
     <div class="gold-line"></div>
-    <div class="subtitle" id="subtitle">KUWAI بالدعوة فقط. سجّل رقمك وبنرسل لك الكود أول ما يجيك دورك.</div>
+    <div class="subtitle" id="subtitle">KUWAI بالدعوة فقط. سجّل رقمك وبنرسل لك الكود أول ما يوصل دورك.</div>
 
     <div class="form">
       <div class="input-wrap">
-        <input type="tel" id="phone" placeholder="+965" maxlength="15" />
+        <span class="prefix">+965</span>
+        <input type="tel" id="phone" placeholder="XXXX XXXX" maxlength="8" />
       </div>
       <button class="btn" id="submitBtn" onclick="submit()">
-        <span id="btnText">سجّل</span>
+        <span id="btnText">انضم لقائمة الانتظار</span>
       </button>
       <div class="message" id="msg"></div>
     </div>
@@ -153,28 +165,28 @@
       ar: {
         tagline: 'هنا تتحدث الكويت',
         title: 'انضم لقائمة الانتظار',
-        subtitle: 'KUWAI بالدعوة فقط. سجّل رقمك وبنرسل لك الكود أول ما يجيك دورك.',
-        btn: 'سجّل',
+        subtitle: 'KUWAI بالدعوة فقط. سجّل رقمك وبنرسل لك الكود أول ما يوصل دورك.',
+        btn: 'انضم لقائمة الانتظار',
         footer: 'صنع في الكويت، للكويت',
         appLink: 'حمّل التطبيق',
         langBtn: 'English',
         success: 'أنت بالقائمة! بنتواصل معك قريب.',
         already: 'رقمك مسجّل بالفعل. بنتواصل معك قريب.',
         error: 'حدث خطأ. حاول مرة ثانية.',
-        invalid: 'أدخل رقم هاتف صحيح',
+        invalid: 'أدخل رقم هاتف كويتي صحيح (٨ أرقام)',
       },
       en: {
         tagline: 'Kuwait speaks here',
         title: 'Join the waitlist',
         subtitle: 'KUWAI is invite-only. Enter your number and we\'ll send you a code when it\'s your turn.',
-        btn: 'Join',
+        btn: 'Join the Waitlist',
         footer: 'Made in Kuwait, for Kuwait',
         appLink: 'Download the app',
         langBtn: 'العربية',
         success: 'You\'re on the list! We\'ll reach out soon.',
         already: 'You\'re already on the list. We\'ll reach out soon.',
         error: 'Something went wrong. Try again.',
-        invalid: 'Enter a valid phone number',
+        invalid: 'Enter a valid 8-digit Kuwait number',
       },
     };
 
@@ -196,17 +208,18 @@
     }
 
     async function submit() {
-      const phone = document.getElementById('phone').value.trim();
+      const raw = document.getElementById('phone').value.trim().replace(/\D/g, '');
       const msg = document.getElementById('msg');
       const btn = document.getElementById('submitBtn');
       const s = strings[lang];
 
-      if (!phone || phone.length < 8) {
+      if (!raw || raw.length !== 8) {
         msg.textContent = s.invalid;
         msg.className = 'message error';
         return;
       }
 
+      const phone = '+965' + raw;
       btn.disabled = true;
       msg.className = 'message';
 
