@@ -111,9 +111,12 @@ app.use(helmet({
   frameguard: { action: 'deny' },
   contentSecurityPolicy: false, // API server — CSP set per-route above
 }));
-const allowedOrigins = process.env.NODE_ENV === 'production'
-  ? [process.env.CLIENT_URL, process.env.FRONTEND_URL, 'https://kuwai.app', 'https://www.kuwai.app'].filter(Boolean)
-  : [process.env.CLIENT_URL, process.env.FRONTEND_URL, 'http://localhost:19000', 'http://localhost:3000', /^exp:\/\//];
+const allowedOrigins = [
+  process.env.CLIENT_URL, process.env.FRONTEND_URL,
+  'https://kuwai.app', 'https://www.kuwai.app',
+  ...(process.env.NODE_ENV !== 'production' ? ['http://localhost:19000', 'http://localhost:3000'] : []),
+  /^exp:\/\//,
+].filter(Boolean);
 
 app.use(cors({
   origin: (origin, cb) => {
