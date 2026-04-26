@@ -154,32 +154,38 @@ export default function SettingsScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
       >
-        {/* Invite section */}
-        {currentUser?.inviteCode && (
+        {/* Invite codes section */}
+        {currentUser?.inviteCodes?.length > 0 && (
           <>
             <SectionLabel label={t('settings.invites')} colors={colors} isRTL={isRTL} />
             <View style={styles.card}>
-              <View style={[styles.inviteRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.inviteCode, { color: colors.text, textAlign: isRTL ? 'right' : 'left' }]}>{currentUser.inviteCode}</Text>
-                  <Text style={[styles.inviteRemaining, { color: colors.textMuted, textAlign: isRTL ? 'right' : 'left' }]}>
-                    {t('settings.invitesLeft', { count: currentUser.invitesRemaining ?? 0 })}
-                  </Text>
+              {currentUser.inviteCodes.map((invite, idx) => (
+                <View key={invite.code} style={[styles.inviteCodeRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }, idx > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator }]}>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text style={[styles.inviteCode, { color: invite.used ? colors.textMuted : colors.text, textAlign: isRTL ? 'right' : 'left', textDecorationLine: invite.used ? 'line-through' : 'none' }]}>
+                      {invite.code}
+                    </Text>
+                    <Text style={[styles.inviteStatus, { color: invite.used ? '#FF3B30' : '#34C759', textAlign: isRTL ? 'right' : 'left' }]}>
+                      {invite.used ? (isRTL ? 'مستخدم' : 'Used') : (isRTL ? 'متاح' : 'Available')}
+                    </Text>
+                  </View>
+                  {!invite.used && (
+                    <TouchableOpacity
+                      style={[styles.inviteShareBtn, { backgroundColor: colors.accent }]}
+                      onPress={() => {
+                        const msg = isRTL
+                          ? `انضم لـ KUWAI باستخدام كود الدعوة: ${invite.code}\nhttps://apps.apple.com/us/app/kuwai/id6760574615`
+                          : `Join KUWAI with my invite code: ${invite.code}\nhttps://apps.apple.com/us/app/kuwai/id6760574615`;
+                        Share.share({ message: msg });
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="share-outline" size={18} color="#fff" />
+                      <Text style={styles.inviteShareText}>{t('settings.shareInvite')}</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
-                <TouchableOpacity
-                  style={[styles.inviteShareBtn, { backgroundColor: colors.accent }]}
-                  onPress={() => {
-                    const msg = isRTL
-                      ? `انضم لـ KUWAI باستخدام كود الدعوة: ${currentUser.inviteCode}\nhttps://apps.apple.com/us/app/kuwai/id6760574615`
-                      : `Join KUWAI with my invite code: ${currentUser.inviteCode}\nhttps://apps.apple.com/us/app/kuwai/id6760574615`;
-                    Share.share({ message: msg });
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="share-outline" size={18} color="#fff" />
-                  <Text style={styles.inviteShareText}>{t('settings.shareInvite')}</Text>
-                </TouchableOpacity>
-              </View>
+              ))}
             </View>
           </>
         )}
@@ -529,9 +535,9 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
     borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
     fontSize: 16, minHeight: 140,
   },
-  inviteRow: { alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
-  inviteCode: { fontSize: 22, fontWeight: '800', letterSpacing: 3 },
-  inviteRemaining: { fontSize: 13, fontWeight: '500', marginTop: 2 },
+  inviteCodeRow: { alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
+  inviteCode: { fontSize: 20, fontWeight: '800', letterSpacing: 3 },
+  inviteStatus: { fontSize: 12, fontWeight: '600' },
   inviteShareBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10 },
   inviteShareText: { color: '#fff', fontSize: 14, fontWeight: '600' },
 });

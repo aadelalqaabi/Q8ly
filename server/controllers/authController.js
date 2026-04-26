@@ -261,12 +261,14 @@ const verifyOtp = async (req, res, next) => {
       if (!inviteCode) {
         return res.status(403).json({ success: false, message: 'Invite code required', needsInvite: true });
       }
-      const inviter = await User.findOne({ inviteCode: inviteCode.toUpperCase() });
+      const upperCode = inviteCode.toUpperCase();
+      const inviter = await User.findOne({ 'inviteCodes.code': upperCode });
       if (!inviter) {
         return res.status(403).json({ success: false, message: 'Invalid invite code', needsInvite: true });
       }
-      if (inviter.invitesRemaining <= 0) {
-        return res.status(403).json({ success: false, message: 'This invite code has no remaining invites', needsInvite: true });
+      const codeEntry = inviter.inviteCodes.find((c) => c.code === upperCode);
+      if (codeEntry.usedBy) {
+        return res.status(403).json({ success: false, message: 'This invite code has already been used', needsInvite: true });
       }
 
       // Determine welcome grant: first 500 real users get 500, rest get 100
@@ -287,12 +289,16 @@ const verifyOtp = async (req, res, next) => {
         codeConflict = await User.exists({ referralCode: newReferralCode });
       }
 
-      // Generate unique invite code for the new user
-      let newInviteCode;
-      let inviteConflict = true;
-      while (inviteConflict) {
-        newInviteCode = generateInviteCode();
-        inviteConflict = await User.exists({ inviteCode: newInviteCode });
+      // Generate 2 unique invite codes for the new user
+      const newInviteCodes = [];
+      for (let i = 0; i < 2; i++) {
+        let code;
+        let conflict = true;
+        while (conflict) {
+          code = generateInviteCode();
+          conflict = await User.exists({ 'inviteCodes.code': code });
+        }
+        newInviteCodes.push({ code });
       }
 
       user = await User.create({
@@ -302,15 +308,15 @@ const verifyOtp = async (req, res, next) => {
         username,
         hachiPoints: welcomeGrant,
         referralCode: newReferralCode,
-        inviteCode: newInviteCode,
-        invitesRemaining: 3,
+        inviteCodes: newInviteCodes,
         invitedBy: inviter._id,
       });
 
-      // Decrement inviter's remaining invites and award bonus
-      await User.findByIdAndUpdate(inviter._id, {
-        $inc: { invitesRemaining: -1, hachiPoints: REFERRAL_BONUS },
-      });
+      // Mark the invite code as used and award bonus to inviter
+      codeEntry.usedBy = user._id;
+      codeEntry.usedAt = new Date();
+      inviter.hachiPoints = (inviter.hachiPoints || 0) + REFERRAL_BONUS;
+      await inviter.save({ validateBeforeSave: false });
 
       // Handle referral: if a valid referral code was provided, award both parties
       if (referralCode) {
@@ -465,10 +471,11 @@ const validateInvite = async (req, res, next) => {
   try {
     const { inviteCode } = req.body;
     if (!inviteCode) return res.status(400).json({ success: false, valid: false });
-    const inviter = await User.findOne({ inviteCode: inviteCode.toUpperCase().trim() });
-    if (!inviter || inviter.invitesRemaining <= 0) {
-      return res.json({ success: true, valid: false });
-    }
+    const upperCode = inviteCode.toUpperCase().trim();
+    const inviter = await User.findOne({ 'inviteCodes.code': upperCode });
+    if (!inviter) return res.json({ success: true, valid: false });
+    const entry = inviter.inviteCodes.find((c) => c.code === upperCode);
+    if (entry.usedBy) return res.json({ success: true, valid: false });
     res.json({ success: true, valid: true, inviterName: inviter.name || inviter.username });
   } catch (error) {
     next(error);
@@ -484,10 +491,16 @@ const buyInvite = async (req, res, next) => {
     if ((user.hachiPoints || 0) < INVITE_COST_POINTS) {
       return res.status(400).json({ success: false, message: 'Not enough points' });
     }
+    let newCode;
+    let conflict = true;
+    while (conflict) {
+      newCode = generateInviteCode();
+      conflict = await User.exists({ 'inviteCodes.code': newCode });
+    }
     user.hachiPoints -= INVITE_COST_POINTS;
-    user.invitesRemaining = (user.invitesRemaining || 0) + 1;
+    user.inviteCodes.push({ code: newCode });
     await user.save({ validateBeforeSave: false });
-    res.json({ success: true, invitesRemaining: user.invitesRemaining, hachiPoints: user.hachiPoints });
+    res.json({ success: true, inviteCodes: user.inviteCodes, hachiPoints: user.hachiPoints });
   } catch (error) {
     next(error);
   }

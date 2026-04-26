@@ -1,6 +1,6 @@
 /**
- * One-time migration: generate invite codes for all existing users.
- * Founder (+96599440289) gets 50 invites, everyone else gets 3.
+ * Migration: convert old inviteCode field to new inviteCodes array (2 codes per user).
+ * Founder (+96599440289) gets 10 codes.
  *
  * Usage:  node server/scripts/migrate-invite-codes.js
  */
@@ -10,8 +10,8 @@ const crypto = require('crypto');
 const User = require('../models/User');
 
 const FOUNDER_PHONE = '+96599440289';
-const FOUNDER_INVITES = 50;
-const DEFAULT_INVITES = 3;
+const FOUNDER_CODE_COUNT = 10;
+const DEFAULT_CODE_COUNT = 2;
 
 function generateInviteCode() {
   return crypto.randomBytes(3).toString('hex').toUpperCase();
@@ -21,18 +21,46 @@ async function run() {
   await mongoose.connect(process.env.MONGODB_URI);
   console.log('Connected to MongoDB');
 
-  const users = await User.find({ $or: [{ inviteCode: { $exists: false } }, { inviteCode: null }, { inviteCode: '' }] });
-  console.log(`Found ${users.length} users without invite codes`);
-
-  for (const user of users) {
-    user.inviteCode = generateInviteCode();
-    const isFounder = user.phone === FOUNDER_PHONE;
-    user.invitesRemaining = isFounder ? FOUNDER_INVITES : DEFAULT_INVITES;
-    await user.save();
-    console.log(`${isFounder ? '[FOUNDER]' : '        '} ${user.phone || user.username} → ${user.inviteCode} (${user.invitesRemaining} invites)`);
+  const allCodes = new Set();
+  // Collect existing codes to avoid duplicates
+  const users = await User.find({});
+  for (const u of users) {
+    if (u.inviteCodes) u.inviteCodes.forEach((c) => allCodes.add(c.code));
   }
 
-  console.log('Done');
+  function uniqueCode() {
+    let code;
+    do { code = generateInviteCode(); } while (allCodes.has(code));
+    allCodes.add(code);
+    return code;
+  }
+
+  let migrated = 0;
+  for (const user of users) {
+    const isFounder = user.phone === FOUNDER_PHONE;
+    const targetCount = isFounder ? FOUNDER_CODE_COUNT : DEFAULT_CODE_COUNT;
+    const existing = user.inviteCodes || [];
+
+    // If user has old-style inviteCode field, convert it
+    if (user.inviteCode && existing.length === 0) {
+      existing.push({ code: user.inviteCode });
+    }
+
+    // Add codes until they have the target count
+    while (existing.length < targetCount) {
+      existing.push({ code: uniqueCode() });
+    }
+
+    user.inviteCodes = existing;
+    user.inviteCode = undefined; // remove old field
+    user.invitesRemaining = undefined; // remove old field
+    await user.save({ validateBeforeSave: false });
+    migrated++;
+    const codes = existing.map((c) => `${c.code}${c.usedBy ? ' (used)' : ''}`).join(', ');
+    console.log(`${isFounder ? '[FOUNDER]' : '        '} ${user.phone || user.username} → [${codes}]`);
+  }
+
+  console.log(`Migrated ${migrated} users`);
   await mongoose.disconnect();
 }
 
