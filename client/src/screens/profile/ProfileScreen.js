@@ -424,36 +424,28 @@ export default function ProfileScreen({ navigation, route }) {
 
     return (
       <TouchableOpacity
-        style={styles.circleCard}
+        style={styles.circleRow}
         onPress={() => navigation.navigate('HachiRoom', { roomId: room._id })}
         onLongPress={handleLongPress}
         delayLongPress={400}
-        activeOpacity={0.75}
+        activeOpacity={0.7}
       >
-        {/* Top: category icon + pin indicator */}
-        <View style={styles.circleCardTop}>
-          <View style={[styles.circleCardIcon, { backgroundColor: isActive ? COLORS.accent + '14' : COLORS.fill }]}>
-            <Ionicons name={catIcon} size={16} color={isActive ? COLORS.accent : COLORS.textMuted} />
-          </View>
-          {isPinned && (
-            <View style={styles.pinBadge}>
-              <Ionicons name="pin" size={10} color={COLORS.accent} />
-            </View>
-          )}
+        <View style={[styles.circleRowIcon, { backgroundColor: COLORS.fill }]}>
+          <Ionicons name={catIcon} size={18} color={COLORS.textMuted} />
         </View>
-
-        {/* Title */}
-        <Text style={styles.circleCardTitle} numberOfLines={2}>{room.title}</Text>
-
-        {/* Footer: status + member count */}
-        <View style={styles.circleCardFooter}>
-          <View style={[styles.circleCardStatusDot, { backgroundColor: isActive ? '#34C759' : COLORS.separator }]} />
-          <Text style={[styles.circleCardStatus, { color: isActive ? '#34C759' : COLORS.textMuted }]}>
-            {isActive ? t('hachi.liveBadge') : t('hachi.endedBadge')}
-          </Text>
-          <Text style={styles.circleCardSep}>·</Text>
-          <Ionicons name="people-outline" size={11} color={COLORS.textMuted} />
-          <Text style={styles.circleCardFooterText}>{room.memberCount || 1}</Text>
+        <View style={styles.circleRowBody}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Text style={[styles.circleRowTitle, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={1}>{room.title}</Text>
+            {isPinned && <Ionicons name="pin" size={11} color={COLORS.accent} />}
+          </View>
+          <View style={styles.circleRowMeta}>
+            <View style={[styles.circleRowDot, { backgroundColor: isActive ? '#34C759' : COLORS.separator }]} />
+            <Text style={[styles.circleRowStatus, { color: isActive ? '#34C759' : COLORS.textMuted }]}>
+              {isActive ? t('hachi.liveBadge') : t('hachi.endedBadge')}
+            </Text>
+            <Text style={styles.circleRowSep}>·</Text>
+            <Text style={styles.circleRowCount}>{room.memberCount || 1} {t('profile.membersLabel')}</Text>
+          </View>
         </View>
       </TouchableOpacity>
     );
@@ -466,19 +458,22 @@ export default function ProfileScreen({ navigation, route }) {
     const catIcon = CATEGORY_ICONS[msg.roomCategory] || 'chatbubbles-outline';
     return (
       <TouchableOpacity
-        style={styles.activityCard}
+        style={styles.activityRow}
         onPress={() => navigation.navigate('HachiRoom', { roomId: msg.roomId, title: msg.roomTitle })}
         activeOpacity={0.7}
       >
-        <View style={styles.activityCardHeader}>
-          <View style={styles.activityIconWrap}>
-            <Ionicons name={catIcon} size={13} color={COLORS.accent} />
-          </View>
-          <Text style={styles.activityCircleName} numberOfLines={1}>{msg.roomTitle}</Text>
-          <Text style={styles.activityTime}>{timeAgo}</Text>
+        <View style={[styles.activityRowIcon, { backgroundColor: COLORS.fill }]}>
+          <Ionicons name={catIcon} size={18} color={COLORS.textMuted} />
         </View>
-        {!!msg.text && <Text style={styles.activityText} numberOfLines={3}>{msg.text}</Text>}
-        {!!msg.image && <Image source={{ uri: msg.image }} style={styles.activityImage} resizeMode="cover" />}
+        <View style={styles.activityRowBody}>
+          {!!msg.text && <Text style={styles.activityRowText} numberOfLines={2}>{msg.text}</Text>}
+          {!!msg.image && !msg.text && <Text style={styles.activityRowText} numberOfLines={1}>📷 Photo</Text>}
+          <View style={styles.activityRowMeta}>
+            <Text style={styles.activityRowCircle} numberOfLines={1}>{msg.roomTitle}</Text>
+            <Text style={styles.activityRowSep}>·</Text>
+            <Text style={styles.activityRowTime}>{timeAgo}</Text>
+          </View>
+        </View>
       </TouchableOpacity>
     );
   }, [COLORS, navigation]);
@@ -572,9 +567,8 @@ export default function ProfileScreen({ navigation, route }) {
           data={circles}
           keyExtractor={(item) => item._id}
           renderItem={renderCircleItem}
-          numColumns={2}
-          columnWrapperStyle={styles.circleGrid}
-          contentContainerStyle={{ paddingTop: 8, paddingBottom: insets.bottom + 24, flexGrow: 1 }}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 24, flexGrow: 1 }}
+          ItemSeparatorComponent={() => <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: COLORS.separator, marginLeft: 62 }} />}
           showsVerticalScrollIndicator={false}
           nestedScrollEnabled
           ListEmptyComponent={
@@ -601,7 +595,8 @@ export default function ProfileScreen({ navigation, route }) {
           data={userMessages}
           keyExtractor={(item) => item._id}
           renderItem={renderActivityItem}
-          contentContainerStyle={{ paddingTop: 8, paddingBottom: insets.bottom + 24, flexGrow: 1 }}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 24, flexGrow: 1 }}
+          ItemSeparatorComponent={() => <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: COLORS.separator, marginLeft: 62 }} />}
           showsVerticalScrollIndicator={false}
           nestedScrollEnabled
           ListEmptyComponent={
@@ -737,46 +732,47 @@ const makeStyles = (C, isRTL = false) => StyleSheet.create({
     height: 2, borderRadius: 1, backgroundColor: C.text,
   },
 
-  // ── Circle grid ───────────────────────────────────────────────────────────
-  circleGrid: { paddingHorizontal: 12, gap: 8 },
-  circleCard: {
-    flex: 1,
-    backgroundColor: C.fill,
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 8,
-    minHeight: 110,
-    justifyContent: 'space-between',
+  // ── Circle rows ──────────────────────────────────────────────────────────
+  circleRow: {
+    flexDirection: isRTL ? 'row-reverse' : 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
   },
-  circleCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  circleCardIcon: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
-  pinBadge: { width: 20, height: 20, borderRadius: 10, backgroundColor: C.accent + '14', justifyContent: 'center', alignItems: 'center' },
-  circleCardTitle: { fontSize: 13, fontWeight: '700', color: C.text, lineHeight: 18 },
-  circleCardFooter: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, flexWrap: 'wrap' },
-  circleCardStatusDot: { width: 6, height: 6, borderRadius: 3 },
-  circleCardStatus: { fontSize: 11, fontWeight: '700' },
-  circleCardSep: { fontSize: 11, color: C.textMuted },
-  circleCardFooterText: { fontSize: 11, color: C.textMuted },
+  circleRowIcon: {
+    width: 40, height: 40, borderRadius: 12,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  circleRowBody: { flex: 1 },
+  circleRowTitle: { fontSize: 15, fontWeight: '600', color: C.text },
+  circleRowMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  circleRowDot: { width: 5, height: 5, borderRadius: 2.5 },
+  circleRowStatus: { fontSize: 12, fontWeight: '600' },
+  circleRowSep: { fontSize: 12, color: C.textMuted },
+  circleRowCount: { fontSize: 12, color: C.textMuted },
 
   empty: { paddingTop: 48, alignItems: 'center', paddingHorizontal: 40 },
   emptyText: { fontSize: 15, color: C.textMuted, textAlign: 'center' },
 
-  // ── Activity (user's circle messages) ────────────────────────────────────
-  activityCard: {
-    marginHorizontal: 12, marginTop: 8, marginBottom: 0,
-    backgroundColor: C.fill,
-    borderRadius: 14, padding: 14,
+  // ── Activity rows ──────────────────────────────────────────────────────
+  activityRow: {
+    flexDirection: isRTL ? 'row-reverse' : 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
   },
-  activityCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
-  activityIconWrap: {
-    width: 24, height: 24, borderRadius: 12,
-    backgroundColor: C.accent + '14',
+  activityRowIcon: {
+    width: 40, height: 40, borderRadius: 12,
     justifyContent: 'center', alignItems: 'center',
   },
-  activityCircleName: { flex: 1, fontSize: 12, fontWeight: '700', color: C.accent },
-  activityText: { fontSize: 14, color: C.text, lineHeight: 20 },
-  activityImage: { width: '100%', height: 160, borderRadius: 10, marginTop: 8 },
-  activityTime: { fontSize: 11, color: C.textMuted },
+  activityRowBody: { flex: 1 },
+  activityRowText: { fontSize: 15, fontWeight: '400', color: C.text, lineHeight: 20, textAlign: isRTL ? 'right' : 'left' },
+  activityRowMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  activityRowCircle: { fontSize: 13, fontWeight: '500', color: C.textMuted, flexShrink: 1 },
+  activityRowSep: { fontSize: 12, color: C.textMuted },
+  activityRowTime: { fontSize: 12, color: C.textMuted },
 
   // ── Followers/Following modal ─────────────────────────────────────────────
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
