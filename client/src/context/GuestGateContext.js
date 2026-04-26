@@ -144,7 +144,6 @@ const makeStyles = (C) => StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '700',
-    letterSpacing: -0.3,
     marginBottom: 8,
     textAlign: 'center',
   },

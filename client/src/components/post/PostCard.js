@@ -106,7 +106,7 @@ function VerifiedBadge({ badge }) {
       gap: isFounder ? 3 : 0,
     }}>
       {isFounder && <Text style={{ color: '#FFD700', fontSize: 8, lineHeight: 10 }}>★</Text>}
-      <Text style={{ color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 }}>
+      <Text style={{ color: '#fff', fontSize: 9, fontWeight: '800' }}>
         {t(key).toUpperCase()}
       </Text>
     </View>

@@ -29,9 +29,7 @@
     "retry": "إعادة المحاولة",
     "noFilterPosts": "لا توجد منشورات",
     "noFilterPostsSub": "لا يوجد منشورات من حسابات {{label}} في الوقت الحالي.",
-    "newPosts": "{{count}} منشور جديد",
-    "liveCircle": "🔥 {{count}} يتحدثون الحين",
-    "joinCircle": "انضم"
+    "newPosts": "{{count}} منشور جديد"
   },
 
   "post": {
@@ -133,7 +131,6 @@
     "search": "ابحث عن دائرة...",
     "newHachi": "دائرة جديدة",
     "start": "ابدأ",
-    "myCircles": "دوائري",
     "noHachis": "لا توجد دوائر حالياً",
     "noHachisSub": "ابدأ دائرة وادعُ الناس",
     "noResults": "لا توجد نتائج",

@@ -55,7 +55,7 @@ function VerifiedBadge({ badge, compact = false }) {
       flexDirection: 'row', alignItems: 'center', gap: 4,
     }}>
       <Ionicons name="checkmark-circle" size={12} color="#fff" />
-      <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 0.6 }}>
+      <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>
         KUWAI
       </Text>
     </View>
@@ -702,7 +702,7 @@ const makeStyles = (C, isRTL = false) => StyleSheet.create({
   avatarInitial: { fontSize: 38, fontWeight: '700', color: '#fff' },
 
   identity: { alignItems: 'center', paddingHorizontal: 32, paddingBottom: 20, gap: 4 },
-  name: { fontSize: 24, fontWeight: '800', color: C.text, textAlign: 'center', letterSpacing: -0.5 },
+  name: { fontSize: 24, fontWeight: '800', color: C.text, textAlign: 'center' },
   bio: { fontSize: 14, color: C.text, lineHeight: 20, textAlign: 'center', marginTop: 6 },
 
   statsRow: { flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', justifyContent: 'center', paddingBottom: 20, gap: 16 },

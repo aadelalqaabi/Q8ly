@@ -29,9 +29,7 @@
     "retry": "Retry",
     "noFilterPosts": "No posts",
     "noFilterPostsSub": "No posts from {{label}} accounts right now.",
-    "newPosts": "{{count}} new post",
-    "liveCircle": "🔥 {{count}} people chatting now",
-    "joinCircle": "Join"
+    "newPosts": "{{count}} new post"
   },
 
   "post": {
@@ -133,7 +131,6 @@
     "search": "Search circles…",
     "newHachi": "New Circle",
     "start": "Start",
-    "myCircles": "My Circles",
     "noHachis": "No Circles right now",
     "noHachisSub": "Start a Circle and invite people",
     "noResults": "No results found",

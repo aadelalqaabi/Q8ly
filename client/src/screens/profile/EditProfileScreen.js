@@ -286,7 +286,6 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: C.textMuted,
-    letterSpacing: 0.2,
     textAlign: isRTL ? 'right' : 'left',
   },
 

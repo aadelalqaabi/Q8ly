@@ -262,7 +262,7 @@ const makeStyles = (C, isDark) => StyleSheet.create({
   stepSegInactive: { backgroundColor: C.separator },
   stepGap: { marginEnd: 4 },
 
-  title: { fontSize: 30, fontWeight: '700', color: C.text, letterSpacing: -0.5, marginBottom: 8 },
+  title: { fontSize: 30, fontWeight: '700', color: C.text, marginBottom: 8 },
   subtitle: { fontSize: 15, color: C.textMuted, lineHeight: 22, marginBottom: 28 },
   phoneHighlight: { color: C.text, fontWeight: '600' },
 

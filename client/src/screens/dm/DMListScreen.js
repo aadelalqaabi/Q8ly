@@ -235,7 +235,7 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8,
   },
-  sectionTitle: { fontSize: 12, fontWeight: '600', color: C.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
+  sectionTitle: { fontSize: 12, fontWeight: '600', color: C.textMuted, textTransform: 'uppercase' },
   badge: { borderRadius: 10, minWidth: 20, height: 20, paddingHorizontal: 5, justifyContent: 'center', alignItems: 'center' },
   badgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
   sectionDivider: { height: StyleSheet.hairlineWidth, backgroundColor: C.separator, marginTop: 4 },

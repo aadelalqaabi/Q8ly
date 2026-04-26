@@ -22,7 +22,7 @@ const THEME_OPTIONS = [
 ];
 
 function SectionLabel({ label, colors, isRTL }) {
-  return <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textMuted, paddingHorizontal: 20, paddingTop: 24, paddingBottom: 8, letterSpacing: 0.2, textAlign: isRTL ? 'right' : 'left' }}>{label}</Text>;
+  return <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textMuted, paddingHorizontal: 20, paddingTop: 24, paddingBottom: 8, textAlign: isRTL ? 'right' : 'left' }}>{label}</Text>;
 }
 
 export default function SettingsScreen({ navigation }) {
@@ -536,7 +536,7 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
     fontSize: 16, minHeight: 140,
   },
   inviteCodeRow: { alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
-  inviteCode: { fontSize: 20, fontWeight: '800', letterSpacing: 3 },
+  inviteCode: { fontSize: 20, fontWeight: '800' },
   inviteStatus: { fontSize: 12, fontWeight: '600' },
   inviteShareBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10 },
   inviteShareText: { color: '#fff', fontSize: 14, fontWeight: '600' },

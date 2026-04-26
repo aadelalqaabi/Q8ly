@@ -1,14 +1,13 @@
 import React, { useEffect, useCallback, useState, useRef, useMemo } from 'react';
 import {
   View, Text, FlatList, ScrollView, StyleSheet, RefreshControl,
-  TouchableOpacity, ActivityIndicator, Animated, Image, PanResponder, Dimensions, Easing,
+  TouchableOpacity, ActivityIndicator, Animated, Image, PanResponder, Dimensions,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fetchFeed } from '../../store/slices/postsSlice';
-import { fetchRooms } from '../../store/slices/hachiSlice';
 import PostCard from '../../components/post/PostCard';
 import AdCard from '../../components/ui/AdCard';
 import { SHADOWS } from '../../constants';
@@ -83,53 +82,6 @@ function NewPostsBanner({ count, onPress, label }) {
   );
 }
 
-// ── LiveCircleBanner ──────────────────────────────────────────────────────────
-const CATEGORY_ICONS_HOME = {
-  all: 'globe-outline', general: 'chatbubbles-outline', food: 'restaurant-outline',
-  coffee: 'cafe-outline', cars: 'car-outline', girls: 'sparkles-outline',
-  sports: 'trophy-outline', tech: 'hardware-chip-outline', finance: 'trending-up-outline',
-  travel: 'airplane-outline', entertainment: 'film-outline', gaming: 'game-controller-outline',
-  realestate: 'home-outline',
-};
-
-function LiveCircleBanner({ room, onPress }) {
-  const { t } = useTranslation();
-  const { colors: C } = useTheme();
-  const styles = useMemo(() => makeStyles(C), [C]);
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 0.3, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, []);
-
-  if (!room) return null;
-  const members = room.memberCount || 1;
-  const catIcon = CATEGORY_ICONS_HOME[room.category] || 'chatbubbles-outline';
-
-  return (
-    <TouchableOpacity style={styles.liveBanner} onPress={onPress} activeOpacity={0.82}>
-      <View style={styles.liveBannerIcon}>
-        <Ionicons name={catIcon} size={18} color={C.accent} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.liveBannerTitle} numberOfLines={1}>{room.title}</Text>
-        <Text style={styles.liveBannerSub}>{t('home.liveCircle', { count: members })}</Text>
-      </View>
-      <View style={styles.liveDotRow}>
-        <Animated.View style={[styles.liveDot, { opacity: pulseAnim }]} />
-        <Text style={styles.liveBannerJoin}>{t('home.joinCircle')}</Text>
-      </View>
-    </TouchableOpacity>
-  );
-}
-
 // ── HomeScreen ────────────────────────────────────────────────────────────────
 export default function HomeScreen({ navigation }) {
   const dispatch = useDispatch();
@@ -142,12 +94,6 @@ export default function HomeScreen({ navigation }) {
   const { forYouPosts, hotPosts, isLoading, isLoadingMore, forYouHasMore, forYouPage, error } =
     useSelector((s) => s.posts);
   const { unreadCount } = useSelector((s) => s.notifications);
-  const { user: currentUser } = useSelector((s) => s.auth);
-  const { rooms: hachiRooms } = useSelector((s) => s.hachi);
-  const hotCircle = useMemo(() => {
-    const myId = currentUser?._id;
-    return hachiRooms.find((r) => r.creator?._id !== myId) || null;
-  }, [hachiRooms, currentUser]);
 
   const BADGE_FILTERS = useMemo(() => [
     { key: null,          label: t('home.filterAll')        },
@@ -235,7 +181,6 @@ export default function HomeScreen({ navigation }) {
   useEffect(() => {
     loadFeed(1);
     adsAPI.getFeedAds().then((res) => setFeedAds(res.ads || [])).catch(() => {});
-    dispatch(fetchRooms({}));
   }, []);
 
   // Tap the active Home tab → scroll to top + refresh
@@ -386,14 +331,6 @@ export default function HomeScreen({ navigation }) {
         </ScrollView>
       </View>
 
-      {/* Live circle banner */}
-      {hotCircle && (
-        <LiveCircleBanner
-          room={hotCircle}
-          onPress={() => navigation.navigate('HachiRoom', { roomId: hotCircle._id, title: hotCircle.title })}
-        />
-      )}
-
       {/* New posts banner — slides down from header */}
       <NewPostsBanner count={newPostCount} onPress={scrollToTop} label={t('home.newPosts', { count: newPostCount })} />
 
@@ -459,7 +396,7 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
     backgroundColor: C.white,
     zIndex: 10,
   },
-  wordmark: { flex: 1, fontSize: 28, letterSpacing: -1, fontWeight: '800', color: C.text, textAlign: isRTL ? 'right' : 'left' },
+  wordmark: { flex: 1, fontSize: 28, fontWeight: '800', color: C.text, textAlign: isRTL ? 'right' : 'left' },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   headerBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   badge: {
@@ -517,7 +454,6 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: C.textMuted,
-    letterSpacing: 0.2,
   },
   hotNowRow: {
     paddingHorizontal: 16,
@@ -557,39 +493,10 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
     borderRadius: 6,
   },
   liveDotSm: { width: 5, height: 5, borderRadius: 2.5 },
-  liveChipText: { fontSize: 9, fontWeight: '700', letterSpacing: 0.3 },
+  liveChipText: { fontSize: 9, fontWeight: '700' },
   hotNowCardTitle: { fontSize: 12, fontWeight: '600', color: C.text, lineHeight: 17, flex: 1, marginVertical: 3 },
   hotNowMeta: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   hotNowCount: { fontSize: 10, fontWeight: '500', color: C.textMuted },
-
-  // Live circle banner
-  liveBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 11,
-    backgroundColor: '#EEF2FA',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: C.separator,
-  },
-  liveBannerIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#0033A0',
-    shadowOpacity: 0.12,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 6,
-  },
-  liveBannerTitle: { fontSize: 14, fontWeight: '700', color: C.text, letterSpacing: -0.2 },
-  liveBannerSub: { fontSize: 12, color: C.textMuted, marginTop: 1 },
-  liveDotRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  liveDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#FF3B30' },
-  liveBannerJoin: { fontSize: 13, fontWeight: '700', color: C.accent },
 
   // Hot label
   hotLabel: {
@@ -601,7 +508,6 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: C.textMuted,
-    letterSpacing: 0.2,
   },
 
   // Badge filter tabs

@@ -114,7 +114,7 @@ export default function ShareProfileCard({ visible, onClose, profile }) {
                   <Text style={s.logoWhite}>KUWAI</Text>
                 </View>
                 <View style={s.goldRule} />
-                <Text style={[s.tagline, isArabic && { letterSpacing: 0 }]}>
+                <Text style={s.tagline}>
                   {isArabic
                     ? "أول منصة تواصل اجتماعي كويتية"
                     : "KUWAIT'S FIRST SOCIAL APP"}
@@ -144,7 +144,7 @@ export default function ShareProfileCard({ visible, onClose, profile }) {
                 {!!badge && (
                   <View style={s.badgePill}>
                     {badge === "founder" && <Text style={s.badgeStar}>★ </Text>}
-                    <Text style={[s.badgeLabel, isArabic && { letterSpacing: 0 }]}>
+                    <Text style={s.badgeLabel}>
                       {BADGE_LABELS[badge]}
                     </Text>
                     {badge === "founder" && <Text style={s.badgeStar}> ★</Text>}
@@ -291,7 +291,6 @@ const s = StyleSheet.create({
     color: "#000",
     opacity: 0.12,
     lineHeight: 82,
-    letterSpacing: -1,
   },
   wmBot: {
     fontSize: 82,
@@ -299,7 +298,6 @@ const s = StyleSheet.create({
     color: "#fff",
     opacity: 0.06,
     lineHeight: 82,
-    letterSpacing: -1,
     marginTop: -10,
   },
 
@@ -330,14 +328,12 @@ const s = StyleSheet.create({
     fontSize: 24,
     fontWeight: "900",
     color: "rgba(0,12,80,0.35)",
-    letterSpacing: 0,
     lineHeight: 26,
   },
   logoWhite: {
     fontSize: 24,
     fontWeight: "900",
     color: "#fff",
-    letterSpacing: 0,
     lineHeight: 26,
     marginTop: -7,  // overlap creates the split-text brand mark
   },
@@ -351,7 +347,6 @@ const s = StyleSheet.create({
     fontSize: 8,
     fontWeight: "800",
     color: GOLD,
-    letterSpacing: 2.5,
     textTransform: "uppercase",
     opacity: 0.9,
   },
@@ -399,7 +394,6 @@ const s = StyleSheet.create({
     fontSize: 26,
     fontWeight: "900",
     color: "#fff",
-    letterSpacing: -0.3,
     textAlign: "center",
     lineHeight: 31,
     marginBottom: 10,
@@ -423,14 +417,12 @@ const s = StyleSheet.create({
     color: "#2a1800",
     fontSize: 11,
     fontWeight: "800",
-    letterSpacing: 1.8,
   },
 
   username: {
     fontSize: 13,
     color: "rgba(255,255,255,0.42)",
     fontWeight: "500",
-    letterSpacing: 0.3,
   },
 
   // ── 3. Gold belt ──────────────────────────────────────────────────
@@ -474,7 +466,6 @@ const s = StyleSheet.create({
     fontSize: 22,
     fontWeight: "900",
     color: BLUE,
-    letterSpacing: 0,
     marginBottom: 3,
   },
   qrSub: {
@@ -494,7 +485,6 @@ const s = StyleSheet.create({
     color: "#fff",
     fontSize: 11,
     fontWeight: "700",
-    letterSpacing: 0.2,
   },
 
   urlRow: {
@@ -514,7 +504,6 @@ const s = StyleSheet.create({
   urlText: {
     fontSize: 9,
     color: "#AEAEB2",
-    letterSpacing: 0.2,
   },
 
   // ── Sheet buttons ─────────────────────────────────────────────────

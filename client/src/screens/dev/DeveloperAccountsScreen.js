@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   back: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  title: { flex: 1, fontSize: 17, fontWeight: '700', textAlign: 'center', letterSpacing: -0.3 },
+  title: { flex: 1, fontSize: 17, fontWeight: '700', textAlign: 'center' },
 
   banner: {
     flexDirection: 'row',
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
   },
-  bannerNum: { fontSize: 32, fontWeight: '900', color: '#fff', letterSpacing: -1 },
+  bannerNum: { fontSize: 32, fontWeight: '900', color: '#fff' },
   bannerOf: { fontSize: 18, fontWeight: '500', color: 'rgba(255,255,255,0.6)' },
   bannerLabel: { fontSize: 13, color: 'rgba(255,255,255,0.65)', marginTop: 2 },
   genBtn: {
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   avatar: { width: 42, height: 42, borderRadius: 21 },
-  name: { fontSize: 15, fontWeight: '600', letterSpacing: -0.2 },
+  name: { fontSize: 15, fontWeight: '600' },
   phone: { fontSize: 12, color: '#6C6C70', marginTop: 2 },
   noSession: { fontSize: 11, color: '#AEAEB2' },
   sep: { height: StyleSheet.hairlineWidth, marginLeft: 70 },

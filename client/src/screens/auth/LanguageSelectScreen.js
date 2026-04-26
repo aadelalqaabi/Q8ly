@@ -111,7 +111,6 @@ const styles = StyleSheet.create({
     fontSize: 96,
     fontWeight: '900',
     color: '#fff',
-    letterSpacing: -5,
     marginBottom: 12,
   },
   taglinePair: {

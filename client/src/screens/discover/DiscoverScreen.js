@@ -445,7 +445,7 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
 
   // Most active in discover
   mostActiveSection: { paddingTop: 16 },
-  mostActiveTitle: { fontSize: 15, fontWeight: '700', color: C.text, letterSpacing: -0.2, paddingHorizontal: 16, marginBottom: 4, textAlign: isRTL ? 'right' : 'left' },
+  mostActiveTitle: { fontSize: 15, fontWeight: '700', color: C.text, paddingHorizontal: 16, marginBottom: 4, textAlign: isRTL ? 'right' : 'left' },
   mostActiveList: { overflow: 'hidden' },
   activeRow: {
     alignItems: 'center', gap: 12,
@@ -457,12 +457,12 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
   activeRowLast: { borderBottomWidth: 0 },
   activeRank: { fontSize: 15, fontWeight: '700', color: C.textMuted, width: 22, textAlign: 'center', flexShrink: 0 },
   activeIcon: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
-  activeRowTitle: { fontSize: 17, fontWeight: '700', color: C.text, letterSpacing: -0.2 },
+  activeRowTitle: { fontSize: 17, fontWeight: '700', color: C.text },
   activeRowSub: { fontSize: 13, color: C.textMuted, marginTop: 1 },
   activeRowMembers: { fontSize: 13, fontWeight: '600', color: C.textMuted },
   gridTitle: {
     fontSize: 22, fontWeight: '800', color: C.text,
-    letterSpacing: -0.3, textAlign: isRTL ? 'right' : 'left',
+    textAlign: isRTL ? 'right' : 'left',
   },
   gridSub: {
     fontSize: 13, color: C.textMuted, marginTop: 2, textAlign: isRTL ? 'right' : 'left',
@@ -502,13 +502,13 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
     backgroundColor: C.accent + '12',
     justifyContent: 'center', alignItems: 'center',
   },
-  circleTitle: { fontSize: 17, fontWeight: '700', color: C.text, marginBottom: 2, letterSpacing: -0.2 },
+  circleTitle: { fontSize: 17, fontWeight: '700', color: C.text, marginBottom: 2 },
   circleMeta: { fontSize: 13, color: C.textMuted },
   liveChip: {
     paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6,
     backgroundColor: '#FF3B3020',
   },
-  liveChipText: { fontSize: 10, fontWeight: '800', color: '#FF3B30', letterSpacing: 0.5 },
+  liveChipText: { fontSize: 10, fontWeight: '800', color: '#FF3B30' },
   liveChipOff: { backgroundColor: C.fill },
   liveChipTextOff: { color: C.textMuted },
 

@@ -240,7 +240,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 36,
     fontWeight: '900',
-    letterSpacing: -0.8,
     marginBottom: 10,
   },
   goldLine: {
@@ -279,7 +278,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 56,
     fontWeight: '900',
-    letterSpacing: -2,
     marginTop: 4,
   },
   pointsLabel: {

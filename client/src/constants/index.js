@@ -99,17 +99,17 @@ export const SHADOWS = {
 };
 
 export const FONTS = {
-  largeTitle: { fontSize: 34, fontWeight: '800', letterSpacing: -0.5 },
-  title1:     { fontSize: 28, fontWeight: '700', letterSpacing: -0.3 },
-  title2:     { fontSize: 22, fontWeight: '700', letterSpacing: -0.2 },
-  title3:     { fontSize: 20, fontWeight: '600', letterSpacing: -0.1 },
-  headline:   { fontSize: 17, fontWeight: '600', letterSpacing: 0 },
-  body:       { fontSize: 15, fontWeight: '400', letterSpacing: 0 },
-  callout:    { fontSize: 16, fontWeight: '400', letterSpacing: 0 },
-  subhead:    { fontSize: 14, fontWeight: '400', letterSpacing: 0 },
-  footnote:   { fontSize: 13, fontWeight: '400', letterSpacing: 0 },
-  caption1:   { fontSize: 12, fontWeight: '400', letterSpacing: 0 },
-  caption2:   { fontSize: 11, fontWeight: '400', letterSpacing: 0 },
+  largeTitle: { fontSize: 34, fontWeight: '800' },
+  title1:     { fontSize: 28, fontWeight: '700' },
+  title2:     { fontSize: 22, fontWeight: '700' },
+  title3:     { fontSize: 20, fontWeight: '600' },
+  headline:   { fontSize: 17, fontWeight: '600' },
+  body:       { fontSize: 15, fontWeight: '400' },
+  callout:    { fontSize: 16, fontWeight: '400' },
+  subhead:    { fontSize: 14, fontWeight: '400' },
+  footnote:   { fontSize: 13, fontWeight: '400' },
+  caption1:   { fontSize: 12, fontWeight: '400' },
+  caption2:   { fontSize: 11, fontWeight: '400' },
 };
 
 export const SPACING = { xs: 4, sm: 8, md: 12, base: 16, lg: 20, xl: 24, xxl: 32, xxxl: 48 };

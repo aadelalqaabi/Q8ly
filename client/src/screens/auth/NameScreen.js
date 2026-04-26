@@ -131,7 +131,7 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
   stepSegActive: { backgroundColor: C.accent },
   stepGap: { marginEnd: 4 },
 
-  title: { fontSize: 32, fontWeight: '700', color: C.text, letterSpacing: -0.8, marginBottom: 10 },
+  title: { fontSize: 32, fontWeight: '700', color: C.text, marginBottom: 10 },
   subtitle: { fontSize: 15, color: C.textMuted, lineHeight: 22, marginBottom: 36 },
 
   inputCard: {

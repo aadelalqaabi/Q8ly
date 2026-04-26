@@ -116,7 +116,6 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: '900',
     color: '#fff',
-    letterSpacing: -2,
     textAlign: 'center',
     marginTop: 12,
     marginBottom: 40,
@@ -137,7 +136,6 @@ const styles = StyleSheet.create({
     fontSize: 30,
     fontWeight: '900',
     color: '#fff',
-    letterSpacing: -0.5,
     marginBottom: 8,
   },
   subtitle: {
@@ -155,7 +153,6 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     color: '#fff',
-    letterSpacing: 4,
     textAlign: 'center',
     marginBottom: 12,
   },

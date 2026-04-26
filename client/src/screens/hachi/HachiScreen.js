@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { formatDistanceToNow } from 'date-fns';
-import { fetchRooms, fetchMoments, createRoom, addRoomRealtime, fetchJoinedRooms } from '../../store/slices/hachiSlice';
+import { fetchRooms, fetchMoments, createRoom, addRoomRealtime } from '../../store/slices/hachiSlice';
 import { getSocket } from '../../services/socket';
 import { getDateLocale } from '../../i18n';
 import { useTheme } from '../../context/ThemeContext';
@@ -224,7 +224,7 @@ export default function HachiScreen({ navigation }) {
   const insets      = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
   const isRTL       = i18n.language === 'ar';
-  const { rooms, isLoading, joinedRooms } = useSelector((s) => s.hachi);
+  const { rooms, isLoading } = useSelector((s) => s.hachi);
   const { user: currentUser } = useSelector((s) => s.auth);
   const { unreadCount } = useSelector((s) => s.notifications);
   const { colors: C, isDark } = useTheme();
@@ -268,7 +268,6 @@ export default function HachiScreen({ navigation }) {
         dispatch(fetchRooms({}));
       }
     })();
-    if (currentUser) dispatch(fetchJoinedRooms());
   }, []);
 
   useEffect(() => {
@@ -317,7 +316,6 @@ export default function HachiScreen({ navigation }) {
   const chipKeys = CATEGORY_KEYS; // already includes 'all' as first item
   const ListHeader = useMemo(() => (
     <View style={{ backgroundColor: C.white, paddingBottom: 4 }}>
-      {/* Category chips */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -341,7 +339,7 @@ export default function HachiScreen({ navigation }) {
       </ScrollView>
       <View style={styles.sep} />
     </View>
-  ), [activeCategory, joinedRooms, styles, C, isRTL]);
+  ), [activeCategory, styles, C, isRTL]);
 
   const renderEmpty = () => (
     <View style={styles.empty}>
@@ -434,7 +432,7 @@ export default function HachiScreen({ navigation }) {
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 40 }}>
             <View style={{ alignItems: 'center', marginBottom: 24 }}>
               <Ionicons name="star" size={32} color={C.accent} />
-              <Text style={{ fontSize: 48, fontWeight: '900', letterSpacing: -2, marginTop: 4, color: C.text }}>{hachiPoints}</Text>
+              <Text style={{ fontSize: 48, fontWeight: '900', marginTop: 4, color: C.text }}>{hachiPoints}</Text>
               <Text style={{ fontSize: 14, fontWeight: '500', marginTop: 2, color: C.textMuted }}>{t('points.yourPoints')}</Text>
             </View>
             <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: C.separator, marginBottom: 20 }} />
@@ -597,7 +595,7 @@ const makeStyles = (C, isDark, isRTL = false) => StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: C.separator,
   },
-  wordmark: { flex: 1, fontSize: 28, letterSpacing: -1, fontWeight: '800', color: C.text, textAlign: isRTL ? 'right' : 'left' },
+  wordmark: { flex: 1, fontSize: 28, fontWeight: '800', color: C.text, textAlign: isRTL ? 'right' : 'left' },
   headerRight: { flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 6 },
   headerBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   pointsChip: {
@@ -639,7 +637,7 @@ const makeStyles = (C, isDark, isRTL = false) => StyleSheet.create({
     paddingHorizontal: 16, paddingTop: 20, paddingBottom: 10,
   },
   sectionEmoji: { fontSize: 16 },
-  sectionTitle: { fontSize: 15, fontWeight: '700', letterSpacing: -0.2, color: C.text },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: C.text },
 
   // Category chips
   chip: {
@@ -680,7 +678,7 @@ const makeStyles = (C, isDark, isRTL = false) => StyleSheet.create({
   },
   activeTitle: {
     fontSize: Math.round(14 * SCALE), fontWeight: '600',
-    color: C.text, letterSpacing: -0.1,
+    color: C.text,
   },
   activeCreator: {
     fontSize: Math.round(12 * SCALE), fontWeight: '400',
@@ -699,7 +697,7 @@ const makeStyles = (C, isDark, isRTL = false) => StyleSheet.create({
     justifyContent: 'center', alignItems: 'center', flexShrink: 0,
   },
   rowBody: { flex: 1, gap: 2 },
-  rowTitle: { fontSize: 15, fontWeight: '600', letterSpacing: -0.2, color: C.text, textAlign: isRTL ? 'right' : 'left' },
+  rowTitle: { fontSize: 15, fontWeight: '600', color: C.text, textAlign: isRTL ? 'right' : 'left' },
   rowSubRow: { flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', overflow: 'hidden' },
   rowSubText: { fontSize: 13, color: C.textMuted, lineHeight: 17, flexShrink: 1 },
   rowSubMuted: { fontSize: 13, color: C.textMuted, lineHeight: 17, flexShrink: 0 },
@@ -841,7 +839,7 @@ const makeStyles = (C, isDark, isRTL = false) => StyleSheet.create({
   createCatSection: { paddingTop: 24 },
   createCatHeading: {
     fontSize: 13, fontWeight: '600', color: C.textMuted,
-    textTransform: 'uppercase', letterSpacing: 0.5,
+    textTransform: 'uppercase',
     paddingHorizontal: 20, marginBottom: 14,
   },
   createCatScroll: { paddingHorizontal: 16, gap: 10 },

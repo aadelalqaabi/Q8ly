@@ -176,8 +176,8 @@ const makeStyles = (C, isDark) => StyleSheet.create({
   inner: { flex: 1, paddingHorizontal: 24 },
 
   logoWrap: { alignItems: 'center', marginBottom: 20 },
-  wordmark: { fontSize: 44, letterSpacing: -2, marginBottom: 6, fontWeight: '800', color: C.text },
-  tagline: { fontSize: 14, color: C.textMuted, letterSpacing: 0.3 },
+  wordmark: { fontSize: 44, marginBottom: 6, fontWeight: '800', color: C.text },
+  tagline: { fontSize: 14, color: C.textMuted },
 
   trustRow: {
     flexDirection: 'row', justifyContent: 'center',
@@ -195,7 +195,7 @@ const makeStyles = (C, isDark) => StyleSheet.create({
   stepSegActive: { backgroundColor: C.accent },
   stepGap: { marginEnd: 4 },
 
-  title: { fontSize: 30, fontWeight: '700', color: C.text, letterSpacing: -0.5, marginBottom: 8 },
+  title: { fontSize: 30, fontWeight: '700', color: C.text, marginBottom: 8 },
   subtitle: { fontSize: 15, color: C.textMuted, lineHeight: 22, marginBottom: 28 },
 
   errorBox: {
@@ -222,7 +222,7 @@ const makeStyles = (C, isDark) => StyleSheet.create({
     width: StyleSheet.hairlineWidth, height: 22,
     backgroundColor: C.separator, marginHorizontal: 14,
   },
-  phoneInput: { flex: 1, fontSize: 22, fontWeight: '500', color: C.text, letterSpacing: 2 },
+  phoneInput: { flex: 1, fontSize: 22, fontWeight: '500', color: C.text },
   hint: { fontSize: 12, color: C.textMuted },
 
   btn: {

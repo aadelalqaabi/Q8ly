@@ -149,7 +149,7 @@ const makeStyles = (C, isDark, insets) =>
     },
     title: {
       fontSize: 17, fontWeight: '700',
-      color: C.text, letterSpacing: -0.3,
+      color: C.text,
       paddingHorizontal: 20, marginBottom: 12,
     },
     list: { maxHeight: 380 },
@@ -162,6 +162,6 @@ const makeStyles = (C, isDark, insets) =>
     avatarPlaceholder: { backgroundColor: C.accent, justifyContent: 'center', alignItems: 'center' },
     avatarInitial: { fontSize: 18, fontWeight: '700', color: '#fff' },
     info: { flex: 1 },
-    name: { fontSize: 15, fontWeight: '600', color: C.text, letterSpacing: -0.2 },
+    name: { fontSize: 15, fontWeight: '600', color: C.text },
     handle2: { fontSize: 13, color: C.textMuted, marginTop: 2 },
   });
