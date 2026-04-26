@@ -119,11 +119,10 @@ const styles = StyleSheet.create({
     letterSpacing: -2,
     textAlign: 'center',
     marginTop: 12,
+    marginBottom: 40,
   },
   content: {
-    flex: 1,
-    justifyContent: 'center',
-    marginTop: -60,
+    flex: 0,
   },
   iconWrap: {
     width: 72,
@@ -193,7 +192,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginTop: 24,
   },
   waitlistBtnText: {
     color: 'rgba(255,255,255,0.7)',
