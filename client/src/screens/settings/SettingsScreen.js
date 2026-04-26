@@ -1,4 +1,4 @@
-import { useContext, useState, useMemo } from 'react';
+import { useContext, useState, useMemo, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   Modal, TextInput, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Switch, Share,
@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { changeAppLanguage } from '../../i18n';
 import { AppRestartContext } from '../../context/AppRestartContext';
 import { useTheme } from '../../context/ThemeContext';
-import { logout } from '../../store/slices/authSlice';
+import { logout, getMe } from '../../store/slices/authSlice';
 import BottomMenu from '../../components/ui/BottomMenu';
 import { suggestionsAPI, usersAPI } from '../../services/api';
 import { useSelector } from 'react-redux';
@@ -38,6 +38,9 @@ export default function SettingsScreen({ navigation }) {
   const isFounder = currentUser?.phone === '+96599440289'
     || currentUser?.isFounder
     || /^\+965000000(0[1-9]|[1-4][0-9]|50)$/.test(currentUser?.phone || '');
+
+  // Refresh user data to get latest invite code statuses
+  useEffect(() => { dispatch(getMe()); }, []);
 
   const [logoutMenuVisible, setLogoutMenuVisible] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
