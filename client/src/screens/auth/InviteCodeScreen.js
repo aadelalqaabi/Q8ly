@@ -50,26 +50,26 @@ export default function InviteCodeScreen({ onValid }) {
 
   return (
     <KeyboardAvoidingView
-      style={[styles.container, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 20 }]}
+      style={[styles.container, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       {/* Logo */}
       <Text style={styles.wordmark}>KUWAI</Text>
 
-      {/* Main content */}
+      {/* Main content — pushed up */}
       <View style={styles.content}>
         <View style={styles.iconWrap}>
-          <Ionicons name="ticket-outline" size={40} color="#fff" />
+          <Ionicons name="mail-open-outline" size={36} color="#fff" />
         </View>
-        <Text style={[styles.title, { textAlign: isRTL ? 'right' : 'left' }]}>
+        <Text style={[styles.title, { textAlign: isRTL ? 'right' : 'left', alignSelf: isRTL ? 'flex-end' : 'flex-start' }]}>
           {t('invite.title')}
         </Text>
-        <Text style={[styles.subtitle, { textAlign: isRTL ? 'right' : 'left' }]}>
+        <Text style={[styles.subtitle, { textAlign: isRTL ? 'right' : 'left', alignSelf: isRTL ? 'flex-end' : 'flex-start' }]}>
           {t('invite.subtitle')}
         </Text>
 
         <TextInput
-          style={[styles.input, error ? styles.inputError : null, { textAlign: 'center' }]}
+          style={[styles.input, error ? styles.inputError : null]}
           value={code}
           onChangeText={(v) => { setCode(v.toUpperCase()); setError(''); }}
           placeholder={t('invite.placeholder')}
@@ -97,9 +97,8 @@ export default function InviteCodeScreen({ onValid }) {
       </View>
 
       {/* Waitlist link */}
-      <TouchableOpacity onPress={openWaitlist} style={styles.waitlistLink}>
-        <Text style={styles.waitlistText}>{t('invite.noCode')}</Text>
-        <Ionicons name="arrow-forward" size={16} color="rgba(255,255,255,0.6)" style={{ marginLeft: 4 }} />
+      <TouchableOpacity onPress={openWaitlist} style={styles.waitlistBtn} activeOpacity={0.8}>
+        <Text style={styles.waitlistBtnText}>{t('invite.noCode')}</Text>
       </TouchableOpacity>
     </KeyboardAvoidingView>
   );
@@ -112,7 +111,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: BLUE,
     paddingHorizontal: 32,
-    justifyContent: 'space-between',
   },
   wordmark: {
     fontSize: 32,
@@ -120,22 +118,24 @@ const styles = StyleSheet.create({
     color: '#fff',
     letterSpacing: -2,
     textAlign: 'center',
+    marginTop: 12,
   },
   content: {
     flex: 1,
     justifyContent: 'center',
+    marginTop: -60,
   },
   iconWrap: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: 'rgba(255,255,255,0.12)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   title: {
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: '900',
     color: '#fff',
     letterSpacing: -0.5,
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     color: 'rgba(255,255,255,0.7)',
     lineHeight: 24,
-    marginBottom: 32,
+    marginBottom: 28,
   },
   input: {
     backgroundColor: 'rgba(255,255,255,0.12)',
@@ -157,6 +157,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
     letterSpacing: 4,
+    textAlign: 'center',
     marginBottom: 12,
   },
   inputError: {
@@ -185,15 +186,18 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
   },
-  waitlistLink: {
-    flexDirection: 'row',
+  waitlistBtn: {
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.25)',
+    borderRadius: 14,
+    paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
+    marginBottom: 8,
   },
-  waitlistText: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 15,
-    fontWeight: '500',
+  waitlistBtnText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
