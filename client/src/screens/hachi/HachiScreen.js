@@ -102,44 +102,93 @@ function ActiveRow({ room, rank, isFirst, onPress, styles, C, isRTL, isLast }) {
 
 // ── RoomRow ────────────────────────────────────────────────────────────────────
 
-function isNearby(room, userLocation) {
-  if (!userLocation || !room.location?.coordinates) return false;
-  const [lng, lat] = room.location.coordinates;
-  const dLat = lat - userLocation.lat;
-  const dLng = lng - userLocation.lng;
-  // ~5km radius (rough approximation for Kuwait's latitude)
-  return (dLat * dLat + dLng * dLng) < 0.002;
+function haversineMeters(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLng = (lng2 - lng1) * (Math.PI / 180);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function getVenueStatus(room, userLocation) {
+  if (!userLocation) return null;
+  if (!room.isVenueCircle || !room.venueCoords?.lat) return null;
+  const dist = haversineMeters(userLocation.lat, userLocation.lng, room.venueCoords.lat, room.venueCoords.lng);
+  const radius = room.venueRadius || 250;
+  const normalized = dist / radius;
+  const confidence = Math.max(0, 1 - normalized);
+  if (confidence >= 0.6) return { status: 'here', dist };
+  if (confidence >= 0.3) return { status: 'nearby', dist };
+  return { status: 'locked', dist };
+}
+
+function formatDist(meters) {
+  if (meters < 1000) return `${Math.round(meters)}m`;
+  return `${(meters / 1000).toFixed(1)}km`;
 }
 
 function RoomRow({ room, onPress, styles, C, t, userLocation }) {
   const catIcon = CATEGORY_ICONS[room.category] || 'chatbubbles-outline';
-  const members = room.memberCount || 1;
-  const nearby = isNearby(room, userLocation);
+  const members = room.memberCount || 0;
+  const venueStatus = getVenueStatus(room, userLocation);
+  const isLocked = venueStatus?.status === 'locked';
+  const isHere = venueStatus?.status === 'here';
+  const isNearbyVenue = venueStatus?.status === 'nearby';
+  const activeHere = room.activeHere || 0;
 
   return (
-    <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
-      <View style={[styles.rowIcon, { backgroundColor: C.fill }]}>
-        <Ionicons name={catIcon} size={20} color={C.textMuted} />
+    <TouchableOpacity style={[styles.row, isLocked && { opacity: 0.5 }]} onPress={isLocked ? null : onPress} activeOpacity={0.7}>
+      <View style={[styles.rowIcon, { backgroundColor: isHere ? '#EEF2FA' : C.fill }]}>
+        {isLocked
+          ? <Ionicons name="lock-closed" size={20} color={C.textMuted} />
+          : <Ionicons name={catIcon} size={20} color={isHere ? C.accent : C.textMuted} />
+        }
       </View>
       <View style={styles.rowBody}>
         <Text style={styles.rowTitle} numberOfLines={2}>{room.title}</Text>
         <View style={styles.rowSubRow}>
-          <Text style={styles.rowSubText} numberOfLines={1}>{room.creator?.name || ''}</Text>
-          <CreatorBadge badge={room.creator?.verifiedBadge} />
-          <Text style={styles.rowSubMuted}> · </Text>
-          <Text style={styles.rowSubMuted} numberOfLines={1}>{relTime(room.updatedAt || room.createdAt)}</Text>
-          {nearby && (
+          {isLocked ? (
             <>
-              <Text style={styles.rowSubMuted}> · </Text>
-              <Ionicons name="location" size={11} color={C.accent} />
-              <Text style={[styles.rowSubMuted, { color: C.accent, fontWeight: '600' }]}> {t('hachi.nearby')}</Text>
+              <Ionicons name="location-outline" size={11} color={C.textMuted} />
+              <Text style={[styles.rowSubMuted, { marginStart: 2 }]}>{formatDist(venueStatus.dist)} {t('hachi.away')}</Text>
+            </>
+          ) : (
+            <>
+              {!room.isVenueCircle && <Text style={styles.rowSubText} numberOfLines={1}>{room.creator?.name || ''}</Text>}
+              {!room.isVenueCircle && <CreatorBadge badge={room.creator?.verifiedBadge} />}
+              {!room.isVenueCircle && <Text style={styles.rowSubMuted}> · </Text>}
+              <Text style={styles.rowSubMuted} numberOfLines={1}>{relTime(room.updatedAt || room.createdAt)}</Text>
+              {isHere && (
+                <>
+                  <Text style={styles.rowSubMuted}> · </Text>
+                  <Ionicons name="location" size={11} color={C.accent} />
+                  <Text style={[styles.rowSubMuted, { color: C.accent, fontWeight: '700' }]}> {t('hachi.youreHere')}</Text>
+                </>
+              )}
+              {isNearbyVenue && !isHere && (
+                <>
+                  <Text style={styles.rowSubMuted}> · </Text>
+                  <Ionicons name="location-outline" size={11} color={C.accent} />
+                  <Text style={[styles.rowSubMuted, { color: C.accent, fontWeight: '600' }]}> {t('hachi.nearby')}</Text>
+                </>
+              )}
             </>
           )}
         </View>
       </View>
       <View style={styles.rowMeta}>
-        <Text style={styles.rowMetaNum}>{members}</Text>
-        <Text style={styles.rowMetaLabel}>{t('hachi.inChat')}</Text>
+        {activeHere > 0 ? (
+          <>
+            <View style={styles.hereNowDot} />
+            <Text style={[styles.rowMetaNum, { color: C.accent }]}>{activeHere}</Text>
+            <Text style={styles.rowMetaLabel}>{t('hachi.hereNow')}</Text>
+          </>
+        ) : (
+          <>
+            <Text style={styles.rowMetaNum}>{members}</Text>
+            <Text style={styles.rowMetaLabel}>{t('hachi.inChat')}</Text>
+          </>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -701,9 +750,10 @@ const makeStyles = (C, isDark, isRTL = false) => StyleSheet.create({
   rowSubRow: { flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', overflow: 'hidden' },
   rowSubText: { fontSize: 13, color: C.textMuted, lineHeight: 17, flexShrink: 1 },
   rowSubMuted: { fontSize: 13, color: C.textMuted, lineHeight: 17, flexShrink: 0 },
-  rowMeta: { alignItems: 'flex-start', gap: 1, flexShrink: 0 },
+  rowMeta: { alignItems: 'flex-end', gap: 1, flexShrink: 0 },
   rowMetaNum: { fontSize: 15, fontWeight: '700', color: C.text },
   rowMetaLabel: { fontSize: 11, color: C.textMuted },
+  hereNowDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: C.accent, marginBottom: 2 },
   sep: { height: StyleSheet.hairlineWidth, backgroundColor: C.separator, marginStart: 72 },
 
   // Moment cards (escaped pinned messages)

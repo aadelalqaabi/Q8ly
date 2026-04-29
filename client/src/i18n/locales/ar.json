@@ -222,7 +222,10 @@
     "badgeUploaded": "مرفوع",
     "trendingBonus": "دائرتك تشتعل! +{{bonus}} نقطة",
     "trendingSubjects": "الأكثر تداولاً",
-    "nearby": "قريب منك"
+    "nearby": "قريب منك",
+    "youreHere": "أنت هنا",
+    "hereNow": "هنا الحين",
+    "away": "بعيد"
   },
 
   "notif": {

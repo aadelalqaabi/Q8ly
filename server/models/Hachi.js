@@ -62,6 +62,23 @@ const hachiSchema = new mongoose.Schema({
     type: { type: String, enum: ['Point'] },
     coordinates: { type: [Number] },
   },
+
+  // Venue data — set for auto-generated OSM circles
+  isVenueCircle: { type: Boolean, default: false, index: true },
+  venueName: { type: String },
+  venueType: { type: String },
+  venueCoords: {
+    lat: { type: Number },
+    lng: { type: Number },
+  },
+  venueRadius: { type: Number }, // meters — derived from venue type
+
+  // Live presence: users confirmed physically at this venue in last 30 min
+  hereNow: [{
+    userId: { type: mongoose.Schema.Types.ObjectId },
+    confidence: { type: Number },
+    expiresAt: { type: Date },
+  }],
 }, { timestamps: true });
 
 hachiSchema.index({ isActive: 1, memberCount: -1, createdAt: -1 });

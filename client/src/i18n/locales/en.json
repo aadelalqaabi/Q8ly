@@ -222,7 +222,10 @@
     "badgeUploaded": "Uploaded",
     "trendingBonus": "Your circle is on fire! +{{bonus}} points",
     "trendingSubjects": "Trending",
-    "nearby": "Nearby"
+    "nearby": "Nearby",
+    "youreHere": "You're here",
+    "hereNow": "here now",
+    "away": "away"
   },
 
   "notif": {

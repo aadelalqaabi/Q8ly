@@ -147,7 +147,7 @@ const initSocket = (server) => {
       io.to(`hachi:${roomId}`).emit('hachiOnlineCount', { roomId, online: onlineCount });
     });
 
-    socket.on('hachiSend', async ({ roomId, text, replyTo }) => {
+    socket.on('hachiSend', async ({ roomId, text, replyTo, lat, lng, speed }) => {
       if (!socket.user || !text?.trim()) return;
       try {
         const { isBlocked } = checkContent(text.trim());
@@ -157,6 +157,7 @@ const initSocket = (server) => {
         }
 
         const Hachi = require('../models/Hachi');
+        const { computeConfidence } = require('../utils/locationUtils');
         const mongoose = require('mongoose');
         const uid = socket.user._id.toString();
         const now = new Date();
@@ -167,11 +168,30 @@ const initSocket = (server) => {
           msgData.replyTo = { messageId: replyTo.messageId, text: replyTo.text || '', userName: replyTo.userName };
         }
 
-        const room = await Hachi.findById(roomId).select('blockedMembers members memberCount').lean();
+        const room = await Hachi.findById(roomId).select('blockedMembers members memberCount isVenueCircle venueCoords venueRadius').lean();
         if (!room) return;
         if ((room.blockedMembers || []).some((b) => b.toString() === uid)) return;
 
         const isNewMember = !(room.members || []).some((m) => m.toString() === uid);
+
+        // Compute presence confidence if location provided
+        let presenceUpdate = {};
+        if (lat != null && lng != null && room.isVenueCircle && room.venueCoords?.lat) {
+          const confidence = computeConfidence(
+            parseFloat(lat), parseFloat(lng), parseFloat(speed) || 0,
+            room.venueCoords, room.venueRadius || 250
+          );
+          if (confidence >= 0.3) {
+            const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+            presenceUpdate = {
+              $pull: { hereNow: { userId: socket.user._id } },
+            };
+            // We do a two-step: pull old entry then push new one
+            await Hachi.findByIdAndUpdate(roomId, { $pull: { hereNow: { userId: socket.user._id } } });
+            presenceUpdate = { $push: { hereNow: { userId: socket.user._id, confidence, expiresAt } } };
+          }
+        }
+
         const updated = await Hachi.findByIdAndUpdate(
           roomId,
           {
@@ -179,6 +199,7 @@ const initSocket = (server) => {
             $set: { lastMessage: { text: text.trim(), createdAt: now } },
             $addToSet: { members: socket.user._id },
             ...(isNewMember ? { $inc: { memberCount: 1 } } : {}),
+            ...presenceUpdate,
           },
           { new: false }
         );

@@ -1,6 +1,7 @@
 const Hachi = require('../models/Hachi');
 const User = require('../models/User');
 const { invalidateUserCache } = require('../middleware/auth');
+const { computeConfidence } = require('../utils/locationUtils');
 
 // ── Velocity score ─────────────────────────────────────────────────────────────
 // Computes a real-time "hotness" score for ranking the Most Active list.
@@ -54,19 +55,26 @@ exports.getRooms = async (req, res) => {
     }
 
     const now = Date.now();
+    const nowDate = new Date(now);
 
-    // Compute velocity score and messageCount for each room
+    // Compute velocity score, messageCount, and activeHere for each room
     const rooms = rawRooms.map((r) => {
-      const { messages, ...rest } = r;
+      const { messages, hereNow, ...rest } = r;
+      const activeHere = (hereNow || []).filter((p) => new Date(p.expiresAt) > nowDate).length;
+      const vel = velocityScore({ ...r, messages }, now);
+      // feedScore weights physical presence heavily
+      const feedScore = activeHere * 5 + vel;
       return {
         ...rest,
         messageCount: (messages || []).length,
-        velocityScore: velocityScore({ ...r, messages }, now),
+        velocityScore: vel,
+        activeHere,
+        feedScore,
       };
     });
 
-    // Sort by velocity (highest first)
-    rooms.sort((a, b) => b.velocityScore - a.velocityScore);
+    // Sort by feedScore (presence + velocity)
+    rooms.sort((a, b) => b.feedScore - a.feedScore);
 
     // Attach followingInRoom: which people the current user follows are in each room
     if (req.user && req.user.following?.length) {
@@ -505,6 +513,28 @@ exports.getUserMessages = async (req, res) => {
     // Sort by most recent first, limit to 30
     messages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     res.json({ success: true, messages: messages.slice(0, 30) });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// GET /api/hachi/:id/check-location?lat=&lng=&speed=
+exports.checkLocation = async (req, res) => {
+  try {
+    const { lat, lng, speed = 0 } = req.query;
+    const userLat = parseFloat(lat);
+    const userLng = parseFloat(lng);
+    if (isNaN(userLat) || isNaN(userLng)) {
+      return res.status(400).json({ success: false, message: 'lat/lng required' });
+    }
+    const room = await Hachi.findById(req.params.id).select('venueCoords venueRadius isVenueCircle').lean();
+    if (!room) return res.status(404).json({ success: false, message: 'Not found' });
+    if (!room.isVenueCircle || !room.venueCoords?.lat) {
+      return res.json({ success: true, confidence: 1, status: 'open' });
+    }
+    const confidence = computeConfidence(userLat, userLng, parseFloat(speed) || 0, room.venueCoords, room.venueRadius || 250);
+    const status = confidence >= 0.6 ? 'here' : confidence >= 0.3 ? 'nearby' : 'locked';
+    res.json({ success: true, confidence, status });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
