@@ -192,16 +192,15 @@ export default function RadarScreen() {
     if (userLoc && pulses.length > 0) checkGeofence(userLoc);
   }, [userLoc, pulses, checkGeofence]);
 
-  // Fetch nearest circle (with name) whenever location updates
+  // Fetch nearest circle (with name). Pass location if we have it; server falls back
+  // for the founder when coords are missing.
   const fetchNearby = useCallback(async (loc) => {
-    if (!loc) return;
     try {
-      const res = await hachiAPI.getNearby(loc.lat, loc.lng, 5000);
+      const res = await hachiAPI.getNearby(loc?.lat, loc?.lng, 5000);
       setNearby(res.circle || null);
     } catch {}
   }, []);
   useEffect(() => {
-    if (!userLoc) return;
     fetchNearby(userLoc);
     clearInterval(nearbyPollRef.current);
     nearbyPollRef.current = setInterval(() => fetchNearby(userLoc), 30000);

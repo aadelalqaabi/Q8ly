@@ -6,7 +6,7 @@ const flashPoll = require('../controllers/flashPollController');
 
 router.get('/', optionalAuth, getRooms);
 router.get('/radar', optionalAuth, getRadar);
-router.get('/nearby', getNearby);
+router.get('/nearby', optionalAuth, getNearby);
 router.get('/vault', protect, getVault);
 router.post('/:id/visit', protect, recordVisit);
 router.post('/polls/:pollId/vote', protect, flashPoll.votePoll);

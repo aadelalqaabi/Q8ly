@@ -169,7 +169,13 @@ export const hachiAPI = {
     params: location ? { lat: location.lat, lng: location.lng, speed: location.speed || 0 } : {},
   }),
   getRadar: () => api.get('/hachi/radar'),
-  getNearby: (lat, lng, maxDist) => api.get('/hachi/nearby', { params: { lat, lng, maxDist } }),
+  getNearby: (lat, lng, maxDist) => {
+    const params = {};
+    if (lat != null) params.lat = lat;
+    if (lng != null) params.lng = lng;
+    if (maxDist != null) params.maxDist = maxDist;
+    return api.get('/hachi/nearby', { params });
+  },
   checkLocation: (id, lat, lng, speed = 0) => api.get(`/hachi/${id}/check-location`, { params: { lat, lng, speed } }),
   recordVisit: (id, lat, lng, speed = 0) => api.post(`/hachi/${id}/visit`, { lat, lng, speed }),
   getVault: () => api.get('/hachi/vault'),

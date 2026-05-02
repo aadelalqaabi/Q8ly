@@ -551,36 +551,59 @@ exports.getUserMessages = async (req, res) => {
 
 // GET /api/hachi/nearby?lat=&lng=&maxDist=  — closest venue circle to the user.
 // Returns full circle info (name, distance, status) so the radar can show a "what's near you" card.
+// Founders receive any active venue circle even without coords (status: 'here').
 exports.getNearby = async (req, res) => {
   try {
     const { haversineMeters, computeConfidence } = require('../utils/locationUtils');
     const lat = parseFloat(req.query.lat);
     const lng = parseFloat(req.query.lng);
-    const maxDist = parseFloat(req.query.maxDist) || 3000; // default 3km
-    if (isNaN(lat) || isNaN(lng)) {
+    const maxDist = parseFloat(req.query.maxDist) || 3000;
+    const hasCoords = !isNaN(lat) && !isNaN(lng);
+    const isFounder = bypassesGeofence(req.user);
+
+    if (!hasCoords && !isFounder) {
       return res.status(400).json({ success: false, message: 'lat/lng required' });
     }
-    // Use $nearSphere via the existing 2dsphere index on `location` for fast lookup
-    const nearby = await Hachi.find({
-      isActive: true,
-      isVenueCircle: true,
-      location: {
-        $nearSphere: {
-          $geometry: { type: 'Point', coordinates: [lng, lat] },
-          $maxDistance: maxDist,
-        },
-      },
-    })
-      .select('_id title venueName venueType venueCoords venueRadius hereNow lastMessage')
-      .limit(1)
-      .lean();
 
-    const circle = nearby[0];
+    let circle = null;
+
+    if (hasCoords) {
+      // Geospatial query for the closest venue
+      const nearby = await Hachi.find({
+        isActive: true,
+        isVenueCircle: true,
+        location: {
+          $nearSphere: {
+            $geometry: { type: 'Point', coordinates: [lng, lat] },
+            $maxDistance: isFounder ? 1e8 : maxDist,
+          },
+        },
+      })
+        .select('_id title venueName venueType venueCoords venueRadius hereNow lastMessage')
+        .limit(1)
+        .lean();
+      circle = nearby[0];
+    }
+
+    // Founder fallback: if no coords or none nearby, just grab any active venue circle
+    if (!circle && isFounder) {
+      circle = await Hachi.findOne({ isActive: true, isVenueCircle: true })
+        .select('_id title venueName venueType venueCoords venueRadius hereNow lastMessage')
+        .lean();
+    }
+
     if (!circle) return res.json({ success: true, circle: null });
 
-    const dist = haversineMeters(lat, lng, circle.venueCoords.lat, circle.venueCoords.lng);
-    const confidence = computeConfidence(lat, lng, 0, circle.venueCoords, circle.venueRadius || 250);
-    const status = confidence >= 0.6 ? 'here' : confidence >= 0.3 ? 'nearby' : 'locked';
+    const dist = hasCoords
+      ? Math.round(haversineMeters(lat, lng, circle.venueCoords.lat, circle.venueCoords.lng))
+      : null;
+    let status;
+    if (isFounder) {
+      status = 'here'; // founder can always enter
+    } else {
+      const confidence = computeConfidence(lat, lng, 0, circle.venueCoords, circle.venueRadius || 250);
+      status = confidence >= 0.6 ? 'here' : confidence >= 0.3 ? 'nearby' : 'locked';
+    }
     const now = new Date();
     const activeHere = (circle.hereNow || []).filter((p) => new Date(p.expiresAt) > now).length;
     res.json({
@@ -591,7 +614,7 @@ exports.getNearby = async (req, res) => {
         venueName: circle.venueName,
         venueType: circle.venueType,
         venueRadius: circle.venueRadius,
-        distance: Math.round(dist),
+        distance: dist,
         status,
         activeHere,
       },
