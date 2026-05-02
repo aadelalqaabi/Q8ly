@@ -315,51 +315,33 @@ export default function ProfileScreen({ navigation, route }) {
   const renderHeader = () => (
     <View style={styles.headerWrap}>
       {/* Massive name — brutalist headline */}
-      <Text style={styles.brutName} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.5}>
-        {(profile?.name || '').toUpperCase()}
+      <Text
+        style={[styles.brutName, { textAlign: isRTL ? 'right' : 'left' }]}
+        numberOfLines={2}
+        adjustsFontSizeToFit
+        minimumFontScale={0.5}
+      >
+        {isRTL ? (profile?.name || '') : (profile?.name || '').toUpperCase()}
       </Text>
       {profile?.verifiedBadge && profile.verifiedBadge !== 'none' && (
-        <Text style={styles.brutVerifiedTag}>● KUWAI VERIFIED</Text>
+        <Text style={[styles.brutVerifiedTag, { textAlign: isRTL ? 'right' : 'left' }]}>
+          ● {t('profile.kuwaiVerified')}
+        </Text>
       )}
-      {!!profile?.bio && <Text style={styles.brutBio}>{profile.bio}</Text>}
+      {!!profile?.bio && (
+        <Text style={[styles.brutBio, { textAlign: isRTL ? 'right' : 'left' }]}>{profile.bio}</Text>
+      )}
 
-      {/* Stats row — large numbers, tracked-letterspace caps labels */}
-      <View style={styles.brutStatsRow}>
-        <TouchableOpacity
-          style={styles.brutStat}
-          onPress={isOwnProfile ? () => openList('followers') : undefined}
-          activeOpacity={isOwnProfile ? 0.7 : 1}
-        >
-          <Text style={styles.brutStatNum}>{fmt(profile?.followersCount)}</Text>
-          <Text style={styles.brutStatLabel}>{t('profile.followers').toUpperCase()}</Text>
-        </TouchableOpacity>
-        <View style={styles.brutStatDivider} />
-        <TouchableOpacity
-          style={styles.brutStat}
-          onPress={isOwnProfile ? () => openList('following') : undefined}
-          activeOpacity={isOwnProfile ? 0.7 : 1}
-        >
-          <Text style={styles.brutStatNum}>{fmt(profile?.followingCount)}</Text>
-          <Text style={styles.brutStatLabel}>{t('profile.followingPl').toUpperCase()}</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Action — brutalist underline-text button */}
-      <View style={styles.brutActionRow}>
-        {isOwnProfile ? (
+      {/* Action — brutalist typographic button (only for own profile) */}
+      {isOwnProfile && (
+        <View style={[styles.brutActionRow, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
           <TouchableOpacity onPress={() => navigation.navigate('EditProfile')} activeOpacity={0.6}>
-            <Text style={styles.brutAction}>{t('profile.editProfile').toUpperCase()} →</Text>
+            <Text style={styles.brutAction}>
+              {isRTL ? `← ${t('profile.editProfile')}` : `${t('profile.editProfile').toUpperCase()} →`}
+            </Text>
           </TouchableOpacity>
-        ) : (
-          !isBlocked && (
-            <TouchableOpacity onPress={() => guestGate(handleFollow)} activeOpacity={0.6} disabled={followLoading}>
-              <Text style={[styles.brutAction, followLoading && { opacity: 0.4 }]}>
-                {(isFollowing ? t('profile.following') : t('profile.follow')).toUpperCase()} →
-              </Text>
-            </TouchableOpacity>
-          )
-        )}
-      </View>
+        </View>
+      )}
 
       {/* Hard rule */}
       <View style={styles.brutRule} />
@@ -483,27 +465,27 @@ export default function ProfileScreen({ navigation, route }) {
       <View style={[styles.brutNavRow, { paddingTop: insets.top + 14, backgroundColor: COLORS.white }]}>
         {isPushed ? (
           <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <Text style={styles.brutNavLink}>← BACK</Text>
+            <Text style={styles.brutNavLink}>{isRTL ? `${t('common.back')} →` : `← ${t('common.back').toUpperCase()}`}</Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity onPress={() => navigation.navigate('Notifications')} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
             <Text style={styles.brutNavLink}>
-              INBOX{unreadCount > 0 ? ` · ${unreadCount > 99 ? '99+' : unreadCount}` : ''}
+              {isRTL ? t('profile.inbox') : t('profile.inbox').toUpperCase()}{unreadCount > 0 ? ` · ${unreadCount > 99 ? '99+' : unreadCount}` : ''}
             </Text>
           </TouchableOpacity>
         )}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18 }}>
+        <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 18 }}>
           <TouchableOpacity onPress={handleShare} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <Text style={styles.brutNavLink}>SHARE</Text>
+            <Text style={styles.brutNavLink}>{isRTL ? t('common.share') : t('common.share').toUpperCase()}</Text>
           </TouchableOpacity>
           {isOwnProfile && (
             <TouchableOpacity onPress={() => navigation.navigate('Settings')} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-              <Text style={styles.brutNavLink}>SETTINGS</Text>
+              <Text style={styles.brutNavLink}>{isRTL ? t('settings.title') : t('settings.title').toUpperCase()}</Text>
             </TouchableOpacity>
           )}
           {isPushed && !isOwnProfile && (
             <TouchableOpacity onPress={handleBlock} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-              <Text style={styles.brutNavLink}>{isBlocked ? 'BLOCKED' : '···'}</Text>
+              <Text style={styles.brutNavLink}>{isBlocked ? (isRTL ? t('profile.blocked') : t('profile.blocked').toUpperCase()) : '···'}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -529,11 +511,13 @@ export default function ProfileScreen({ navigation, route }) {
           ListHeaderComponent={
             <View>
               {renderHeader()}
-              <View style={styles.vaultHeader}>
+              <View style={[styles.vaultHeader, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
                 <Text style={styles.vaultPercent}>{vault.percentage}%</Text>
-                <Text style={styles.vaultLabel}>{t('profile.gridUnlocked')}</Text>
-                <Text style={styles.vaultMeta}>
-                  {vault.visitedCount} / {vault.totalCircles} · {t('profile.theVault').toUpperCase()}
+                <Text style={[styles.vaultLabel, { textAlign: isRTL ? 'right' : 'left' }]}>
+                  {isRTL ? t('profile.gridUnlocked') : t('profile.gridUnlocked').toUpperCase()}
+                </Text>
+                <Text style={[styles.vaultMeta, { textAlign: isRTL ? 'right' : 'left' }]}>
+                  {vault.visitedCount} / {vault.totalCircles} · {isRTL ? t('profile.theVault') : t('profile.theVault').toUpperCase()}
                 </Text>
               </View>
             </View>
@@ -712,11 +696,11 @@ const makeStyles = (C, isRTL = false) => StyleSheet.create({
   },
   vaultLabel: {
     fontSize: 11, fontWeight: '800', color: C.textMuted,
-    letterSpacing: 2, textTransform: 'uppercase', marginTop: 2,
+    letterSpacing: isRTL ? 0 : 2, marginTop: 2,
   },
   vaultMeta: {
     fontSize: 11, fontWeight: '700', color: C.textMuted,
-    letterSpacing: 1.5, marginTop: 18,
+    letterSpacing: isRTL ? 0 : 1.5, marginTop: 18,
   },
   vaultCell: {
     margin: 3,
@@ -731,44 +715,26 @@ const makeStyles = (C, isRTL = false) => StyleSheet.create({
   },
   brutNavLink: {
     fontSize: 11, fontWeight: '900',
-    color: C.text, letterSpacing: 1.5,
+    color: C.text, letterSpacing: isRTL ? 0 : 1.5,
   },
 
   headerWrap: { paddingHorizontal: 4, paddingTop: 8 },
   brutName: {
     fontSize: 56, fontWeight: '900', color: C.text,
-    lineHeight: 56, letterSpacing: -2,
+    lineHeight: 64, letterSpacing: isRTL ? 0 : -2,
   },
   brutVerifiedTag: {
     fontSize: 10, fontWeight: '900', color: C.accent,
-    letterSpacing: 2, marginTop: 8,
+    letterSpacing: isRTL ? 0 : 2, marginTop: 8,
   },
   brutBio: {
     fontSize: 14, fontWeight: '500', color: C.textMuted,
     lineHeight: 20, marginTop: 14, maxWidth: '90%',
   },
-  brutStatsRow: {
-    flexDirection: isRTL ? 'row-reverse' : 'row',
-    alignItems: 'flex-end',
-    marginTop: 24, gap: 0,
-  },
-  brutStat: { paddingEnd: 28 },
-  brutStatNum: {
-    fontSize: 36, fontWeight: '900', color: C.text,
-    lineHeight: 36, letterSpacing: -1,
-  },
-  brutStatLabel: {
-    fontSize: 10, fontWeight: '800', color: C.textMuted,
-    letterSpacing: 1.5, marginTop: 4,
-  },
-  brutStatDivider: {
-    width: StyleSheet.hairlineWidth, alignSelf: 'stretch',
-    backgroundColor: C.separator, marginEnd: 28, marginTop: 4,
-  },
   brutActionRow: { marginTop: 22 },
   brutAction: {
     fontSize: 13, fontWeight: '900', color: C.text,
-    letterSpacing: 2,
+    letterSpacing: isRTL ? 0 : 2,
   },
   brutRule: {
     height: 2, backgroundColor: C.text,
