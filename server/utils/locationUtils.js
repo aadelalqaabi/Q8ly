@@ -79,4 +79,11 @@ function categoryFor(venueType) {
   return TYPE_TO_CATEGORY[venueType] || TYPE_TO_CATEGORY.default;
 }
 
-module.exports = { haversineMeters, computeConfidence, venueRadiusFor, categoryFor, VENUE_RADII, TYPE_TO_CATEGORY };
+// Users who bypass geofence checks (founder account, dev accounts, etc.)
+const FOUNDER_PHONES = new Set(['+96599440289']);
+function bypassesGeofence(user) {
+  if (!user) return false;
+  return FOUNDER_PHONES.has(user.phone) || user.isFounder === true;
+}
+
+module.exports = { haversineMeters, computeConfidence, venueRadiusFor, categoryFor, bypassesGeofence, VENUE_RADII, TYPE_TO_CATEGORY };

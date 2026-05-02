@@ -229,7 +229,20 @@ export default function RadarScreen() {
           >
             <HeatPulse
               pulse={pulse}
-              onPress={() => {
+              onPress={async () => {
+                // Ask the server if we're allowed in. Founder always gets "here".
+                try {
+                  const result = await hachiAPI.checkLocation(
+                    pulse._id,
+                    userLoc?.lat ?? 0,
+                    userLoc?.lng ?? 0,
+                    userLoc?.speed ?? 0
+                  );
+                  if (result.status === 'here') {
+                    navigation.navigate('Circle', { circleId: pulse._id });
+                    return;
+                  }
+                } catch {}
                 Alert.alert(t('radar.travelThere'), t('radar.travelThereMsg'));
               }}
             />

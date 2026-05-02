@@ -34,7 +34,7 @@ const initSocket = (server) => {
       }
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const user = await User.findById(decoded.id).select('_id username name profilePic verifiedBadge');
+      const user = await User.findById(decoded.id).select('_id username name profilePic verifiedBadge phone isFounder');
 
       if (!user) {
         socket.user = null;
@@ -157,7 +157,7 @@ const initSocket = (server) => {
         }
 
         const Hachi = require('../models/Hachi');
-        const { computeConfidence } = require('../utils/locationUtils');
+        const { computeConfidence, bypassesGeofence } = require('../utils/locationUtils');
         const mongoose = require('mongoose');
         const uid = socket.user._id.toString();
         const now = new Date();
@@ -174,19 +174,20 @@ const initSocket = (server) => {
 
         const isNewMember = !(room.members || []).some((m) => m.toString() === uid);
 
-        // Compute presence confidence if location provided
+        // Compute presence confidence if location provided.
+        // Founders are always counted as "here now" without needing a location.
         let presenceUpdate = {};
-        if (lat != null && lng != null && room.isVenueCircle && room.venueCoords?.lat) {
-          const confidence = computeConfidence(
-            parseFloat(lat), parseFloat(lng), parseFloat(speed) || 0,
-            room.venueCoords, room.venueRadius || 250
-          );
+        const isFounder = bypassesGeofence(socket.user);
+        const isVenue = room.isVenueCircle && room.venueCoords?.lat;
+        if (isVenue && (isFounder || (lat != null && lng != null))) {
+          const confidence = isFounder
+            ? 1
+            : computeConfidence(
+                parseFloat(lat), parseFloat(lng), parseFloat(speed) || 0,
+                room.venueCoords, room.venueRadius || 250
+              );
           if (confidence >= 0.3) {
             const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
-            presenceUpdate = {
-              $pull: { hereNow: { userId: socket.user._id } },
-            };
-            // We do a two-step: pull old entry then push new one
             await Hachi.findByIdAndUpdate(roomId, { $pull: { hereNow: { userId: socket.user._id } } });
             presenceUpdate = { $push: { hereNow: { userId: socket.user._id, confidence, expiresAt } } };
           }

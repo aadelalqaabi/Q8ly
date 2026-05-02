@@ -1,7 +1,7 @@
 const Hachi = require('../models/Hachi');
 const User = require('../models/User');
 const { invalidateUserCache } = require('../middleware/auth');
-const { computeConfidence } = require('../utils/locationUtils');
+const { computeConfidence, bypassesGeofence } = require('../utils/locationUtils');
 
 // ── Velocity score ─────────────────────────────────────────────────────────────
 // Computes a real-time "hotness" score for ranking the Most Active list.
@@ -309,10 +309,11 @@ exports.getRoom = async (req, res) => {
     // Blocked users can still view the room (read-only), just cannot send messages via socket
     const isBlocked = req.user && room.blockedMembers.some((b) => b.toString() === req.user._id.toString());
 
-    // Geofence enforcement for venue circles: only return messages if user is physically inside
+    // Geofence enforcement for venue circles: only return messages if user is physically inside.
+    // Founder accounts bypass the geofence and can join every circle.
     let inside = true;
     let confidence = 1;
-    if (room.isVenueCircle && room.venueCoords?.lat) {
+    if (room.isVenueCircle && room.venueCoords?.lat && !bypassesGeofence(req.user)) {
       const lat = parseFloat(req.query.lat);
       const lng = parseFloat(req.query.lng);
       const speed = parseFloat(req.query.speed) || 0;
@@ -561,9 +562,11 @@ exports.recordVisit = async (req, res) => {
     if (!room.isVenueCircle || !room.venueCoords?.lat) {
       return res.status(400).json({ success: false, message: 'Not a venue circle' });
     }
-    const confidence = computeConfidence(parseFloat(lat), parseFloat(lng), parseFloat(speed) || 0, room.venueCoords, room.venueRadius || 250);
-    if (confidence < 0.6) {
-      return res.status(403).json({ success: false, message: 'Not inside the venue' });
+    if (!bypassesGeofence(req.user)) {
+      const confidence = computeConfidence(parseFloat(lat), parseFloat(lng), parseFloat(speed) || 0, room.venueCoords, room.venueRadius || 250);
+      if (confidence < 0.6) {
+        return res.status(403).json({ success: false, message: 'Not inside the venue' });
+      }
     }
     await User.updateOne(
       { _id: req.user._id },
@@ -608,17 +611,22 @@ exports.getVault = async (req, res) => {
 // GET /api/hachi/radar — minimal "heat pulse" data for the dark map view.
 // Returns only circles with current activity (recent messages OR active hereNow presence).
 // Does NOT return titles/messages — just coordinates + intensity.
+// Founder accounts see EVERY active venue circle (even cold ones with intensity 0).
 exports.getRadar = async (req, res) => {
   try {
     const now = Date.now();
     const recentCutoff = new Date(now - 30 * 60 * 1000); // 30 min
-    const rooms = await Hachi.find({
-      isActive: true,
-      $or: [
-        { 'lastMessage.createdAt': { $gte: recentCutoff } },
-        { hereNow: { $elemMatch: { expiresAt: { $gt: new Date(now) } } } },
-      ],
-    })
+    const isFounder = bypassesGeofence(req.user);
+    const query = isFounder
+      ? { isActive: true, isVenueCircle: true }
+      : {
+          isActive: true,
+          $or: [
+            { 'lastMessage.createdAt': { $gte: recentCutoff } },
+            { hereNow: { $elemMatch: { expiresAt: { $gt: new Date(now) } } } },
+          ],
+        };
+    const rooms = await Hachi.find(query)
       .select('venueCoords venueRadius hereNow lastMessage messages venueType')
       .lean();
 
@@ -631,7 +639,8 @@ exports.getRadar = async (req, res) => {
         (m) => new Date(m.createdAt).getTime() > now - 30 * 60 * 1000
       ).length;
       const intensity = Math.min(1, (activeHere * 2 + recentMsgs * 0.5) / 10);
-      if (intensity === 0) return null;
+      // Hide cold pulses for everyone except founder.
+      if (intensity === 0 && !isFounder) return null;
       return { _id: r._id, lat, lng, intensity, activeHere, venueType: r.venueType };
     }).filter(Boolean);
 
@@ -654,6 +663,9 @@ exports.checkLocation = async (req, res) => {
     if (!room) return res.status(404).json({ success: false, message: 'Not found' });
     if (!room.isVenueCircle || !room.venueCoords?.lat) {
       return res.json({ success: true, confidence: 1, status: 'open' });
+    }
+    if (bypassesGeofence(req.user)) {
+      return res.json({ success: true, confidence: 1, status: 'here' });
     }
     const confidence = computeConfidence(userLat, userLng, parseFloat(speed) || 0, room.venueCoords, room.venueRadius || 250);
     const status = confidence >= 0.6 ? 'here' : confidence >= 0.3 ? 'nearby' : 'locked';

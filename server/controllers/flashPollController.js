@@ -1,6 +1,6 @@
 const FlashPoll = require('../models/FlashPoll');
 const Hachi = require('../models/Hachi');
-const { computeConfidence } = require('../utils/locationUtils');
+const { computeConfidence, bypassesGeofence } = require('../utils/locationUtils');
 
 const POLL_DURATION_MS = 15 * 60 * 1000; // 15 min
 
@@ -10,7 +10,7 @@ async function ensureInside(req, res) {
     res.status(404).json({ success: false, message: 'Circle not found' });
     return null;
   }
-  if (room.isVenueCircle && room.venueCoords?.lat) {
+  if (room.isVenueCircle && room.venueCoords?.lat && !bypassesGeofence(req.user)) {
     const lat = parseFloat(req.body.lat ?? req.query.lat);
     const lng = parseFloat(req.body.lng ?? req.query.lng);
     const speed = parseFloat(req.body.speed ?? req.query.speed) || 0;

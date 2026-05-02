@@ -5,7 +5,7 @@ const { getRooms, getArchivedRooms, createRoom, getRoom, closeRoom, reactRoom, s
 const flashPoll = require('../controllers/flashPollController');
 
 router.get('/', optionalAuth, getRooms);
-router.get('/radar', getRadar);
+router.get('/radar', optionalAuth, getRadar);
 router.get('/vault', protect, getVault);
 router.post('/:id/visit', protect, recordVisit);
 router.post('/polls/:pollId/vote', protect, flashPoll.votePoll);
@@ -17,7 +17,7 @@ router.get('/my', protect, getMyRooms);
 router.get('/joined', protect, getJoinedRooms);
 router.get('/user-messages/:username', getUserMessages);
 router.post('/', protect, createRoom);
-router.get('/:id/check-location', checkLocation);
+router.get('/:id/check-location', optionalAuth, checkLocation);
 router.get('/:id/polls', protect, flashPoll.listPolls);
 router.post('/:id/polls', protect, flashPoll.createPoll);
 router.get('/:id', optionalAuth, getRoom);
