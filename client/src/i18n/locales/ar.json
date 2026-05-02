@@ -80,6 +80,9 @@
   },
 
   "profile": {
+    "gridUnlocked": "من الخريطة فُتح",
+    "theVault": "الخزنة",
+    "noVaultYet": "زر مكان لتفتح أول قطعة لك.",
     "myProfile": "ملفي الشخصي",
     "editProfile": "تعديل الملف الشخصي",
     "follow": "متابعة",

@@ -151,6 +151,8 @@ const userSchema = new mongoose.Schema(
     bookmarks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }],
     // Pinned circles (max 3)
     pinnedCircles: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Hachi' }],
+    // Vault: every venue the user has physically entered (Pivot 2 gamification)
+    visitedCircles: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Hachi', index: true }],
     // Verification request
     verificationRequest: {
       status: { type: String, enum: ['none', 'pending', 'approved', 'rejected'], default: 'none' },

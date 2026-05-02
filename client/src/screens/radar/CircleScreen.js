@@ -175,6 +175,8 @@ export default function CircleScreen({ route, navigation }) {
       }
       setRoom(res.room);
       setMessages(res.room.messages || []);
+      // Record the visit (idempotent on server) — adds artifact to vault
+      hachiAPI.recordVisit(circleId, loc.lat, loc.lng, loc.speed || 0).catch(() => {});
       // Load polls
       try {
         const pollRes = await hachiAPI.listPolls(circleId, loc.lat, loc.lng);

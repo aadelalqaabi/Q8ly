@@ -548,6 +548,63 @@ exports.getUserMessages = async (req, res) => {
   }
 };
 
+// POST /api/hachi/:id/visit — record that user has physically entered this circle.
+// Adds the circleId to user's visitedCircles (idempotent — duplicates are skipped).
+exports.recordVisit = async (req, res) => {
+  try {
+    const { lat, lng, speed = 0 } = req.body;
+    if (lat == null || lng == null) {
+      return res.status(400).json({ success: false, message: 'lat/lng required' });
+    }
+    const room = await Hachi.findById(req.params.id).select('isVenueCircle venueCoords venueRadius').lean();
+    if (!room) return res.status(404).json({ success: false, message: 'Circle not found' });
+    if (!room.isVenueCircle || !room.venueCoords?.lat) {
+      return res.status(400).json({ success: false, message: 'Not a venue circle' });
+    }
+    const confidence = computeConfidence(parseFloat(lat), parseFloat(lng), parseFloat(speed) || 0, room.venueCoords, room.venueRadius || 250);
+    if (confidence < 0.6) {
+      return res.status(403).json({ success: false, message: 'Not inside the venue' });
+    }
+    await User.updateOne(
+      { _id: req.user._id },
+      { $addToSet: { visitedCircles: req.params.id } }
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// GET /api/profile/vault — vault data for current user.
+// Returns a list of ALL venue circles (id + visited flag) so the client can render the full grid.
+exports.getVault = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('visitedCircles').lean();
+    const visitedSet = new Set((user.visitedCircles || []).map(String));
+    const allCircles = await Hachi.find({ isVenueCircle: true, isActive: true })
+      .select('_id venueName venueType')
+      .sort({ createdAt: 1 })
+      .limit(500)
+      .lean();
+    const items = allCircles.map((c) => ({
+      _id: String(c._id),
+      visited: visitedSet.has(String(c._id)),
+    }));
+    const totalCircles = allCircles.length;
+    const visitedCount = items.filter((x) => x.visited).length;
+    const percentage = totalCircles > 0 ? Math.floor((visitedCount / totalCircles) * 100) : 0;
+    res.json({
+      success: true,
+      items,
+      visitedCount,
+      totalCircles,
+      percentage,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 // GET /api/hachi/radar — minimal "heat pulse" data for the dark map view.
 // Returns only circles with current activity (recent messages OR active hereNow presence).
 // Does NOT return titles/messages — just coordinates + intensity.

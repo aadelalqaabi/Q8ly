@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { usersAPI, hachiAPI } from '../../services/api';
 import ShareProfileCard from '../../components/ui/ShareProfileCard';
+import Artifact from '../../components/Artifact';
 import { useTheme } from '../../context/ThemeContext';
 import { useGuestGate } from '../../context/GuestGateContext';
 
@@ -105,6 +106,22 @@ export default function ProfileScreen({ navigation, route }) {
   // User's circle messages (activity)
   const [userMessages, setUserMessages] = useState([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
+
+  // Vault — list of all venue circles + which ones the user has visited
+  const [vault, setVault] = useState({ items: [], visitedCount: 0, totalCircles: 0, percentage: 0 });
+  const loadVault = useCallback(async () => {
+    if (!isOwnProfile) return;
+    try {
+      const res = await hachiAPI.getVault();
+      setVault({
+        items: res.items || [],
+        visitedCount: res.visitedCount || 0,
+        totalCircles: res.totalCircles || 0,
+        percentage: res.percentage || 0,
+      });
+    } catch {}
+  }, [isOwnProfile]);
+  useEffect(() => { loadVault(); }, [loadVault]);
 
   const loadUserMessages = useCallback(async () => {
     if (!username) return;
@@ -535,80 +552,43 @@ export default function ProfileScreen({ navigation, route }) {
       {/* Profile info */}
       {renderHeader()}
 
-      {/* Tab bar */}
-      <View style={styles.tabBar}>
-        {TABS.map((tab, i) => {
-          const active = activeTab === tab.key;
-          return (
-            <TouchableOpacity key={tab.key} style={styles.tabItem} onPress={() => goToTab(i)} activeOpacity={0.7}>
-              <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{tab.label}</Text>
-              {active && <View style={styles.tabUnderline} />}
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      {/* Swipeable pages */}
-      <ScrollView
-        ref={tabScrollRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        scrollEventThrottle={16}
-        onMomentumScrollEnd={(e) => {
-          const page = Math.round(e.nativeEvent.contentOffset.x / SW);
-          setActiveTab(TABS[page]?.key || 'circles');
-        }}
-        style={[{ flex: 1 }, isRTL && { transform: [{ scaleX: -1 }] }]}
-      >
-        {/* Page 0: Circles */}
+      {/* Vault */}
+      {isOwnProfile && (
         <FlatList
-          style={[{ width: SW }, isRTL && { transform: [{ scaleX: -1 }] }]}
-          data={circles}
+          data={vault.items}
           keyExtractor={(item) => item._id}
-          renderItem={renderCircleItem}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 24, flexGrow: 1 }}
-          ItemSeparatorComponent={() => <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: COLORS.separator, marginLeft: 62 }} />}
-          showsVerticalScrollIndicator={false}
-          nestedScrollEnabled
+          numColumns={4}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 40, paddingHorizontal: 12 }}
+          ListHeaderComponent={
+            <View style={styles.vaultHeader}>
+              <Text style={styles.vaultPercent}>{vault.percentage}%</Text>
+              <Text style={styles.vaultLabel}>{t('profile.gridUnlocked')}</Text>
+              <Text style={styles.vaultMeta}>{vault.visitedCount} / {vault.totalCircles}</Text>
+              <View style={styles.vaultDivider} />
+              <Text style={styles.vaultSectionTitle}>{t('profile.theVault')}</Text>
+            </View>
+          }
+          renderItem={({ item }) => (
+            <View style={styles.vaultCell}>
+              <Artifact id={item._id} size={(SW - 24 - 24) / 4} locked={!item.visited} />
+            </View>
+          )}
           ListEmptyComponent={
-            !circlesLoading ? (
-              <View style={styles.empty}>
-                <Ionicons name="chatbubbles-outline" size={36} color={COLORS.textMuted} style={{ marginBottom: 8 }} />
-                <Text style={styles.emptyText}>{t('profile.noCirclesYet')}</Text>
-              </View>
-            ) : <ActivityIndicator size="small" color={COLORS.accent} style={{ padding: 20 }} />
+            <View style={styles.empty}>
+              <Text style={styles.emptyText}>{t('profile.noVaultYet')}</Text>
+            </View>
           }
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              onRefresh={async () => { setRefreshing(true); await Promise.all([loadProfile(), loadCircles(), loadUserMessages()]); setRefreshing(false); }}
+              onRefresh={async () => { setRefreshing(true); await Promise.all([loadProfile(), loadVault()]); setRefreshing(false); }}
               tintColor={COLORS.accent}
               colors={[COLORS.accent]}
             />
           }
-        />
-
-        {/* Page 1: Activity */}
-        <FlatList
-          style={[{ width: SW }, isRTL && { transform: [{ scaleX: -1 }] }]}
-          data={userMessages}
-          keyExtractor={(item) => item._id}
-          renderItem={renderActivityItem}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 24, flexGrow: 1 }}
-          ItemSeparatorComponent={() => <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: COLORS.separator, marginLeft: 62 }} />}
           showsVerticalScrollIndicator={false}
-          nestedScrollEnabled
-          ListEmptyComponent={
-            !messagesLoading ? (
-              <View style={styles.empty}>
-                <Ionicons name="chatbubble-ellipses-outline" size={36} color={COLORS.textMuted} style={{ marginBottom: 8 }} />
-                <Text style={styles.emptyText}>{t('profile.noActivity')}</Text>
-              </View>
-            ) : <ActivityIndicator size="small" color={COLORS.accent} style={{ padding: 20 }} />
-          }
         />
-      </ScrollView>
+      )}
 
       {/* Followers / Following modal */}
       <Modal
@@ -753,6 +733,34 @@ const makeStyles = (C, isRTL = false) => StyleSheet.create({
   circleRowCount: { fontSize: 12, color: C.textMuted },
 
   empty: { paddingTop: 48, alignItems: 'center', paddingHorizontal: 40 },
+
+  // Vault
+  vaultHeader: { paddingTop: 24, paddingBottom: 18, paddingHorizontal: 4, alignItems: 'flex-start' },
+  vaultPercent: {
+    fontSize: 92, fontWeight: '900', color: C.text,
+    lineHeight: 92, letterSpacing: -3,
+  },
+  vaultLabel: {
+    fontSize: 11, fontWeight: '800', color: C.textMuted,
+    letterSpacing: 2, textTransform: 'uppercase', marginTop: -4,
+  },
+  vaultMeta: {
+    fontSize: 13, fontWeight: '600', color: C.textMuted,
+    marginTop: 14,
+  },
+  vaultDivider: {
+    height: StyleSheet.hairlineWidth, backgroundColor: C.separator,
+    alignSelf: 'stretch', marginTop: 22, marginBottom: 18,
+  },
+  vaultSectionTitle: {
+    fontSize: 11, fontWeight: '800', color: C.textMuted,
+    letterSpacing: 2, textTransform: 'uppercase',
+  },
+  vaultCell: {
+    margin: 3,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
   emptyText: { fontSize: 15, color: C.textMuted, textAlign: 'center' },
 
   // ── Activity rows ──────────────────────────────────────────────────────

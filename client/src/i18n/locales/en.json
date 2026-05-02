@@ -80,6 +80,9 @@
   },
 
   "profile": {
+    "gridUnlocked": "Grid Unlocked",
+    "theVault": "The Vault",
+    "noVaultYet": "Visit a place to claim your first artifact.",
     "myProfile": "My Profile",
     "editProfile": "Edit Profile",
     "follow": "Follow",
