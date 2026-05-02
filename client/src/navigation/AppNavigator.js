@@ -1,16 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useDispatch, useSelector } from 'react-redux';
-import { View, Text, ActivityIndicator, StyleSheet, Platform, Image } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { restoreSession, claimDailyBonus } from '../store/slices/authSlice';
 import { upsertCurrentAccount } from '../utils/accountsStore';
-import { GuestGateProvider, useGuestGate } from '../context/GuestGateContext';
+import { GuestGateProvider } from '../context/GuestGateContext';
 import { addNotificationRealtime } from '../store/slices/notificationsSlice';
 // import { addRealtimeMessage, updateConversationAccepted } from '../store/slices/dmSlice'; // DMs disabled
 import { getSocket } from '../services/socket';
@@ -25,12 +22,10 @@ import PhoneScreen from '../screens/auth/PhoneScreen';
 import OtpScreen from '../screens/auth/OtpScreen';
 import NameScreen from '../screens/auth/NameScreen';
 import TermsScreen from '../screens/auth/TermsScreen';
-import DiscoverScreen from '../screens/discover/DiscoverScreen';
 import NotificationsScreen from '../screens/notifications/NotificationsScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import EditProfileScreen from '../screens/profile/EditProfileScreen';
 import PostDetailScreen from '../screens/post/PostDetailScreen';
-import HachiScreen from '../screens/hachi/HachiScreen';
 import HachiRoomScreen from '../screens/hachi/HachiRoomScreen';
 import RadarScreen from '../screens/radar/RadarScreen';
 import CircleScreen from '../screens/radar/CircleScreen';
@@ -41,80 +36,15 @@ import DeveloperAccountsScreen from '../screens/dev/DeveloperAccountsScreen';
 import MediaViewerScreen from '../screens/media/MediaViewerScreen';
 
 const Stack = createNativeStackNavigator();
-const Tab = createBottomTabNavigator();
 
 function MainTabs() {
-  const insets = useSafeAreaInsets();
-  const { colors: COLORS } = useTheme();
-  const { user, isGuest, token } = useSelector((s) => s.auth);
-  const { guestGate } = useGuestGate();
-
+  const { user, token } = useSelector((s) => s.auth);
   // Save current account into multi-account store whenever auth changes
   useEffect(() => {
     if (token && user) upsertCurrentAccount(token, user).catch(() => {});
   }, [token, user]);
-
-  return (
-    <Tab.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: COLORS.accent,
-        tabBarInactiveTintColor: COLORS.textMuted,
-        tabBarShowLabel: false,
-        tabBarStyle: {
-          backgroundColor: COLORS.white,
-          borderTopColor: COLORS.separator,
-          borderTopWidth: StyleSheet.hairlineWidth,
-          height: 49 + insets.bottom,
-          paddingTop: 8,
-          paddingBottom: insets.bottom,
-        },
-      }}
-    >
-      <Tab.Screen
-        name="Radar"
-        component={RadarScreen}
-        options={{
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'radio' : 'radio-outline'} size={29} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Discover"
-        component={DiscoverScreen}
-        options={{
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'search' : 'search-outline'} size={27} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Profile"
-        component={ProfileScreen}
-        listeners={{
-          tabPress: (e) => {
-            if (isGuest) {
-              e.preventDefault();
-              guestGate(null);
-            }
-          },
-        }}
-        options={{
-          tabBarIcon: ({ focused }) => (
-            user?.profilePic ? (
-              <Image
-                source={{ uri: user.profilePic }}
-                style={{ width: 31, height: 31, borderRadius: 15.5, borderWidth: focused ? 2 : 0, borderColor: COLORS.accent }}
-              />
-            ) : (
-              <Ionicons name={focused ? 'person-circle' : 'person-circle-outline'} size={31} color={focused ? COLORS.accent : COLORS.textMuted} />
-            )
-          ),
-        }}
-      />
-    </Tab.Navigator>
-  );
+  // No tab bar — Radar is the single root screen.
+  return <RadarScreen />;
 }
 
 function AuthStack() {
@@ -149,7 +79,7 @@ function AppStack() {
       <Stack.Screen name="LiveCamera" component={LiveCameraScreen} options={{ headerShown: false, presentation: 'fullScreenModal' }} />
       <Stack.Screen name="RequestLocation" component={RequestLocationScreen} options={{ headerShown: false, presentation: 'modal' }} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="Discover" component={DiscoverScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false }} />
       <Stack.Screen name="DeveloperAccounts" component={DeveloperAccountsScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Terms" component={TermsScreen} options={{ headerShown: false, presentation: 'modal' }} />

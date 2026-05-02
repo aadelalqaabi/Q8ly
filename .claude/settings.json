@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node server/scripts/seedVenueCircles.js)",
+      "Bash(git reset *)",
+      "Bash(node -e ' *)"
+    ]
+  }
+}

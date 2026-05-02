@@ -1,12 +1,14 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Animated,
-  Easing, Platform, Alert, Dimensions,
+  Easing, Platform, Alert, Dimensions, Image,
 } from 'react-native';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import { useSelector } from 'react-redux';
+import { useNavigation } from '@react-navigation/native';
 import { hachiAPI } from '../../services/api';
 let Location = null;
 try { Location = require('expo-location'); } catch {}
@@ -97,9 +99,11 @@ function HeatPulse({ pulse, onPress }) {
   );
 }
 
-export default function RadarScreen({ navigation }) {
+export default function RadarScreen() {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
+  const navigation = useNavigation();
+  const { user: currentUser } = useSelector((s) => s.auth);
   const [pulses, setPulses] = useState([]);
   const [region, setRegion] = useState(KUWAIT_REGION);
   const [userLoc, setUserLoc] = useState(null);
@@ -231,10 +235,23 @@ export default function RadarScreen({ navigation }) {
         ))}
       </MapView>
 
-      {/* Top header — minimal */}
+      {/* Top header — wordmark left, profile right */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <Text style={styles.title}>{t('radar.title')}</Text>
-        <Text style={styles.subtitle}>{t('radar.subtitle')}</Text>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Profile')}
+          style={styles.profileBtn}
+          activeOpacity={0.7}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          {currentUser?.profilePic ? (
+            <Image source={{ uri: currentUser.profilePic }} style={styles.profileAvatar} />
+          ) : (
+            <View style={styles.profileFallback}>
+              <Ionicons name="person" size={22} color="#fff" />
+            </View>
+          )}
+        </TouchableOpacity>
       </View>
 
       {/* Floating action: Request location */}
@@ -255,9 +272,9 @@ export default function RadarScreen({ navigation }) {
         <Ionicons name="locate" size={22} color="#fff" />
       </TouchableOpacity>
 
-      {/* Pulse count indicator */}
+      {/* Pulse count indicator — moved below header */}
       {!loading && (
-        <View style={[styles.pulseBadge, { top: insets.top + 12 }]}>
+        <View style={[styles.pulseBadge, { top: insets.top + 64 }]}>
           <View style={styles.pulseDot} />
           <Text style={styles.pulseBadgeText}>
             {pulses.length} {t('radar.live')}
@@ -286,14 +303,26 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a0e1a' },
   header: {
     position: 'absolute', top: 0, left: 0, right: 0,
-    paddingHorizontal: 24, paddingBottom: 8,
+    paddingHorizontal: 16, paddingBottom: 8,
     backgroundColor: 'transparent',
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  title: { fontSize: 28, fontWeight: '900', color: '#fff', letterSpacing: 0 },
-  subtitle: { fontSize: 12, fontWeight: '500', color: '#6c7a99', marginTop: 4 },
+  title: { fontSize: 24, fontWeight: '900', color: '#fff' },
+  profileBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 2, borderColor: 'rgba(255,255,255,0.2)',
+  },
+  profileAvatar: { width: '100%', height: '100%' },
+  profileFallback: {
+    width: '100%', height: '100%',
+    backgroundColor: 'rgba(20,28,50,0.9)',
+    justifyContent: 'center', alignItems: 'center',
+  },
   pulseBadge: {
-    position: 'absolute', right: 16,
+    position: 'absolute', left: 16,
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: 'rgba(20,28,50,0.85)',
     borderRadius: 16, paddingHorizontal: 10, paddingVertical: 6,
