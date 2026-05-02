@@ -47,11 +47,12 @@ export default function InviteCodeScreen({ onValid }) {
       style={[styles.container, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 20 }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.wordmarkWrap}>
-        <Text style={styles.wordmark}>KUWAI</Text>
-      </View>
+      <View style={styles.center}>
+        <View style={styles.wordmarkWrap}>
+          <Text style={styles.wordmark}>KUWAI</Text>
+        </View>
 
-      <View style={styles.body}>
+        <View style={styles.body}>
         <BrutHero title={t('invite.title')} label={ar ? 'بالدعوة فقط' : 'INVITE ONLY'} size={48} />
         <BrutRule mt={22} mb={26} />
         <BrutInput
@@ -81,6 +82,7 @@ export default function InviteCodeScreen({ onValid }) {
           label={t('invite.noCode')}
           onPress={() => Linking.openURL('https://kuwai.app/waitlist')}
         />
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
@@ -88,7 +90,8 @@ export default function InviteCodeScreen({ onValid }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: BG },
-  wordmarkWrap: { alignItems: 'center', paddingTop: 12, paddingBottom: 22 },
+  center: { flex: 1, justifyContent: 'center' },
+  wordmarkWrap: { alignItems: 'center', paddingBottom: 22 },
   wordmark: { fontSize: 22, fontWeight: '900', color: TEXT, letterSpacing: 2 },
   body: { paddingHorizontal: 24 },
   error: { fontSize: 11, fontWeight: '800', color: '#D32F2F', marginTop: -12, marginBottom: 12 },
