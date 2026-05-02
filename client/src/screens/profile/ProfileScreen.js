@@ -329,12 +329,17 @@ export default function ProfileScreen({ navigation, route }) {
         </Text>
       )}
 
-      {/* Action — brutalist typographic button (only for own profile) */}
+      {/* Actions — brutalist typographic buttons (only for own profile) */}
       {isOwnProfile && (
         <View style={[styles.brutActionRow, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
-          <TouchableOpacity onPress={() => navigation.navigate('EditProfile')} activeOpacity={0.6}>
+          <TouchableOpacity onPress={() => navigation.navigate('EditProfile')} activeOpacity={0.6} style={{ paddingVertical: 6 }}>
             <Text style={styles.brutAction}>
               {isRTL ? `← ${t('profile.editProfile')}` : `${t('profile.editProfile').toUpperCase()} →`}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('RequestLocation', {})} activeOpacity={0.6} style={{ paddingVertical: 6 }}>
+            <Text style={styles.brutAction}>
+              {isRTL ? `← ${t('radar.requestTitle')}` : `${t('radar.requestTitle').toUpperCase()} →`}
             </Text>
           </TouchableOpacity>
         </View>

@@ -271,23 +271,14 @@ export default function RadarScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Bottom-right control stack: request + recenter */}
-      <View style={[styles.controlStack, { bottom: insets.bottom + 24 }]}>
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() => navigation.navigate('RequestLocation', { initialCoords: userLoc })}
-          activeOpacity={0.85}
-        >
-          <Ionicons name="add" size={26} color="#fff" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.recenter}
-          onPress={handleRecenter}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="locate" size={20} color="#0a0e1a" />
-        </TouchableOpacity>
-      </View>
+      {/* Recenter button */}
+      <TouchableOpacity
+        style={[styles.recenter, { bottom: insets.bottom + 24 }]}
+        onPress={handleRecenter}
+        activeOpacity={0.7}
+      >
+        <Ionicons name="locate" size={20} color="#0a0e1a" />
+      </TouchableOpacity>
 
       {loading && (
         <View style={styles.loadingOverlay}>
@@ -360,21 +351,8 @@ const styles = StyleSheet.create({
     shadowColor: '#4D80FF', shadowOpacity: 1, shadowRadius: 4,
   },
   pulseBadgeText: { color: '#fff', fontSize: 12, fontWeight: '700' },
-  controlStack: {
-    position: 'absolute', right: 14,
-    gap: 12, alignItems: 'center',
-  },
-  fab: {
-    width: 56, height: 56, borderRadius: 28,
-    backgroundColor: '#0033A0',
-    justifyContent: 'center', alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 8,
-  },
   recenter: {
+    position: 'absolute', right: 14,
     width: 44, height: 44, borderRadius: 22,
     backgroundColor: '#fff',
     justifyContent: 'center', alignItems: 'center',
