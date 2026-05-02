@@ -258,16 +258,6 @@ export default function RadarScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Pulse count indicator — under wordmark */}
-      {!loading && (
-        <View style={[styles.pulseBadge, { top: insets.top + 62 }]}>
-          <View style={styles.pulseDot} />
-          <Text style={styles.pulseBadgeText}>
-            {pulses.length} {t('radar.live')}
-          </Text>
-        </View>
-      )}
-
       {/* Bottom-right control stack: request + recenter */}
       <View style={[styles.controlStack, { bottom: insets.bottom + 24 }]}>
         <TouchableOpacity
