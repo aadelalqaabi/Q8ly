@@ -313,92 +313,56 @@ export default function ProfileScreen({ navigation, route }) {
 
   // ── Header ──────────────────────────────────────────────────────────────────
   const renderHeader = () => (
-    <View>
-      {/* Avatar */}
-      <View style={styles.avatarSection}>
-        {profile?.profilePic ? (
-          <Image source={{ uri: profile.profilePic }} style={styles.avatar} />
-        ) : (
-          <View style={[styles.avatar, { backgroundColor: avatarBg(profile?.name) }]}>
-            <Text style={styles.avatarInitial}>{profile?.name?.[0]?.toUpperCase() || '?'}</Text>
-          </View>
-        )}
-      </View>
+    <View style={styles.headerWrap}>
+      {/* Massive name — brutalist headline */}
+      <Text style={styles.brutName} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.5}>
+        {(profile?.name || '').toUpperCase()}
+      </Text>
+      {profile?.verifiedBadge && profile.verifiedBadge !== 'none' && (
+        <Text style={styles.brutVerifiedTag}>● KUWAI VERIFIED</Text>
+      )}
+      {!!profile?.bio && <Text style={styles.brutBio}>{profile.bio}</Text>}
 
-      {/* Identity */}
-      <View style={styles.identity}>
-        <Text style={styles.name}>{profile?.name}</Text>
-        <VerifiedBadge badge={profile?.verifiedBadge} />
-        {!!profile?.bio && <Text style={styles.bio}>{profile.bio}</Text>}
-      </View>
-
-      {/* Stats */}
-      <View style={styles.statsRow}>
-        {profile?.verifiedBadge && profile.verifiedBadge !== 'none' ? (
-          // Badged profile: show the KUWAI badge instead of circle count
-          <View style={styles.stat}>
-            <VerifiedBadge badge={profile.verifiedBadge} />
-          </View>
-        ) : (
-          <View style={styles.stat}>
-            <Text style={styles.statNum}>{fmt(circles.length)}</Text>
-            <Text style={styles.statLabel}>{t('profile.circles')}</Text>
-          </View>
-        )}
-        <View style={styles.statDot} />
+      {/* Stats row — large numbers, tracked-letterspace caps labels */}
+      <View style={styles.brutStatsRow}>
         <TouchableOpacity
-          style={styles.stat}
+          style={styles.brutStat}
           onPress={isOwnProfile ? () => openList('followers') : undefined}
           activeOpacity={isOwnProfile ? 0.7 : 1}
         >
-          <Text style={styles.statNum}>{fmt(profile?.followersCount)}</Text>
-          <Text style={[styles.statLabel, isOwnProfile && { color: COLORS.accent }]}>{t('profile.followers')}</Text>
+          <Text style={styles.brutStatNum}>{fmt(profile?.followersCount)}</Text>
+          <Text style={styles.brutStatLabel}>{t('profile.followers').toUpperCase()}</Text>
         </TouchableOpacity>
-        <View style={styles.statDot} />
+        <View style={styles.brutStatDivider} />
         <TouchableOpacity
-          style={styles.stat}
+          style={styles.brutStat}
           onPress={isOwnProfile ? () => openList('following') : undefined}
           activeOpacity={isOwnProfile ? 0.7 : 1}
         >
-          <Text style={styles.statNum}>{fmt(profile?.followingCount)}</Text>
-          <Text style={[styles.statLabel, isOwnProfile && { color: COLORS.accent }]}>{t('profile.followingPl')}</Text>
+          <Text style={styles.brutStatNum}>{fmt(profile?.followingCount)}</Text>
+          <Text style={styles.brutStatLabel}>{t('profile.followingPl').toUpperCase()}</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Action row */}
-      <View style={styles.actionRow}>
+      {/* Action — brutalist underline-text button */}
+      <View style={styles.brutActionRow}>
         {isOwnProfile ? (
-          <TouchableOpacity style={styles.editChip} onPress={() => navigation.navigate('EditProfile')} activeOpacity={0.7}>
-            <Ionicons name="create-outline" size={14} color={COLORS.textMuted} />
-            <Text style={styles.editChipText}>{t('profile.editProfile')}</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('EditProfile')} activeOpacity={0.6}>
+            <Text style={styles.brutAction}>{t('profile.editProfile').toUpperCase()} →</Text>
           </TouchableOpacity>
         ) : (
-          <View style={styles.followRow}>
-            {!isBlocked && (
-              isFollowing ? (
-                <TouchableOpacity style={[styles.followingChip, followLoading && { opacity: 0.5 }]} onPress={() => guestGate(handleFollow)} activeOpacity={0.7} disabled={followLoading}>
-                  <Ionicons name="checkmark" size={14} color={COLORS.textMuted} />
-                  <Text style={styles.followingChipText}>{t('profile.following')}</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity style={[styles.followChip, followLoading && { opacity: 0.5 }]} onPress={() => guestGate(handleFollow)} activeOpacity={0.85} disabled={followLoading}>
-                  <Text style={styles.followChipText}>{t('profile.follow')}</Text>
-                </TouchableOpacity>
-              )
-            )}
-            {!isBlocked && (
-              <TouchableOpacity style={styles.notifyBtn} onPress={handleToggleNotify} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} activeOpacity={0.7}>
-                <Ionicons
-                  name={isNotifyEnabled ? 'notifications' : 'notifications-outline'}
-                  size={20}
-                  color={isNotifyEnabled ? COLORS.accent : COLORS.textMuted}
-                />
-              </TouchableOpacity>
-            )}
-          </View>
+          !isBlocked && (
+            <TouchableOpacity onPress={() => guestGate(handleFollow)} activeOpacity={0.6} disabled={followLoading}>
+              <Text style={[styles.brutAction, followLoading && { opacity: 0.4 }]}>
+                {(isFollowing ? t('profile.following') : t('profile.follow')).toUpperCase()} →
+              </Text>
+            </TouchableOpacity>
+          )
         )}
       </View>
 
+      {/* Hard rule */}
+      <View style={styles.brutRule} />
     </View>
   );
 
@@ -515,62 +479,68 @@ export default function ProfileScreen({ navigation, route }) {
 
   return (
     <View style={styles.container}>
-      {/* Nav bar */}
-      <View style={[styles.navRow, { paddingTop: insets.top + 6, backgroundColor: COLORS.white }]}>
+      {/* Brutalist nav row — bare typographic links */}
+      <View style={[styles.brutNavRow, { paddingTop: insets.top + 14, backgroundColor: COLORS.white }]}>
         {isPushed ? (
-          <TouchableOpacity style={styles.navBtn} onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={26} color={COLORS.text} />
+          <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <Text style={styles.brutNavLink}>← BACK</Text>
           </TouchableOpacity>
         ) : (
-          <TouchableOpacity style={styles.navBtn} onPress={() => navigation.navigate('Notifications')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Ionicons name={unreadCount > 0 ? 'notifications' : 'notifications-outline'} size={24} color={COLORS.text} />
-            {unreadCount > 0 && (
-              <View style={styles.notifBadge}>
-                <Text style={styles.notifBadgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
-              </View>
-            )}
+          <TouchableOpacity onPress={() => navigation.navigate('Notifications')} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <Text style={styles.brutNavLink}>
+              INBOX{unreadCount > 0 ? ` · ${unreadCount > 99 ? '99+' : unreadCount}` : ''}
+            </Text>
           </TouchableOpacity>
         )}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <TouchableOpacity style={styles.navBtn} onPress={handleShare} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Ionicons name="arrow-redo-outline" size={23} color={COLORS.textMuted} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18 }}>
+          <TouchableOpacity onPress={handleShare} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <Text style={styles.brutNavLink}>SHARE</Text>
           </TouchableOpacity>
-          {/* QR code button disabled for now */}
           {isOwnProfile && (
-            <TouchableOpacity style={styles.navBtn} onPress={() => navigation.navigate('Settings')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name="settings-outline" size={24} color={COLORS.textMuted} />
+            <TouchableOpacity onPress={() => navigation.navigate('Settings')} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+              <Text style={styles.brutNavLink}>SETTINGS</Text>
             </TouchableOpacity>
           )}
           {isPushed && !isOwnProfile && (
-            <TouchableOpacity style={styles.navBtn} onPress={handleBlock} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name={isBlocked ? 'ban' : 'ellipsis-horizontal'} size={24} color={COLORS.textMuted} />
+            <TouchableOpacity onPress={handleBlock} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+              <Text style={styles.brutNavLink}>{isBlocked ? 'BLOCKED' : '···'}</Text>
             </TouchableOpacity>
           )}
         </View>
       </View>
 
-      {/* Profile info */}
-      {renderHeader()}
+      {/* Non-own profile: just the header, no vault */}
+      {!isOwnProfile && (
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
+          showsVerticalScrollIndicator={false}
+        >
+          {renderHeader()}
+        </ScrollView>
+      )}
 
-      {/* Vault */}
+      {/* Vault (header is rendered inside via ListHeaderComponent) */}
       {isOwnProfile && (
         <FlatList
           data={vault.items}
           keyExtractor={(item) => item._id}
           numColumns={4}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 40, paddingHorizontal: 12 }}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 40, paddingHorizontal: 16 }}
           ListHeaderComponent={
-            <View style={styles.vaultHeader}>
-              <Text style={styles.vaultPercent}>{vault.percentage}%</Text>
-              <Text style={styles.vaultLabel}>{t('profile.gridUnlocked')}</Text>
-              <Text style={styles.vaultMeta}>{vault.visitedCount} / {vault.totalCircles}</Text>
-              <View style={styles.vaultDivider} />
-              <Text style={styles.vaultSectionTitle}>{t('profile.theVault')}</Text>
+            <View>
+              {renderHeader()}
+              <View style={styles.vaultHeader}>
+                <Text style={styles.vaultPercent}>{vault.percentage}%</Text>
+                <Text style={styles.vaultLabel}>{t('profile.gridUnlocked')}</Text>
+                <Text style={styles.vaultMeta}>
+                  {vault.visitedCount} / {vault.totalCircles} · {t('profile.theVault').toUpperCase()}
+                </Text>
+              </View>
             </View>
           }
           renderItem={({ item }) => (
             <View style={styles.vaultCell}>
-              <Artifact id={item._id} size={(SW - 24 - 24) / 4} locked={!item.visited} />
+              <Artifact id={item._id} size={(SW - 32 - 18) / 4} locked={!item.visited} />
             </View>
           )}
           ListEmptyComponent={
@@ -735,31 +705,74 @@ const makeStyles = (C, isRTL = false) => StyleSheet.create({
   empty: { paddingTop: 48, alignItems: 'center', paddingHorizontal: 40 },
 
   // Vault
-  vaultHeader: { paddingTop: 24, paddingBottom: 18, paddingHorizontal: 4, alignItems: 'flex-start' },
+  vaultHeader: { paddingTop: 28, paddingBottom: 18, paddingHorizontal: 0, alignItems: 'flex-start' },
   vaultPercent: {
-    fontSize: 92, fontWeight: '900', color: C.text,
-    lineHeight: 92, letterSpacing: -3,
+    fontSize: 96, fontWeight: '900', color: C.text,
+    lineHeight: 96, letterSpacing: -4,
   },
   vaultLabel: {
     fontSize: 11, fontWeight: '800', color: C.textMuted,
-    letterSpacing: 2, textTransform: 'uppercase', marginTop: -4,
+    letterSpacing: 2, textTransform: 'uppercase', marginTop: 2,
   },
   vaultMeta: {
-    fontSize: 13, fontWeight: '600', color: C.textMuted,
-    marginTop: 14,
-  },
-  vaultDivider: {
-    height: StyleSheet.hairlineWidth, backgroundColor: C.separator,
-    alignSelf: 'stretch', marginTop: 22, marginBottom: 18,
-  },
-  vaultSectionTitle: {
-    fontSize: 11, fontWeight: '800', color: C.textMuted,
-    letterSpacing: 2, textTransform: 'uppercase',
+    fontSize: 11, fontWeight: '700', color: C.textMuted,
+    letterSpacing: 1.5, marginTop: 18,
   },
   vaultCell: {
     margin: 3,
-    borderRadius: 8,
-    overflow: 'hidden',
+  },
+
+  // ── Brutalist nav + header ─────────────────────────────────────────────────
+  brutNavRow: {
+    flexDirection: isRTL ? 'row-reverse' : 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16, paddingBottom: 8,
+  },
+  brutNavLink: {
+    fontSize: 11, fontWeight: '900',
+    color: C.text, letterSpacing: 1.5,
+  },
+
+  headerWrap: { paddingHorizontal: 4, paddingTop: 8 },
+  brutName: {
+    fontSize: 56, fontWeight: '900', color: C.text,
+    lineHeight: 56, letterSpacing: -2,
+  },
+  brutVerifiedTag: {
+    fontSize: 10, fontWeight: '900', color: C.accent,
+    letterSpacing: 2, marginTop: 8,
+  },
+  brutBio: {
+    fontSize: 14, fontWeight: '500', color: C.textMuted,
+    lineHeight: 20, marginTop: 14, maxWidth: '90%',
+  },
+  brutStatsRow: {
+    flexDirection: isRTL ? 'row-reverse' : 'row',
+    alignItems: 'flex-end',
+    marginTop: 24, gap: 0,
+  },
+  brutStat: { paddingEnd: 28 },
+  brutStatNum: {
+    fontSize: 36, fontWeight: '900', color: C.text,
+    lineHeight: 36, letterSpacing: -1,
+  },
+  brutStatLabel: {
+    fontSize: 10, fontWeight: '800', color: C.textMuted,
+    letterSpacing: 1.5, marginTop: 4,
+  },
+  brutStatDivider: {
+    width: StyleSheet.hairlineWidth, alignSelf: 'stretch',
+    backgroundColor: C.separator, marginEnd: 28, marginTop: 4,
+  },
+  brutActionRow: { marginTop: 22 },
+  brutAction: {
+    fontSize: 13, fontWeight: '900', color: C.text,
+    letterSpacing: 2,
+  },
+  brutRule: {
+    height: 2, backgroundColor: C.text,
+    marginTop: 24, marginBottom: 0,
   },
   emptyText: { fontSize: 15, color: C.textMuted, textAlign: 'center' },
 
