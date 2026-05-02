@@ -205,6 +205,8 @@ export default function RadarScreen() {
         provider={PROVIDER_DEFAULT}
         initialRegion={KUWAIT_REGION}
         customMapStyle={DARK_MAP_STYLE}
+        userInterfaceStyle="dark"
+        mapType="mutedStandard"
         showsUserLocation={true}
         showsMyLocationButton={false}
         showsCompass={false}
@@ -235,9 +237,11 @@ export default function RadarScreen() {
         ))}
       </MapView>
 
-      {/* Top header — wordmark left, profile right */}
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <Text style={styles.title}>{t('radar.title')}</Text>
+      {/* Top header — wordmark in glass pill (left), profile (right) */}
+      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+        <View style={styles.wordmarkPill}>
+          <Text style={styles.wordmark}>{t('radar.title')}</Text>
+        </View>
         <TouchableOpacity
           onPress={() => navigation.navigate('Profile')}
           style={styles.profileBtn}
@@ -254,33 +258,33 @@ export default function RadarScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Floating action: Request location */}
-      <TouchableOpacity
-        style={[styles.fab, { bottom: insets.bottom + 100 }]}
-        onPress={() => navigation.navigate('RequestLocation', { initialCoords: userLoc })}
-        activeOpacity={0.85}
-      >
-        <Ionicons name="add" size={24} color="#0a0e1a" />
-      </TouchableOpacity>
-
-      {/* Recenter */}
-      <TouchableOpacity
-        style={[styles.recenter, { bottom: insets.bottom + 24 }]}
-        onPress={handleRecenter}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="locate" size={22} color="#fff" />
-      </TouchableOpacity>
-
-      {/* Pulse count indicator — moved below header */}
+      {/* Pulse count indicator — under wordmark */}
       {!loading && (
-        <View style={[styles.pulseBadge, { top: insets.top + 64 }]}>
+        <View style={[styles.pulseBadge, { top: insets.top + 62 }]}>
           <View style={styles.pulseDot} />
           <Text style={styles.pulseBadgeText}>
             {pulses.length} {t('radar.live')}
           </Text>
         </View>
       )}
+
+      {/* Bottom-right control stack: request + recenter */}
+      <View style={[styles.controlStack, { bottom: insets.bottom + 24 }]}>
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => navigation.navigate('RequestLocation', { initialCoords: userLoc })}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="add" size={26} color="#fff" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.recenter}
+          onPress={handleRecenter}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="locate" size={20} color="#0a0e1a" />
+        </TouchableOpacity>
+      </View>
 
       {loading && (
         <View style={styles.loadingOverlay}>
@@ -303,51 +307,79 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a0e1a' },
   header: {
     position: 'absolute', top: 0, left: 0, right: 0,
-    paddingHorizontal: 16, paddingBottom: 8,
+    paddingHorizontal: 14, paddingBottom: 8,
     backgroundColor: 'transparent',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  title: { fontSize: 24, fontWeight: '900', color: '#fff' },
+  wordmarkPill: {
+    backgroundColor: '#0a0e1a',
+    borderRadius: 20,
+    paddingHorizontal: 14, paddingVertical: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  wordmark: { fontSize: 18, fontWeight: '900', color: '#fff' },
   profileBtn: {
     width: 40, height: 40, borderRadius: 20,
     overflow: 'hidden',
-    borderWidth: 2, borderColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
   },
   profileAvatar: { width: '100%', height: '100%' },
   profileFallback: {
     width: '100%', height: '100%',
-    backgroundColor: 'rgba(20,28,50,0.9)',
+    backgroundColor: '#0a0e1a',
     justifyContent: 'center', alignItems: 'center',
   },
   pulseBadge: {
-    position: 'absolute', left: 16,
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: 'rgba(20,28,50,0.85)',
-    borderRadius: 16, paddingHorizontal: 10, paddingVertical: 6,
-    borderWidth: 1, borderColor: 'rgba(77,128,255,0.3)',
+    position: 'absolute', left: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 7,
+    backgroundColor: '#0a0e1a',
+    borderRadius: 14, paddingHorizontal: 11, paddingVertical: 7,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
   },
   pulseDot: {
     width: 8, height: 8, borderRadius: 4,
     backgroundColor: '#4D80FF',
-    shadowColor: '#4D80FF', shadowOpacity: 0.9, shadowRadius: 4,
+    shadowColor: '#4D80FF', shadowOpacity: 1, shadowRadius: 4,
   },
   pulseBadgeText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  controlStack: {
+    position: 'absolute', right: 14,
+    gap: 12, alignItems: 'center',
+  },
   fab: {
-    position: 'absolute', right: 16,
-    width: 52, height: 52, borderRadius: 26,
-    backgroundColor: '#4D80FF',
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: '#0033A0',
     justifyContent: 'center', alignItems: 'center',
-    shadowColor: '#4D80FF', shadowOpacity: 0.6, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 5 },
     elevation: 8,
   },
   recenter: {
-    position: 'absolute', right: 16,
     width: 44, height: 44, borderRadius: 22,
-    backgroundColor: 'rgba(20,28,50,0.85)',
+    backgroundColor: '#fff',
     justifyContent: 'center', alignItems: 'center',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
   },
   loadingOverlay: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
