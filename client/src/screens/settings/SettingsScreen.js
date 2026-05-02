@@ -1,546 +1,268 @@
-import { useContext, useState, useMemo, useEffect } from 'react';
+import { useContext, useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Modal, TextInput, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Switch, Share,
+  View, Text, StyleSheet, ScrollView, Modal, Alert, KeyboardAvoidingView,
+  Platform, Share, TouchableOpacity, TextInput,
 } from 'react-native';
-import { useDispatch } from 'react-redux';
-import { Ionicons } from '@expo/vector-icons';
+import { useDispatch, useSelector } from 'react-redux';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { changeAppLanguage } from '../../i18n';
 import { AppRestartContext } from '../../context/AppRestartContext';
 import { useTheme } from '../../context/ThemeContext';
 import { logout, getMe } from '../../store/slices/authSlice';
-import BottomMenu from '../../components/ui/BottomMenu';
 import { suggestionsAPI, usersAPI } from '../../services/api';
-import { useSelector } from 'react-redux';
+import {
+  BrutNav, BrutHero, BrutSection, BrutRow, BrutRule, BrutHair, BrutBrick, BrutInput,
+  ACCENT, TEXT, MUTED, SEPARATOR, BG, isAr, ls, shout,
+} from '../../components/Brut';
 
-const THEME_OPTIONS = [
-  { key: 'auto',  icon: 'phone-portrait-outline', labelKey: 'settings.themeAuto'  },
-  { key: 'light', icon: 'sunny-outline',           labelKey: 'settings.themeLight' },
-  { key: 'dark',  icon: 'moon-outline',            labelKey: 'settings.themeDark'  },
-];
-
-function SectionLabel({ label, colors, isRTL }) {
-  return <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textMuted, paddingHorizontal: 20, paddingTop: 24, paddingBottom: 8, textAlign: isRTL ? 'right' : 'left' }}>{label}</Text>;
-}
+const THEME_KEYS = ['auto', 'light', 'dark'];
 
 export default function SettingsScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
   const { t, i18n } = useTranslation();
-  const lang = i18n.language;
-  const isRTL = lang === 'ar';
+  const ar = isAr(i18n);
   const restartApp = useContext(AppRestartContext);
-  const { colors, scheme, setScheme } = useTheme();
-  const styles = useMemo(() => makeStyles(colors, isRTL), [colors, isRTL]);
+  const { scheme, setScheme } = useTheme();
   const { user: currentUser } = useSelector((s) => s.auth);
   const isFounder = currentUser?.phone === '+96599440289'
     || currentUser?.isFounder
     || /^\+965000000(0[1-9]|[1-4][0-9]|50)$/.test(currentUser?.phone || '');
 
-  // Refresh user data to get latest invite code statuses
   useEffect(() => { dispatch(getMe()); }, []);
 
-  const [logoutMenuVisible, setLogoutMenuVisible] = useState(false);
-  const [deleteLoading, setDeleteLoading] = useState(false);
-
-  const defaultNotifSettings = currentUser?.notificationSettings || {
-    pins: true, reactions: true, follows: true,
-  };
-  const allOn = Object.values(defaultNotifSettings).every(Boolean);
-  const [notifSettings, setNotifSettings] = useState(defaultNotifSettings);
-  const [notifAllOn, setNotifAllOn] = useState(allOn);
-
-  const handleNotifToggle = async (key, value) => {
-    const next = { ...notifSettings, [key]: value };
-    setNotifSettings(next);
-    try {
-      await usersAPI.updateNotificationSettings({ [key]: value });
-    } catch {
-      setNotifSettings(notifSettings); // revert on error
-    }
-  };
-
-  const handleNotifAllToggle = async (value) => {
-    setNotifAllOn(value);
-    const next = { pins: value, reactions: value, follows: value };
-    setNotifSettings(next);
-    try {
-      await usersAPI.updateNotificationSettings(next);
-    } catch {
-      setNotifAllOn(!value);
-      setNotifSettings(notifSettings);
-    }
-  };
-
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      t('settings.deleteAccountTitle'),
-      t('settings.deleteAccountMsg'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('settings.deleteAccountConfirm'),
-          style: 'destructive',
-          onPress: async () => {
-            setDeleteLoading(true);
-            try {
-              await usersAPI.deleteAccount();
-              await dispatch(logout());
-              navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
-            } catch (e) {
-              setDeleteLoading(false);
-              Alert.alert(t('common.error'), e.message || t('common.somethingWrong'));
-            }
-          },
-        },
-      ]
-    );
-  };
   const [suggestVisible, setSuggestVisible] = useState(false);
   const [suggestText, setSuggestText] = useState('');
-  const [suggestCategory, setSuggestCategory] = useState('feature');
   const [suggestLoading, setSuggestLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const SUGGEST_CATEGORIES = [
-    { key: 'feature', label: t('suggest.catFeature') },
-    { key: 'bug',     label: t('suggest.catBug') },
-    { key: 'design',  label: t('suggest.catDesign') },
-    { key: 'content', label: t('suggest.catContent') },
-    { key: 'other',   label: t('suggest.catOther') },
-  ];
+  const handleShareInvite = async (code) => {
+    try {
+      await Share.share({
+        message: ar
+          ? `انضم لكواي بكود الدعوة: ${code}\n\nhttps://kuwai.app`
+          : `Join KUWAI with my invite code: ${code}\n\nhttps://kuwai.app`,
+      });
+    } catch {}
+  };
 
-  const handleSuggestSubmit = async () => {
+  const handleSuggest = async () => {
     if (!suggestText.trim()) return;
     setSuggestLoading(true);
     try {
-      await suggestionsAPI.submit(suggestText.trim(), suggestCategory);
-      setSuggestVisible(false);
+      await suggestionsAPI.submit(suggestText.trim(), 'feature');
       setSuggestText('');
-      setSuggestCategory('feature');
+      setSuggestVisible(false);
       Alert.alert(t('suggest.doneTitle'), t('suggest.doneMsg'));
     } catch (e) {
-      Alert.alert(t('common.error'), e.message || t('suggest.errorMsg'));
-    } finally {
-      setSuggestLoading(false);
-    }
+      Alert.alert(t('common.error'), e.message);
+    } finally { setSuggestLoading(false); }
   };
 
-  const logoutOptions = [
-    {
-      label: t('profile.exit'),
-      destructive: true,
-      onPress: async () => {
-        await dispatch(logout());
-        navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
+  const handleLogout = () => {
+    Alert.alert(t('settings.title'), t('profile.exit') + '?', [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('profile.exit'),
+        style: 'destructive',
+        onPress: async () => {
+          await dispatch(logout());
+          navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
+        },
       },
-    },
-  ];
+    ]);
+  };
+
+  const handleDelete = () => {
+    Alert.alert(t('settings.deleteAccountTitle'), t('settings.deleteAccountMsg'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('settings.deleteAccountConfirm'),
+        style: 'destructive',
+        onPress: async () => {
+          setDeleteLoading(true);
+          try {
+            await usersAPI.deleteAccount();
+            await dispatch(logout());
+            navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
+          } catch (e) {
+            setDeleteLoading(false);
+            Alert.alert(t('common.error'), e.message);
+          }
+        },
+      },
+    ]);
+  };
+
+  const themeLabel = (key) => {
+    if (key === 'auto') return t('settings.themeAuto');
+    if (key === 'light') return t('settings.themeLight');
+    return t('settings.themeDark');
+  };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backBtn}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={22} color={colors.accent} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{t('settings.title')}</Text>
-        <View style={styles.backBtn} />
-      </View>
+    <View style={{ flex: 1, backgroundColor: BG }}>
+      <BrutNav onBack={() => navigation.goBack()} />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 40 }}
       >
-        {/* Invite codes section */}
+        <BrutHero title={t('settings.title')} label={ar ? 'الإعدادات' : 'CONTROL'} />
+        <BrutRule mt={26} />
+
+        {/* INVITES */}
         {currentUser?.inviteCodes?.length > 0 && (
           <>
-            <SectionLabel label={t('settings.invites')} colors={colors} isRTL={isRTL} />
-            <View style={styles.card}>
-              {currentUser.inviteCodes.map((invite, idx) => (
-                <View key={invite.code} style={[styles.inviteCodeRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }, idx > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator }]}>
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <Text style={[styles.inviteCode, { color: invite.used ? colors.textMuted : colors.text, textAlign: isRTL ? 'right' : 'left', textDecorationLine: invite.used ? 'line-through' : 'none' }]}>
-                      {invite.code}
-                    </Text>
-                    <Text style={[styles.inviteStatus, { color: invite.used ? '#FF3B30' : '#34C759', textAlign: isRTL ? 'right' : 'left' }]}>
-                      {invite.used ? (isRTL ? 'مستخدم' : 'Used') : (isRTL ? 'متاح' : 'Available')}
-                    </Text>
+            <BrutSection title={t('settings.invites')} />
+            {currentUser.inviteCodes.map((invite, idx) => {
+              const used = !!invite.used;
+              return (
+                <View key={invite.code}>
+                  <View style={[styles.inviteRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[
+                        styles.inviteCode,
+                        used && { color: MUTED, textDecorationLine: 'line-through' },
+                        { textAlign: ar ? 'right' : 'left' },
+                      ]}>
+                        {invite.code}
+                      </Text>
+                      <Text style={[styles.inviteStatus, { letterSpacing: ls(1.5, ar), textAlign: ar ? 'right' : 'left' }]}>
+                        {used
+                          ? shout(t('settings.inviteUsed'), ar)
+                          : shout(t('settings.inviteAvailable'), ar)}
+                      </Text>
+                    </View>
+                    {!used && (
+                      <TouchableOpacity onPress={() => handleShareInvite(invite.code)}>
+                        <Text style={[styles.shareLink, { letterSpacing: ls(2, ar) }]}>
+                          {ar ? `← ${t('common.share')}` : `${shout(t('common.share'), false)} →`}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
-                  {!invite.used && (
-                    <TouchableOpacity
-                      style={[styles.inviteShareBtn, { backgroundColor: colors.accent }]}
-                      onPress={() => {
-                        const msg = isRTL
-                          ? `انضم لـ KUWAI باستخدام كود الدعوة: ${invite.code}\nhttps://apps.apple.com/us/app/kuwai/id6760574615`
-                          : `Join KUWAI with my invite code: ${invite.code}\nhttps://apps.apple.com/us/app/kuwai/id6760574615`;
-                        Share.share({ message: msg });
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <Ionicons name="share-outline" size={18} color="#fff" />
-                      <Text style={styles.inviteShareText}>{t('settings.shareInvite')}</Text>
-                    </TouchableOpacity>
-                  )}
+                  {idx < currentUser.inviteCodes.length - 1 && <BrutHair />}
                 </View>
-              ))}
-            </View>
+              );
+            })}
           </>
         )}
 
-        {/* Appearance section */}
-        <SectionLabel label={t('settings.appearance')} colors={colors} isRTL={isRTL} />
-        <View style={styles.card}>
+        {/* LANGUAGE */}
+        <BrutSection title={t('settings.language')} />
+        <BrutRow
+          label="العربية"
+          value={i18n.language === 'ar' ? '✓' : null}
+          onPress={() => changeAppLanguage('ar', i18n, restartApp)}
+          accent={i18n.language === 'ar'}
+        />
+        <BrutHair />
+        <BrutRow
+          label="English"
+          value={i18n.language === 'en' ? '✓' : null}
+          onPress={() => changeAppLanguage('en', i18n, restartApp)}
+          accent={i18n.language === 'en'}
+        />
 
-          {/* Language */}
-          <View style={styles.langCard}>
-            <View style={styles.rowHeader}>
-              <Ionicons name="language-outline" size={22} color={colors.textMuted} />
-              <Text style={styles.rowHeaderLabel}>{t('settings.language')}</Text>
-            </View>
-            <View style={styles.segmentRow}>
-              {['ar', 'en'].map((l) => (
-                <TouchableOpacity
-                  key={l}
-                  style={[styles.segmentPill, lang === l && styles.segmentPillActive]}
-                  onPress={() => changeAppLanguage(l, i18n, restartApp)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.segmentPillText, lang === l && styles.segmentPillTextActive]}>
-                    {l === 'ar' ? t('settings.arabic') : t('settings.english')}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          <View style={styles.divider} />
-
-          {/* Theme */}
-          <View style={styles.langCard}>
-            <View style={styles.rowHeader}>
-              <Ionicons name="contrast-outline" size={22} color={colors.textMuted} />
-              <Text style={styles.rowHeaderLabel}>{t('settings.theme')}</Text>
-            </View>
-            <View style={styles.segmentRow}>
-              {THEME_OPTIONS.map((opt) => (
-                <TouchableOpacity
-                  key={opt.key}
-                  style={[styles.segmentPill, styles.segmentPillThird, scheme === opt.key && styles.segmentPillActive]}
-                  onPress={() => setScheme(opt.key)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons
-                    name={opt.icon}
-                    size={16}
-                    color={scheme === opt.key ? colors.white : colors.textMuted}
-                  />
-                  <Text style={[styles.segmentPillText, scheme === opt.key && styles.segmentPillTextActive]}>
-                    {t(opt.labelKey)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-        </View>
-
-        {/* Feedback section */}
-        <SectionLabel label={t('suggest.support')} colors={colors} isRTL={isRTL} />
-        <View style={styles.card}>
-          <TouchableOpacity style={styles.row} onPress={() => setSuggestVisible(true)} activeOpacity={0.7}>
-            <View style={[styles.rowIcon, { backgroundColor: '#EEF2FA' }]}>
-              <Ionicons name="bulb-outline" size={22} color={colors.accent} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.rowLabel}>{t('suggest.title')}</Text>
-              <Text style={styles.rowSub}>{t('suggest.sub')}</Text>
-            </View>
-            <Ionicons name={isRTL ? 'chevron-back' : 'chevron-forward'} size={18} color={colors.textMuted} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Notifications section */}
-        <SectionLabel label={t('settings.notifications')} colors={colors} isRTL={isRTL} />
-        <View style={styles.card}>
-          {/* Master toggle */}
-          <View style={styles.row}>
-            <View style={[styles.rowIcon, { backgroundColor: '#EEF2FA' }]}>
-              <Ionicons name="notifications-outline" size={22} color={colors.accent} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.rowLabel}>{t('settings.notifAll')}</Text>
-              <Text style={styles.rowSub}>{t('settings.notifAllSub')}</Text>
-            </View>
-            <Switch
-              value={notifAllOn}
-              onValueChange={handleNotifAllToggle}
-              trackColor={{ false: colors.separator, true: colors.accent }}
-              thumbColor="#fff"
+        {/* APPEARANCE */}
+        <BrutSection title={t('settings.appearance')} />
+        {THEME_KEYS.map((key, idx) => (
+          <View key={key}>
+            <BrutRow
+              label={themeLabel(key)}
+              value={scheme === key ? '✓' : null}
+              onPress={() => setScheme(key)}
+              accent={scheme === key}
             />
+            {idx < THEME_KEYS.length - 1 && <BrutHair />}
           </View>
+        ))}
 
-          {[
-            { key: 'pins',      icon: 'pin-outline',         labelKey: 'notifPins',      subKey: 'notifPinsSub' },
-            { key: 'reactions', icon: 'heart-outline',       labelKey: 'notifReactions', subKey: 'notifReactionsSub' },
-            { key: 'follows',   icon: 'person-add-outline',  labelKey: 'notifFollows',   subKey: 'notifFollowsSub' },
-          ].map(({ key, icon, labelKey, subKey }, i, arr) => (
-            <View key={key}>
-              <View style={styles.divider} />
-              <View style={[styles.row, !notifAllOn && { opacity: 0.4 }]}>
-                <View style={[styles.rowIcon, { backgroundColor: colors.fill }]}>
-                  <Ionicons name={icon} size={22} color={colors.textMuted} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.rowLabel}>{t(`settings.${labelKey}`)}</Text>
-                  <Text style={styles.rowSub}>{t(`settings.${subKey}`)}</Text>
-                </View>
-                <Switch
-                  value={notifSettings[key] && notifAllOn}
-                  onValueChange={(v) => handleNotifToggle(key, v)}
-                  disabled={!notifAllOn}
-                  trackColor={{ false: colors.separator, true: colors.accent }}
-                  thumbColor="#fff"
-                />
-              </View>
-            </View>
-          ))}
-        </View>
+        {/* FEEDBACK */}
+        <BrutSection title={t('settings.feedback') || 'Feedback'} />
+        <BrutRow label={t('suggest.title')} onPress={() => setSuggestVisible(true)} />
 
-        {/* Developer — founder & dummy accounts only */}
+        {/* DEVELOPER */}
         {isFounder && (
           <>
-            <SectionLabel label="Developer" colors={colors} isRTL={isRTL} />
-            <View style={styles.card}>
-              <TouchableOpacity
-                style={styles.row}
-                onPress={() => navigation.navigate('DeveloperAccounts')}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.rowIcon, { backgroundColor: '#1c1c1e' }]}>
-                  <Ionicons name="people" size={20} color="#CBA052" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.rowLabel}>Dummy Accounts</Text>
-                  <Text style={styles.rowSub}>Switch between test accounts</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-              </TouchableOpacity>
-            </View>
+            <BrutSection title="Developer" />
+            <BrutRow label="Dev Accounts" onPress={() => navigation.navigate('DeveloperAccounts')} />
           </>
         )}
 
-        {/* Account section */}
-        <SectionLabel label={t('settings.account')} colors={colors} isRTL={isRTL} />
-        <View style={styles.card}>
-          <TouchableOpacity style={styles.row} onPress={() => setLogoutMenuVisible(true)} activeOpacity={0.6}>
-            <View style={styles.rowIconDestructive}>
-              <Ionicons name="log-out-outline" size={22} color={colors.error} />
-            </View>
-            <Text style={styles.rowLabelDestructive}>{t('settings.signOut')}</Text>
-          </TouchableOpacity>
-          <View style={styles.divider} />
-          <TouchableOpacity style={styles.row} onPress={handleDeleteAccount} activeOpacity={0.6} disabled={deleteLoading}>
-            <View style={[styles.rowIconDestructive, { backgroundColor: '#FFF2F2' }]}>
-              {deleteLoading
-                ? <ActivityIndicator size="small" color={colors.error} />
-                : <Ionicons name="trash-outline" size={22} color={colors.error} />
-              }
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.rowLabelDestructive}>{t('settings.deleteAccount')}</Text>
-              <Text style={[styles.rowSub, { color: colors.error, opacity: 0.7 }]}>{t('settings.deleteAccountSub')}</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
+        <BrutRule mt={36} mb={6} />
+
+        {/* ACCOUNT */}
+        <BrutSection title={t('settings.account') || 'Account'} />
+        <BrutRow label={t('profile.exit')} onPress={handleLogout} danger />
+        <BrutHair />
+        <BrutRow
+          label={t('settings.deleteAccount')}
+          onPress={handleDelete}
+          danger
+          disabled={deleteLoading}
+        />
+
+        <View style={{ height: 40 }} />
+        <Text style={[styles.version, { textAlign: ar ? 'right' : 'left' }]}>KUWAI · v1.1.3</Text>
       </ScrollView>
 
-      {/* Suggest Feature Modal */}
-      <Modal
-        visible={suggestVisible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setSuggestVisible(false)}
-      >
-        <KeyboardAvoidingView
-          style={{ flex: 1, backgroundColor: colors.white }}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-          {/* Header */}
-          <View style={[styles.modalHeader, { paddingTop: 16 }]}>
-            <TouchableOpacity onPress={() => setSuggestVisible(false)}>
-              <Text style={{ fontSize: 17, color: colors.accent }}>{t('common.cancel')}</Text>
-            </TouchableOpacity>
-            <Text style={{ fontSize: 17, fontWeight: '600', color: colors.text, flex: 1, textAlign: 'center' }}>
-              {t('suggest.modalTitle')}
-            </Text>
-            <TouchableOpacity
-              onPress={handleSuggestSubmit}
-              disabled={!suggestText.trim() || suggestLoading}
-              style={[styles.sendBtn, (!suggestText.trim() || suggestLoading) && { opacity: 0.4 }]}
-            >
-              {suggestLoading
-                ? <ActivityIndicator size="small" color="#fff" />
-                : <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>{t('suggest.send')}</Text>
-              }
-            </TouchableOpacity>
+      {/* Suggest modal */}
+      <Modal visible={suggestVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setSuggestVisible(false)}>
+        <KeyboardAvoidingView style={{ flex: 1, backgroundColor: BG }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <BrutNav
+            onBack={() => setSuggestVisible(false)}
+            leftLabel={t('common.cancel')}
+            right={
+              <TouchableOpacity onPress={handleSuggest} disabled={!suggestText.trim() || suggestLoading} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                <Text style={[
+                  styles.sendLink,
+                  (!suggestText.trim() || suggestLoading) && { opacity: 0.35 },
+                  { letterSpacing: ls(2, ar) },
+                ]}>
+                  {suggestLoading ? '...' : shout(t('suggest.send'), ar)}
+                </Text>
+              </TouchableOpacity>
+            }
+          />
+          <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
+            <BrutHero title={t('suggest.title')} label={ar ? 'اقتراحك' : 'YOUR IDEA'} size={42} />
+            <BrutRule mt={22} />
+            <BrutInput
+              label={t('suggest.placeholder')}
+              value={suggestText}
+              onChangeText={setSuggestText}
+              placeholder={ar ? '...' : '...'}
+              multiline
+              maxLength={500}
+            />
           </View>
-
-          <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
-            {/* Category picker */}
-            <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textMuted, marginBottom: 10 }}>
-                {t('suggest.type')}
-              </Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {SUGGEST_CATEGORIES.map((cat) => (
-                  <TouchableOpacity
-                    key={cat.key}
-                    onPress={() => setSuggestCategory(cat.key)}
-                    style={[
-                      styles.catChip,
-                      suggestCategory === cat.key && { backgroundColor: '#EEF2FA', borderColor: colors.accent },
-                    ]}
-                  >
-                    <Text style={[
-                      styles.catChipLabel,
-                      suggestCategory === cat.key && { color: colors.accent, fontWeight: '600' },
-                    ]}>
-                      {cat.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* Text input */}
-            <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textMuted, marginBottom: 10 }}>
-                {t('suggest.yourSuggestion')}
-              </Text>
-              <TextInput
-                style={[styles.suggestInput, { color: colors.text, backgroundColor: colors.fill }]}
-                placeholder={t('suggest.placeholder')}
-                placeholderTextColor={colors.textMuted}
-                value={suggestText}
-                onChangeText={setSuggestText}
-                multiline
-                maxLength={1000}
-                autoFocus
-                textAlignVertical="top"
-              />
-              <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 6, textAlign: 'right' }}>
-                {suggestText.length}/1000
-              </Text>
-            </View>
-          </ScrollView>
         </KeyboardAvoidingView>
       </Modal>
-
-      <BottomMenu
-        visible={logoutMenuVisible}
-        onClose={() => setLogoutMenuVisible(false)}
-        title={t('profile.signOutMsg')}
-        options={logoutOptions}
-      />
     </View>
   );
 }
 
-const makeStyles = (C, isRTL) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: C.background },
-
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: C.separator,
-    backgroundColor: C.white,
+const styles = StyleSheet.create({
+  inviteRow: {
+    minHeight: 64, alignItems: 'center',
+    paddingHorizontal: 4,
   },
-  backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: C.text, textAlign: 'center' },
-
-  card: {
-    backgroundColor: C.white,
-    marginHorizontal: 16,
-    borderRadius: 16,
-    overflow: 'hidden',
+  inviteCode: {
+    fontSize: 22, fontWeight: '900', color: TEXT,
+    fontVariant: ['tabular-nums'],
   },
-  divider: { height: StyleSheet.hairlineWidth, backgroundColor: C.separator, marginHorizontal: 16 },
-
-  langCard: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 14 },
-
-  rowHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  rowHeaderLabel: { fontSize: 15, fontWeight: '600', color: C.text },
-
-  segmentRow: {
-    flexDirection: 'row',
-    backgroundColor: C.fill,
-    borderRadius: 10,
-    padding: 3,
-    gap: 3,
+  inviteStatus: {
+    fontSize: 10, fontWeight: '800', color: MUTED, marginTop: 4,
   },
-  segmentPill: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 4,
+  shareLink: {
+    fontSize: 12, fontWeight: '900', color: ACCENT,
   },
-  segmentPillThird: { flex: 1 },
-  segmentPillActive: {
-    backgroundColor: C.accent,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+  sendLink: { fontSize: 12, fontWeight: '900', color: ACCENT },
+  version: {
+    fontSize: 10, fontWeight: '800', color: MUTED,
+    letterSpacing: 1.5, marginTop: 24,
   },
-  segmentPillText: { fontSize: 13, fontWeight: '500', color: C.textMuted },
-  segmentPillTextActive: { color: '#fff', fontWeight: '600' },
-
-  row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
-  rowIcon: { width: 32, height: 32, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
-  rowLabel: { fontSize: 15, color: C.text, fontWeight: '500', textAlign: isRTL ? 'right' : 'left' },
-  rowSub: { fontSize: 12, color: C.textMuted, marginTop: 1, textAlign: isRTL ? 'right' : 'left' },
-  rowIconDestructive: {
-    width: 32, height: 32, borderRadius: 8,
-    backgroundColor: '#EEF2FA', justifyContent: 'center', alignItems: 'center',
-  },
-  rowLabelDestructive: { flex: 1, fontSize: 15, color: C.error, textAlign: isRTL ? 'right' : 'left' },
-
-  // Suggestion modal
-  modalHeader: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingBottom: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.separator,
-  },
-  sendBtn: {
-    backgroundColor: C.accent, borderRadius: 20,
-    paddingHorizontal: 16, height: 34,
-    justifyContent: 'center', alignItems: 'center',
-  },
-  catChip: {
-    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
-    backgroundColor: C.fill, borderWidth: 1.5, borderColor: 'transparent',
-  },
-  catChipLabel: { fontSize: 13, fontWeight: '500', color: C.textMuted },
-  suggestInput: {
-    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 16, minHeight: 140,
-  },
-  inviteCodeRow: { alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
-  inviteCode: { fontSize: 20, fontWeight: '800' },
-  inviteStatus: { fontSize: 12, fontWeight: '600' },
-  inviteShareBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10 },
-  inviteShareText: { color: '#fff', fontSize: 14, fontWeight: '600' },
 });

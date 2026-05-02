@@ -1,152 +1,70 @@
-import React, { useState, useRef, useMemo } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ActivityIndicator,
-} from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { updateProfile, redeemReferral } from '../../store/slices/authSlice';
-import { useTheme } from '../../context/ThemeContext';
+import {
+  BrutHero, BrutRule, BrutInput, BrutBrick, BG, isAr,
+} from '../../components/Brut';
 
 export default function NameScreen() {
   const dispatch = useDispatch();
   const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
-  const isRTL = i18n.language === 'ar';
-  const { colors: C } = useTheme();
+  const ar = isAr(i18n);
   const { isLoading } = useSelector((s) => s.auth);
   const [name, setName] = useState('');
-  const [referralCode, setReferralCode] = useState('');
-  const inputRef = useRef(null);
-
-  const styles = useMemo(() => makeStyles(C, isRTL), [C, isRTL]);
+  const [referral, setReferral] = useState('');
 
   const isValid = name.trim().length >= 2;
 
   const handleJoin = async () => {
     if (!isValid || isLoading) return;
     await dispatch(updateProfile({ name: name.trim() }));
-    if (referralCode.trim()) {
-      dispatch(redeemReferral(referralCode.trim())).catch(() => {/* silent — invalid code */});
+    if (referral.trim()) {
+      dispatch(redeemReferral(referral.trim())).catch(() => {});
     }
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <View style={[styles.inner, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 32 }]}>
-
-        {/* Step bar */}
-        <View style={styles.stepRow}>
-          {[0, 1, 2].map((i) => (
-            <View
-              key={i}
-              style={[styles.stepSeg, styles.stepSegActive, i < 2 && styles.stepGap]}
-            />
-          ))}
-        </View>
-
-        {/* Header */}
-        <Text style={[styles.title, { textAlign: isRTL ? 'right' : 'left' }]}>{t('auth.nameTitle')}</Text>
-        <Text style={[styles.subtitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t('auth.nameSub')}</Text>
-
-        {/* Name input */}
-        <TouchableOpacity
-          activeOpacity={1}
-          style={styles.inputCard}
-          onPress={() => inputRef.current?.focus()}
-        >
-          <TextInput
-            ref={inputRef}
-            style={styles.input}
+    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <View style={[styles.inner, { paddingTop: insets.top + 36, paddingBottom: insets.bottom + 28 }]}>
+        <View>
+          <BrutHero title={t('auth.nameTitle')} label="03 / 03" size={42} />
+          <BrutRule mt={24} mb={28} />
+          <BrutInput
+            label={t('auth.namePlaceholder')}
             value={name}
             onChangeText={setName}
             placeholder={t('auth.namePlaceholder')}
-            placeholderTextColor={C.textPlaceholder}
             autoCapitalize="words"
-            autoCorrect={false}
-            autoFocus
-            returnKeyType="done"
-            onSubmitEditing={handleJoin}
             maxLength={50}
+            autoFocus
+            accent
           />
-        </TouchableOpacity>
-
-        {/* Optional referral code */}
-        <TouchableOpacity
-          activeOpacity={1}
-          style={[styles.inputCard, { marginTop: 10 }]}
-          onPress={() => {}}
-        >
-          <TextInput
-            style={[styles.input, { fontSize: 16 }]}
-            value={referralCode}
-            onChangeText={(v) => setReferralCode(v.toUpperCase())}
-            placeholder={t('auth.referralPlaceholder')}
-            placeholderTextColor={C.textPlaceholder}
+          <BrutInput
+            label={t('auth.referralPlaceholder')}
+            value={referral}
+            onChangeText={(v) => setReferral(v.toUpperCase())}
+            placeholder="A1B2C3"
             autoCapitalize="characters"
-            autoCorrect={false}
-            returnKeyType="done"
-            onSubmitEditing={handleJoin}
             maxLength={6}
           />
-        </TouchableOpacity>
-        <Text style={[styles.referralHint, { textAlign: isRTL ? 'right' : 'left' }]}>
-          {t('auth.referralHint')}
-        </Text>
-
-        <View style={{ flex: 1 }} />
-
-        {/* CTA */}
-        <TouchableOpacity
-          style={[styles.btn, (!isValid || isLoading) && styles.btnDisabled]}
+        </View>
+        <BrutBrick
+          label={t('auth.join')}
           onPress={handleJoin}
           disabled={!isValid || isLoading}
-          activeOpacity={0.85}
-        >
-          {isLoading
-            ? <ActivityIndicator color="#fff" />
-            : (
-              <View style={styles.btnInner}>
-                <Text style={styles.btnText}>{t('auth.join')}</Text>
-                <Text style={styles.btnArrow}>{isRTL ? '←' : '→'}</Text>
-              </View>
-            )
-          }
-        </TouchableOpacity>
+          loading={isLoading}
+          accent
+        />
       </View>
     </KeyboardAvoidingView>
   );
 }
 
-const makeStyles = (C, isRTL) => StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.white },
-  inner: { flex: 1, paddingHorizontal: 24 },
-
-  stepRow: { flexDirection: 'row', marginBottom: 40 },
-  stepSeg: { flex: 1, height: 3, borderRadius: 2 },
-  stepSegActive: { backgroundColor: C.accent },
-  stepGap: { marginEnd: 4 },
-
-  title: { fontSize: 32, fontWeight: '700', color: C.text, marginBottom: 10 },
-  subtitle: { fontSize: 15, color: C.textMuted, lineHeight: 22, marginBottom: 36 },
-
-  inputCard: {
-    backgroundColor: C.fill, borderRadius: 14,
-    paddingHorizontal: 18, height: 60, justifyContent: 'center', marginBottom: 10,
-  },
-  input: { fontSize: 20, fontWeight: '500', color: C.text, textAlign: isRTL ? 'right' : 'left' },
-  referralHint: { fontSize: 12, color: C.textMuted, marginTop: 6, marginBottom: 8 },
-
-  btn: {
-    backgroundColor: C.accent, borderRadius: 14,
-    height: 56, justifyContent: 'center', alignItems: 'center',
-  },
-  btnDisabled: { opacity: 0.4 },
-  btnInner: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  btnText: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  btnArrow: { color: '#fff', fontSize: 18, fontWeight: '400' },
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: BG },
+  inner: { flex: 1, paddingHorizontal: 24, justifyContent: 'space-between' },
 });

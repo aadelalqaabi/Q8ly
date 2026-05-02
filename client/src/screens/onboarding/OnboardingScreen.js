@@ -1,67 +1,43 @@
 import React, { useRef, useState, useCallback } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  Dimensions,
-  FlatList,
-  TouchableOpacity,
-  Animated,
-  Platform,
-  Alert,
-  I18nManager,
+  View, Text, StyleSheet, Dimensions, FlatList, TouchableOpacity, Alert, ActivityIndicator,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useSelector } from 'react-redux';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
 import * as Haptics from 'expo-haptics';
+import { BG, TEXT, MUTED, ACCENT, isAr, ls, shout } from '../../components/Brut';
 
 let Location = null;
 try { Location = require('expo-location'); } catch {}
 
-const { width, height } = Dimensions.get('window');
-const ONBOARDING_KEY = '@kn_onboarding_done';
-const BLUE = '#0033A0';
-const GOLD = '#CBA052';
+const { width: SW } = Dimensions.get('window');
+export const ONBOARDING_KEY = '@kn_onboarding_done';
 
 export default function OnboardingScreen({ onDone }) {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
-  const isRTL = i18n.language === 'ar';
-  const align = isRTL ? 'right' : 'left';
-  const selfAlign = isRTL ? 'flex-end' : 'flex-start';
-  const { user } = useSelector((s) => s.auth);
-  const flatListRef = useRef(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const scrollX = useRef(new Animated.Value(0)).current;
-  const pointsAnim = useRef(new Animated.Value(0)).current;
-  const [pointsAnimated, setPointsAnimated] = useState(false);
-
-  const points = user?.hachiPoints ?? 0;
+  const ar = isAr(i18n);
+  const flatRef = useRef(null);
+  const [idx, setIdx] = useState(0);
+  const [busy, setBusy] = useState(false);
 
   const goNext = useCallback(() => {
-    if (currentIndex < 2) {
-      flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
+    if (idx < 2) {
+      flatRef.current?.scrollToIndex({ index: idx + 1, animated: true });
     }
-  }, [currentIndex]);
+  }, [idx]);
 
-  const handleLocationRequest = useCallback(async () => {
-    if (!Location) {
-      goNext();
-      return;
-    }
+  const handleLocation = useCallback(async () => {
+    if (!Location) { goNext(); return; }
+    setBusy(true);
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert(
-          t('onboarding.locationDeniedTitle'),
-          t('onboarding.locationDeniedMsg'),
-        );
+        Alert.alert(t('onboarding.locationDeniedTitle'), t('onboarding.locationDeniedMsg'));
       }
-    } catch {}
+    } catch {} finally { setBusy(false); }
     goNext();
   }, [goNext, t]);
 
@@ -72,229 +48,112 @@ export default function OnboardingScreen({ onDone }) {
   }, [onDone]);
 
   const onViewableItemsChanged = useRef(({ viewableItems }) => {
-    if (viewableItems.length > 0) {
-      const idx = viewableItems[0].index;
-      setCurrentIndex(idx);
-      if (idx === 2 && !pointsAnimated) {
-        setPointsAnimated(true);
-        Animated.spring(pointsAnim, {
-          toValue: 1,
-          damping: 12,
-          stiffness: 150,
-          useNativeDriver: true,
-        }).start();
-      }
-    }
+    if (viewableItems.length > 0) setIdx(viewableItems[0].index);
   }).current;
 
   const pages = [
-    // Page 1: Circles
     {
-      key: 'circles',
-      icon: 'chatbubbles',
-      render: () => (
-        <View style={styles.page}>
-          <View style={[styles.iconCircle, { alignSelf: selfAlign }]}>
-            <Ionicons name="chatbubbles" size={48} color="#FFFFFF" />
-          </View>
-          <Text style={[styles.title, { textAlign: align }]}>{t('onboarding.circlesTitle')}</Text>
-          <View style={[styles.goldLine, { alignSelf: selfAlign }]} />
-          <Text style={[styles.body, { textAlign: align }]}>{t('onboarding.circlesBody')}</Text>
-          <View style={{ flex: 1 }} />
-          <TouchableOpacity style={[styles.btn, { marginBottom: insets.bottom + 40 }]} onPress={goNext} activeOpacity={0.8}>
-            <Text style={styles.btnText}>{t('onboarding.next')}</Text>
-          </TouchableOpacity>
-        </View>
-      ),
+      key: 'pulse',
+      number: '01',
+      title: t('onboarding.circlesTitle'),
+      body: t('onboarding.circlesBody'),
+      cta: t('onboarding.next'),
+      action: goNext,
     },
-    // Page 2: Location circles
     {
       key: 'location',
-      icon: 'location',
-      render: () => (
-        <View style={styles.page}>
-          <View style={[styles.iconCircle, { alignSelf: selfAlign }]}>
-            <Ionicons name="location" size={48} color="#FFFFFF" />
-          </View>
-          <Text style={[styles.title, { textAlign: align }]}>{t('onboarding.locationTitle')}</Text>
-          <View style={[styles.goldLine, { alignSelf: selfAlign }]} />
-          <Text style={[styles.body, { textAlign: align }]}>{t('onboarding.locationBody')}</Text>
-          <View style={{ flex: 1 }} />
-          <TouchableOpacity style={[styles.btn, { marginBottom: insets.bottom + 40 }]} onPress={handleLocationRequest} activeOpacity={0.8}>
-            <Ionicons name="navigate" size={20} color={BLUE} style={{ marginRight: 8 }} />
-            <Text style={styles.btnText}>{t('onboarding.enableLocation')}</Text>
-          </TouchableOpacity>
-        </View>
-      ),
+      number: '02',
+      title: t('onboarding.locationTitle'),
+      body: t('onboarding.locationBody'),
+      cta: t('onboarding.enableLocation'),
+      action: handleLocation,
     },
-    // Page 3: Points
     {
-      key: 'points',
-      icon: 'star',
-      render: () => {
-        const scale = pointsAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] });
-        const opacity = pointsAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 0.5, 1] });
-        return (
-          <View style={styles.page}>
-            <View style={[styles.iconCircle, { alignSelf: selfAlign }]}>
-              <Ionicons name="star" size={48} color="#FFFFFF" />
-            </View>
-            <Text style={[styles.title, { textAlign: align }]}>{t('onboarding.pointsTitle')}</Text>
-            <View style={[styles.goldLine, { alignSelf: selfAlign }]} />
-            <Text style={[styles.body, { textAlign: align }]}>{t('onboarding.pointsBody')}</Text>
-            <Animated.View style={[styles.pointsBadge, { transform: [{ scale }], opacity }]}>
-              <Ionicons name="star" size={28} color={GOLD} />
-              <Text style={styles.pointsNumber}>{points}</Text>
-              <Text style={styles.pointsLabel}>{t('onboarding.pointsLabel')}</Text>
-            </Animated.View>
-            <View style={{ flex: 1 }} />
-            <TouchableOpacity style={[styles.btn, { marginBottom: insets.bottom + 40 }]} onPress={handleFinish} activeOpacity={0.8}>
-              <Text style={styles.btnText}>{t('onboarding.start')}</Text>
-            </TouchableOpacity>
-          </View>
-        );
-      },
+      key: 'enter',
+      number: '03',
+      title: t('onboarding.pointsTitle'),
+      body: t('onboarding.pointsBody'),
+      cta: ar ? 'الدخول' : 'ENTER',
+      action: handleFinish,
     },
   ];
 
-  return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Skip */}
+  const renderPage = ({ item }) => (
+    <View style={[styles.page, { width: SW, paddingTop: insets.top + 40, paddingBottom: insets.bottom + 30 }]}>
+      <View style={[styles.pageInner, { alignItems: ar ? 'flex-end' : 'flex-start' }]}>
+        <Text style={[styles.number, { letterSpacing: ls(2, ar) }]}>{item.number}</Text>
+        <View style={styles.numberRule} />
+        <Text
+          style={[styles.title, { textAlign: ar ? 'right' : 'left', letterSpacing: ls(-2, ar) }]}
+          numberOfLines={3}
+          adjustsFontSizeToFit
+          minimumFontScale={0.6}
+        >
+          {shout(item.title, ar)}
+        </Text>
+        <Text style={[styles.body, { textAlign: ar ? 'right' : 'left' }]}>{item.body}</Text>
+      </View>
       <TouchableOpacity
-        style={[styles.skip, { top: insets.top + 12, [isRTL ? 'left' : 'right']: 20 }]}
-        onPress={handleFinish}
-        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        style={[styles.cta, { alignSelf: ar ? 'flex-end' : 'flex-start' }]}
+        onPress={item.action}
+        disabled={busy}
+        activeOpacity={0.6}
       >
-        <Text style={styles.skipText}>{t('onboarding.skip')}</Text>
+        {busy && idx === 1 && item.key === 'location'
+          ? <ActivityIndicator color={ACCENT} />
+          : <Text style={[styles.ctaText, { letterSpacing: ls(2, ar) }]}>
+              {ar ? `← ${item.cta}` : `${shout(item.cta, false)} →`}
+            </Text>}
       </TouchableOpacity>
+    </View>
+  );
 
+  return (
+    <View style={{ flex: 1, backgroundColor: BG }}>
       <FlatList
-        ref={flatListRef}
+        ref={flatRef}
         data={pages}
+        keyExtractor={(p) => p.key}
+        renderItem={renderPage}
         horizontal
         pagingEnabled
-        scrollEnabled={false}
         showsHorizontalScrollIndicator={false}
-        bounces={false}
-        keyExtractor={(item) => item.key}
-        renderItem={({ item }) => (
-          <View style={{ width }}>{item.render()}</View>
-        )}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-          { useNativeDriver: false },
-        )}
+        scrollEnabled={false}
         onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={{ viewAreaCoveragePercentThreshold: 50 }}
+        viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
+        keyboardShouldPersistTaps="handled"
       />
-
-      {/* Dots */}
-      <View style={[styles.dots, { bottom: insets.bottom + 16 }]}>
-        {pages.map((_, i) => {
-          const inputRange = [(i - 1) * width, i * width, (i + 1) * width];
-          const dotWidth = scrollX.interpolate({ inputRange, outputRange: [8, 24, 8], extrapolate: 'clamp' });
-          const dotOpacity = scrollX.interpolate({ inputRange, outputRange: [0.3, 1, 0.3], extrapolate: 'clamp' });
-          return (
-            <Animated.View
-              key={i}
-              style={[styles.dot, { width: dotWidth, opacity: dotOpacity }]}
-            />
-          );
-        })}
+      {/* Page indicator */}
+      <View style={[styles.dots, { bottom: insets.bottom + 20 }]}>
+        {pages.map((_, i) => (
+          <View key={i} style={[styles.dot, i === idx && styles.dotActive]} />
+        ))}
       </View>
     </View>
   );
 }
 
-export { ONBOARDING_KEY };
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: BLUE,
-  },
-  skip: {
-    position: 'absolute',
-    zIndex: 10,
-  },
-  skipText: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  page: {
-    flex: 1,
-    paddingHorizontal: 32,
-    paddingTop: 60,
-  },
-  iconCircle: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 28,
-  },
+  page: { flex: 1, paddingHorizontal: 28, justifyContent: 'space-between' },
+  pageInner: { flex: 1, justifyContent: 'center' },
+  number: { fontSize: 12, fontWeight: '900', color: MUTED },
+  numberRule: { width: 36, height: 2, backgroundColor: TEXT, marginTop: 10, marginBottom: 28 },
   title: {
-    color: '#FFFFFF',
-    fontSize: 36,
-    fontWeight: '900',
-    marginBottom: 10,
-  },
-  goldLine: {
-    width: 36,
-    height: 3,
-    backgroundColor: GOLD,
-    borderRadius: 2,
-    marginBottom: 18,
+    fontSize: 56, fontWeight: '900', color: TEXT, lineHeight: 60,
+    maxWidth: '95%',
   },
   body: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 18,
-    fontWeight: '500',
-    lineHeight: 28,
+    fontSize: 16, fontWeight: '500', color: MUTED,
+    lineHeight: 24, marginTop: 22, maxWidth: '90%',
   },
-  btn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+  cta: {
     paddingVertical: 16,
-    paddingHorizontal: 48,
-    borderRadius: 14,
-    width: '100%',
   },
-  btnText: {
-    color: BLUE,
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  pointsBadge: {
-    alignItems: 'center',
-    marginTop: 28,
-  },
-  pointsNumber: {
-    color: '#FFFFFF',
-    fontSize: 56,
-    fontWeight: '900',
-    marginTop: 4,
-  },
-  pointsLabel: {
-    color: GOLD,
-    fontSize: 16,
-    fontWeight: '600',
-    marginTop: 2,
-  },
+  ctaText: { fontSize: 16, fontWeight: '900', color: ACCENT },
   dots: {
-    position: 'absolute',
-    flexDirection: 'row',
-    alignSelf: 'center',
-    gap: 6,
+    position: 'absolute', alignSelf: 'center',
+    flexDirection: 'row', gap: 6,
   },
-  dot: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FFFFFF',
-  },
+  dot: { width: 6, height: 6, backgroundColor: '#D8D8DD' },
+  dotActive: { backgroundColor: TEXT, width: 18 },
 });

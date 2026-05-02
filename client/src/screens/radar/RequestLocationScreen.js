@@ -1,13 +1,14 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, TextInput,
-  ActivityIndicator, KeyboardAvoidingView, Platform, Alert,
+  View, Text, StyleSheet, KeyboardAvoidingView, Platform, Alert, TouchableOpacity,
 } from 'react-native';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { locationRequestsAPI } from '../../services/api';
+import {
+  BrutNav, BrutHero, BrutRule, BrutInput, BG, ACCENT, TEXT, isAr, ls, shout,
+} from '../../components/Brut';
 
 const KUWAIT_REGION = {
   latitude: 29.3759,
@@ -16,19 +17,11 @@ const KUWAIT_REGION = {
   longitudeDelta: 0.45,
 };
 
-const DARK_MAP_STYLE = [
-  { elementType: 'geometry', stylers: [{ color: '#0a0e1a' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#3a4880' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#0a0e1a' }] },
-  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#0f1628' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#000714' }] },
-];
-
 export default function RequestLocationScreen({ route, navigation }) {
   const { initialCoords } = route.params || {};
   const insets = useSafeAreaInsets();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const ar = isAr(i18n);
 
   const [pin, setPin] = useState(
     initialCoords
@@ -55,92 +48,95 @@ export default function RequestLocationScreen({ route, navigation }) {
   };
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn}>
-          <Ionicons name="close" size={26} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.title}>{t('radar.requestTitle')}</Text>
-        <TouchableOpacity onPress={submit} disabled={submitting || !name.trim()}>
-          <Text style={[styles.submitBtn, (submitting || !name.trim()) && { opacity: 0.4 }]}>
-            {submitting ? '...' : t('radar.submit')}
-          </Text>
-        </TouchableOpacity>
-      </View>
+    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <BrutNav
+        onBack={() => navigation.goBack()}
+        leftLabel={t('common.cancel')}
+        right={
+          <TouchableOpacity onPress={submit} disabled={submitting || !name.trim()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <Text style={[
+              styles.submitLink,
+              (submitting || !name.trim()) && { opacity: 0.35 },
+              { letterSpacing: ls(2, ar) },
+            ]}>
+              {submitting ? '...' : shout(t('radar.submit'), ar)}
+            </Text>
+          </TouchableOpacity>
+        }
+      />
 
-      <View style={styles.mapWrap}>
-        <MapView
-          style={StyleSheet.absoluteFill}
-          provider={PROVIDER_DEFAULT}
-          initialRegion={
-            initialCoords
-              ? { latitude: initialCoords.lat, longitude: initialCoords.lng, latitudeDelta: 0.05, longitudeDelta: 0.05 }
-              : KUWAIT_REGION
-          }
-          customMapStyle={DARK_MAP_STYLE}
-          onPress={(e) => setPin(e.nativeEvent.coordinate)}
-          showsUserLocation
-        >
-          <Marker coordinate={pin} draggable onDragEnd={(e) => setPin(e.nativeEvent.coordinate)}>
-            <View style={styles.pinDot} />
-          </Marker>
-        </MapView>
-        <View pointerEvents="none" style={styles.mapHintWrap}>
-          <Text style={styles.mapHint}>{t('radar.tapToPin')}</Text>
+      <View style={styles.body}>
+        <BrutHero title={t('radar.requestTitle')} label={ar ? 'مكان جديد' : 'NEW PLACE'} size={42} />
+        <BrutRule mt={22} mb={20} />
+
+        {/* Map */}
+        <View style={styles.mapWrap}>
+          <MapView
+            style={StyleSheet.absoluteFill}
+            provider={PROVIDER_DEFAULT}
+            initialRegion={
+              initialCoords
+                ? { latitude: initialCoords.lat, longitude: initialCoords.lng, latitudeDelta: 0.05, longitudeDelta: 0.05 }
+                : KUWAIT_REGION
+            }
+            onPress={(e) => setPin(e.nativeEvent.coordinate)}
+            showsUserLocation
+            showsMyLocationButton={false}
+          >
+            <Marker coordinate={pin} draggable onDragEnd={(e) => setPin(e.nativeEvent.coordinate)}>
+              <View style={styles.pinDot} />
+            </Marker>
+          </MapView>
+          <View pointerEvents="none" style={styles.mapHint}>
+            <Text style={[styles.mapHintText, { letterSpacing: ls(1.5, ar) }]}>
+              {shout(t('radar.tapToPin'), ar)}
+            </Text>
+          </View>
         </View>
-      </View>
 
-      <View style={styles.form}>
-        <Text style={styles.label}>{t('radar.placeName')}</Text>
-        <TextInput
-          style={styles.input}
-          value={name}
-          onChangeText={setName}
-          placeholder={t('radar.placeNamePlaceholder')}
-          placeholderTextColor="#6c7a99"
-          maxLength={80}
-        />
-        <Text style={[styles.label, { marginTop: 16 }]}>{t('radar.noteOptional')}</Text>
-        <TextInput
-          style={[styles.input, { height: 64 }]}
-          value={note}
-          onChangeText={setNote}
-          placeholder={t('radar.notePlaceholder')}
-          placeholderTextColor="#6c7a99"
-          multiline
-          maxLength={200}
-        />
+        <View style={{ paddingTop: 20 }}>
+          <BrutInput
+            label={t('radar.placeName')}
+            value={name}
+            onChangeText={setName}
+            placeholder={t('radar.placeNamePlaceholder')}
+            maxLength={80}
+            autoCapitalize="words"
+            accent
+          />
+          <BrutInput
+            label={t('radar.noteOptional')}
+            value={note}
+            onChangeText={setNote}
+            placeholder={t('radar.notePlaceholder')}
+            multiline
+            maxLength={200}
+          />
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0e1a' },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 12, paddingBottom: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.08)',
+  root: { flex: 1, backgroundColor: BG },
+  body: { flex: 1, paddingHorizontal: 24 },
+  submitLink: { fontSize: 12, fontWeight: '900', color: ACCENT },
+
+  mapWrap: {
+    height: 260,
+    borderWidth: 2, borderColor: TEXT,
+    overflow: 'hidden',
   },
-  headerBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  title: { fontSize: 17, fontWeight: '700', color: '#fff' },
-  submitBtn: { paddingHorizontal: 14, fontSize: 16, fontWeight: '700', color: '#4D80FF' },
-  mapWrap: { height: 280, position: 'relative' },
-  mapHintWrap: {
+  mapHint: {
     position: 'absolute', top: 12, alignSelf: 'center',
-    backgroundColor: 'rgba(0,0,0,0.7)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14,
+    backgroundColor: TEXT, paddingHorizontal: 12, paddingVertical: 6,
   },
-  mapHint: { color: '#fff', fontSize: 12, fontWeight: '600' },
+  mapHintText: { color: '#fff', fontSize: 10, fontWeight: '900' },
+
   pinDot: {
-    width: 24, height: 24, borderRadius: 12,
-    backgroundColor: '#4D80FF',
+    width: 22, height: 22,
+    backgroundColor: ACCENT,
     borderWidth: 3, borderColor: '#fff',
-  },
-  form: { padding: 20 },
-  label: { fontSize: 12, fontWeight: '700', color: '#6c7a99', marginBottom: 8, textTransform: 'uppercase' },
-  input: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 15, color: '#fff',
   },
 });

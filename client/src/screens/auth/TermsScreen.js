@@ -1,11 +1,10 @@
 import React from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet,
+  View, Text, ScrollView, StyleSheet,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { COLORS } from '../../constants';
+import { BrutNav, BrutHero, BrutRule, BG, TEXT, MUTED, isAr as ar_, ls, shout } from '../../components/Brut';
 
 // ── Content ──────────────────────────────────────────────────────────────────
 
@@ -153,41 +152,28 @@ const TERMS_AR = {
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
-export default function TermsScreen({ navigation, route }) {
+export default function TermsScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { i18n } = useTranslation();
-  const isAr = i18n.language === 'ar';
-  const content = isAr ? TERMS_AR : TERMS_EN;
+  const ar = ar_(i18n);
+  const content = ar ? TERMS_AR : TERMS_EN;
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.closeBtn}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-        >
-          <Ionicons name="close" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{content.title}</Text>
-        <View style={styles.closeBtn} />
-      </View>
-
+    <View style={{ flex: 1, backgroundColor: BG }}>
+      <BrutNav onBack={() => navigation.goBack()} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 40 }]}
       >
-        <Text style={[styles.updated, { textAlign: isAr ? 'right' : 'left' }]}>
-          {content.updated}
-        </Text>
+        <BrutHero title={content.title} label={shout(content.updated, ar)} size={42} />
+        <BrutRule mt={24} mb={28} />
 
         {content.sections.map((sec, idx) => (
           <View key={idx} style={styles.section}>
-            <Text style={[styles.sectionHeading, { textAlign: isAr ? 'right' : 'left' }]}>
+            <Text style={[styles.sectionHeading, { textAlign: ar ? 'right' : 'left' }]}>
               {sec.heading}
             </Text>
-            <Text style={[styles.sectionBody, { textAlign: isAr ? 'right' : 'left' }]}>
+            <Text style={[styles.sectionBody, { textAlign: ar ? 'right' : 'left' }]}>
               {sec.body}
             </Text>
           </View>
@@ -198,32 +184,8 @@ export default function TermsScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.white },
-
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E5E5EA',
-  },
-  closeBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: {
-    flex: 1, fontSize: 17, fontWeight: '700', color: COLORS.text, textAlign: 'center',
-  },
-
-  body: { paddingHorizontal: 20, paddingTop: 20 },
-
-  updated: {
-    fontSize: 13, color: COLORS.textMuted, marginBottom: 24,
-  },
-
-  section: { marginBottom: 24 },
-  sectionHeading: {
-    fontSize: 15, fontWeight: '700', color: COLORS.text, marginBottom: 8, lineHeight: 22,
-  },
-  sectionBody: {
-    fontSize: 14, color: COLORS.textMuted, lineHeight: 22,
-  },
+  body: { paddingHorizontal: 24, paddingTop: 8 },
+  section: { marginBottom: 28 },
+  sectionHeading: { fontSize: 15, fontWeight: '900', color: TEXT, marginBottom: 8, lineHeight: 22 },
+  sectionBody: { fontSize: 14, color: MUTED, lineHeight: 22, fontWeight: '500' },
 });

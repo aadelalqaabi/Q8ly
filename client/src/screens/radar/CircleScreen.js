@@ -3,149 +3,126 @@ import {
   View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
   KeyboardAvoidingView, Platform, ActivityIndicator, Modal, Animated, Easing,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useSelector } from 'react-redux';
-import { hachiAPI, uploadAPI } from '../../services/api';
+import { hachiAPI } from '../../services/api';
 import { getSocket, joinHachiRoom, leaveHachiRoom, sendHachiMessage } from '../../services/socket';
+import {
+  BrutNav, BrutNavLink, BrutHero, BrutRule, BG, TEXT, MUTED, ACCENT, SEPARATOR, isAr, ls, shout,
+} from '../../components/Brut';
 let Location = null;
 try { Location = require('expo-location'); } catch {}
 
-// ── Frequency wave (vibe visualizer) ──────────────────────────────────────────
+// ── Frequency wave (chat-speed visualizer) ────────────────────────────────
 function FrequencyWave({ activity }) {
   const bars = 7;
   const animValues = useRef(Array.from({ length: bars }, () => new Animated.Value(0.3))).current;
-
   useEffect(() => {
     const speed = Math.max(300, 1500 - activity * 100);
     const animations = animValues.map((v, i) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(v, { toValue: Math.random() * 0.7 + 0.3, duration: speed + i * 80, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
-          Animated.timing(v, { toValue: Math.random() * 0.4 + 0.2, duration: speed + i * 80, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
-        ])
-      )
+      Animated.loop(Animated.sequence([
+        Animated.timing(v, { toValue: Math.random() * 0.7 + 0.3, duration: speed + i * 80, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+        Animated.timing(v, { toValue: Math.random() * 0.4 + 0.2, duration: speed + i * 80, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+      ]))
     );
     animations.forEach((a) => a.start());
     return () => animations.forEach((a) => a.stop());
   }, [activity]);
-
   return (
     <View style={waveStyles.row}>
       {animValues.map((v, i) => (
         <Animated.View
           key={i}
-          style={[
-            waveStyles.bar,
-            {
-              height: v.interpolate({ inputRange: [0, 1], outputRange: [3, 14] }),
-              opacity: v.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }),
-            },
-          ]}
+          style={[waveStyles.bar, {
+            height: v.interpolate({ inputRange: [0, 1], outputRange: [3, 14] }),
+            opacity: v.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }),
+          }]}
         />
       ))}
     </View>
   );
 }
-
 const waveStyles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 3, height: 16 },
-  bar: { width: 3, borderRadius: 2, backgroundColor: '#4D80FF' },
+  bar: { width: 3, backgroundColor: ACCENT },
 });
 
-// ── Flash Poll card ───────────────────────────────────────────────────────────
-function PollCard({ poll, onVote, currentUserId }) {
+// ── Flash poll card ───────────────────────────────────────────────────────
+function PollCard({ poll, onVote, currentUserId, ar }) {
   const totalVotes = poll.options.reduce((sum, o) => sum + (o.voters?.length || 0), 0);
   const userVote = poll.options.find((o) => (o.voters || []).some((v) => v === currentUserId || v?._id === currentUserId));
   const expiresIn = Math.max(0, Math.floor((new Date(poll.expiresAt) - Date.now()) / 60000));
 
   return (
     <View style={pollStyles.card}>
-      <View style={pollStyles.header}>
-        <Ionicons name="flash" size={14} color="#FFB800" />
+      <View style={[pollStyles.header, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
+        <Text style={[pollStyles.tag, { letterSpacing: ls(2, ar) }]}>● POLL</Text>
+        <View style={{ flex: 1 }} />
         <Text style={pollStyles.timer}>{expiresIn}m</Text>
       </View>
-      <Text style={pollStyles.question}>{poll.question}</Text>
+      <Text style={[pollStyles.question, { textAlign: ar ? 'right' : 'left' }]}>{poll.question}</Text>
       {poll.options.map((opt) => {
         const votes = opt.voters?.length || 0;
         const pct = totalVotes > 0 ? (votes / totalVotes) * 100 : 0;
         const isMine = userVote?._id === opt._id;
         return (
-          <TouchableOpacity
-            key={opt._id}
-            style={[pollStyles.option, isMine && pollStyles.optionMine]}
-            onPress={() => onVote(opt._id)}
-            activeOpacity={0.7}
-          >
-            <View style={[pollStyles.fill, { width: `${pct}%`, backgroundColor: isMine ? '#4D80FF' : 'rgba(77,128,255,0.18)' }]} />
-            <Text style={[pollStyles.optionText, isMine && { color: '#fff' }]}>{opt.text}</Text>
+          <TouchableOpacity key={opt._id} style={pollStyles.option} onPress={() => onVote(opt._id)} activeOpacity={0.7}>
+            <View style={[pollStyles.fill, { width: `${pct}%`, backgroundColor: isMine ? ACCENT : '#EEF2FA' }]} />
+            <Text style={[pollStyles.optionText, isMine && { color: '#fff' }, { textAlign: ar ? 'right' : 'left' }]}>
+              {opt.text}
+            </Text>
             <Text style={[pollStyles.optionPct, isMine && { color: '#fff' }]}>{Math.round(pct)}%</Text>
           </TouchableOpacity>
         );
       })}
-      <Text style={pollStyles.totalVotes}>{totalVotes} {totalVotes === 1 ? 'vote' : 'votes'}</Text>
     </View>
   );
 }
-
 const pollStyles = StyleSheet.create({
   card: {
-    marginHorizontal: 12, marginVertical: 8,
-    backgroundColor: 'rgba(20,28,50,0.7)',
-    borderRadius: 16, padding: 14,
-    borderWidth: 1, borderColor: 'rgba(77,128,255,0.3)',
+    marginVertical: 10, padding: 14,
+    borderWidth: 2, borderColor: TEXT,
   },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
-  timer: { fontSize: 12, fontWeight: '700', color: '#FFB800' },
-  question: { fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 12 },
+  header: { alignItems: 'center', marginBottom: 10 },
+  tag: { fontSize: 10, fontWeight: '900', color: ACCENT },
+  timer: { fontSize: 11, fontWeight: '800', color: MUTED, fontVariant: ['tabular-nums'] },
+  question: { fontSize: 16, fontWeight: '900', color: TEXT, marginBottom: 12 },
   option: {
-    height: 44, borderRadius: 10, marginBottom: 7,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+    height: 44, marginBottom: 6,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: TEXT,
     overflow: 'hidden', justifyContent: 'center',
   },
-  optionMine: { borderColor: '#4D80FF' },
-  fill: { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 10 },
-  optionText: { color: '#fff', fontSize: 14, fontWeight: '600', marginStart: 14 },
-  optionPct: { position: 'absolute', right: 14, color: '#fff', fontSize: 13, fontWeight: '700' },
-  totalVotes: { fontSize: 11, color: '#6c7a99', marginTop: 4, textAlign: 'center' },
+  fill: { position: 'absolute', left: 0, top: 0, bottom: 0 },
+  optionText: { color: TEXT, fontSize: 14, fontWeight: '700', marginStart: 14, marginEnd: 50 },
+  optionPct: { position: 'absolute', right: 14, color: TEXT, fontSize: 12, fontWeight: '900', fontVariant: ['tabular-nums'] },
 });
 
-// ── Message row ───────────────────────────────────────────────────────────────
-function MessageRow({ msg, isMine }) {
+// ── Message row ───────────────────────────────────────────────────────────
+function MessageRow({ msg, isMine, ar }) {
   return (
-    <View style={[msgStyles.wrap, isMine && { alignItems: 'flex-end' }]}>
-      {!isMine && <Text style={msgStyles.author}>{msg.user?.name}</Text>}
+    <View style={[msgStyles.wrap, { alignItems: isMine ? (ar ? 'flex-start' : 'flex-end') : (ar ? 'flex-end' : 'flex-start') }]}>
+      {!isMine && <Text style={[msgStyles.author, { letterSpacing: ls(1.5, ar) }]}>{shout(msg.user?.name || '', ar)}</Text>}
       <View style={[msgStyles.bubble, isMine ? msgStyles.bubbleMine : msgStyles.bubbleOther]}>
-        {msg.image && (
-          <View style={msgStyles.imageWrap}>
-            <Text style={{ fontSize: 10, color: '#FFB800', marginBottom: 4, fontWeight: '700' }}>● LIVE</Text>
-            {/* eslint-disable-next-line react-native/no-inline-styles */}
-            <View style={{ width: 200, height: 200, borderRadius: 12, backgroundColor: '#0a0e1a' }} />
-          </View>
-        )}
-        {msg.text && <Text style={msgStyles.text}>{msg.text}</Text>}
+        {msg.text && <Text style={[msgStyles.text, isMine && { color: '#fff' }]}>{msg.text}</Text>}
       </View>
     </View>
   );
 }
-
 const msgStyles = StyleSheet.create({
-  wrap: { paddingHorizontal: 12, paddingVertical: 4 },
-  author: { fontSize: 11, color: '#6c7a99', marginBottom: 3, marginStart: 12 },
-  bubble: { maxWidth: '75%', padding: 10, borderRadius: 16 },
-  bubbleMine: { backgroundColor: '#4D80FF', borderBottomEndRadius: 4 },
-  bubbleOther: { backgroundColor: 'rgba(255,255,255,0.06)', borderBottomStartRadius: 4 },
-  text: { color: '#fff', fontSize: 15, lineHeight: 20 },
-  imageWrap: { marginBottom: 6 },
+  wrap: { paddingHorizontal: 4, paddingVertical: 5 },
+  author: { fontSize: 10, fontWeight: '800', color: MUTED, marginBottom: 4 },
+  bubble: { maxWidth: '78%', padding: 12 },
+  bubbleMine: { backgroundColor: TEXT },
+  bubbleOther: { backgroundColor: '#F2F2F7', borderWidth: StyleSheet.hairlineWidth, borderColor: SEPARATOR },
+  text: { color: TEXT, fontSize: 15, lineHeight: 20, fontWeight: '500' },
 });
 
-// ── Main CircleScreen ─────────────────────────────────────────────────────────
 export default function CircleScreen({ route, navigation }) {
   const { circleId } = route.params;
   const insets = useSafeAreaInsets();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const ar = isAr(i18n);
   const { user: currentUser } = useSelector((s) => s.auth);
 
   const [room, setRoom] = useState(null);
@@ -161,37 +138,25 @@ export default function CircleScreen({ route, navigation }) {
   const flatRef = useRef(null);
   const exitedRef = useRef(false);
 
-  // Fetch room with current location
   const loadRoom = useCallback(async (loc) => {
     try {
       const res = await hachiAPI.getRoom(circleId, loc);
       if (!res.inside) {
-        // User not inside — kick back to radar
-        if (!exitedRef.current) {
-          exitedRef.current = true;
-          navigation.replace('MainTabs');
-        }
+        if (!exitedRef.current) { exitedRef.current = true; navigation.replace('Main'); }
         return;
       }
       setRoom(res.room);
       setMessages(res.room.messages || []);
-      // Record the visit (idempotent on server) — adds artifact to vault
       hachiAPI.recordVisit(circleId, loc.lat, loc.lng, loc.speed || 0).catch(() => {});
-      // Load polls
       try {
         const pollRes = await hachiAPI.listPolls(circleId, loc.lat, loc.lng);
         setPolls(pollRes.polls || []);
       } catch {}
     } catch (e) {
-      // 403 = outside or other err
-      if (e.status === 403 && !exitedRef.current) {
-        exitedRef.current = true;
-        navigation.replace('MainTabs');
-      }
+      if (e.status === 403 && !exitedRef.current) { exitedRef.current = true; navigation.replace('Main'); }
     } finally { setLoading(false); }
   }, [circleId, navigation]);
 
-  // Location watch + geofence enforcement
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -207,25 +172,17 @@ export default function CircleScreen({ route, navigation }) {
           async (p) => {
             const next = { lat: p.coords.latitude, lng: p.coords.longitude, speed: p.coords.speed };
             setUserLoc(next);
-            // Periodically re-verify geofence
             try {
               const result = await hachiAPI.checkLocation(circleId, next.lat, next.lng, next.speed || 0);
-              if (result.status !== 'here' && !exitedRef.current) {
-                exitedRef.current = true;
-                navigation.replace('MainTabs');
-              }
+              if (result.status !== 'here' && !exitedRef.current) { exitedRef.current = true; navigation.replace('Main'); }
             } catch {}
           }
         );
       } catch {}
     })();
-    return () => {
-      cancelled = true;
-      if (watchRef.current) watchRef.current.remove();
-    };
+    return () => { cancelled = true; if (watchRef.current) watchRef.current.remove(); };
   }, [circleId, navigation, loadRoom]);
 
-  // Socket hookup
   useEffect(() => {
     const socket = getSocket();
     if (!socket) return;
@@ -248,20 +205,15 @@ export default function CircleScreen({ route, navigation }) {
     };
   }, [circleId]);
 
-  // Activity decay (frequency wave)
   useEffect(() => {
-    const t = setInterval(() => setRecentActivity((a) => Math.max(0, a - 1)), 5000);
-    return () => clearInterval(t);
+    const id = setInterval(() => setRecentActivity((a) => Math.max(0, a - 1)), 5000);
+    return () => clearInterval(id);
   }, []);
 
   const handleSend = () => {
     if (!text.trim() || !userLoc) return;
     sendHachiMessage(circleId, text.trim(), null, { lat: userLoc.lat, lng: userLoc.lng, speed: userLoc.speed });
     setText('');
-  };
-
-  const handleLiveCamera = () => {
-    navigation.navigate('LiveCamera', { circleId });
   };
 
   const handleVote = async (pollId, optionId) => {
@@ -274,7 +226,7 @@ export default function CircleScreen({ route, navigation }) {
   if (loading || !room) {
     return (
       <View style={[styles.container, { justifyContent: 'center' }]}>
-        <ActivityIndicator size="large" color="#4D80FF" />
+        <ActivityIndicator size="large" color={ACCENT} />
       </View>
     );
   }
@@ -282,28 +234,22 @@ export default function CircleScreen({ route, navigation }) {
   const activeHere = (room.hereNow || []).filter((p) => new Date(p.expiresAt) > new Date()).length;
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={0}
-    >
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn}>
-          <Ionicons name="chevron-back" size={26} color="#fff" />
-        </TouchableOpacity>
-        <View style={{ flex: 1, alignItems: 'center' }}>
-          <Text style={styles.title} numberOfLines={1}>{room.title}</Text>
-          <View style={styles.subRow}>
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <BrutNav
+        onBack={() => navigation.goBack()}
+        right={<BrutNavLink onPress={() => setShowCreatePoll(true)} label={t('radar.flashPoll')} accent />}
+      />
+
+      {/* Hero: venue name + presence + frequency wave */}
+      <View style={styles.hero}>
+        <BrutHero title={room.title} label={`${activeHere} ${ar ? t('radar.hereNow') : shout(t('radar.hereNow'), false)}`} size={42} />
+        <View style={[styles.heroRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
+          <View style={styles.hereBlock}>
             <View style={styles.hereDot} />
-            <Text style={styles.subText}>{activeHere} {t('radar.hereNow')}</Text>
-            <View style={{ width: 8 }} />
-            <FrequencyWave activity={recentActivity} />
           </View>
+          <FrequencyWave activity={recentActivity} />
         </View>
-        <TouchableOpacity onPress={() => setShowCreatePoll(true)} style={styles.headerBtn}>
-          <Ionicons name="flash-outline" size={22} color="#FFB800" />
-        </TouchableOpacity>
+        <BrutRule mt={18} mb={0} />
       </View>
 
       {/* Messages + polls */}
@@ -312,42 +258,39 @@ export default function CircleScreen({ route, navigation }) {
         data={messages}
         keyExtractor={(m) => String(m._id)}
         renderItem={({ item }) => (
-          <MessageRow msg={item} isMine={item.user?._id === currentUser?._id} />
+          <MessageRow msg={item} isMine={item.user?._id === currentUser?._id} ar={ar} />
         )}
         ListHeaderComponent={
           polls.length > 0 ? (
             <View>
               {polls.map((poll) => (
-                <PollCard key={poll._id} poll={poll} onVote={(optId) => handleVote(poll._id, optId)} currentUserId={currentUser?._id} />
+                <PollCard key={poll._id} poll={poll} onVote={(optId) => handleVote(poll._id, optId)} currentUserId={currentUser?._id} ar={ar} />
               ))}
             </View>
           ) : null
         }
-        contentContainerStyle={{ paddingTop: 8, paddingBottom: 12 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 12 }}
         onContentSizeChange={() => flatRef.current?.scrollToEnd({ animated: false })}
       />
 
       {/* Composer */}
-      <View style={[styles.composer, { paddingBottom: insets.bottom + 8 }]}>
-        <TouchableOpacity style={styles.cameraBtn} onPress={handleLiveCamera} activeOpacity={0.7}>
-          <Ionicons name="camera" size={22} color="#fff" />
+      <View style={[styles.composer, { paddingBottom: insets.bottom + 12, flexDirection: ar ? 'row-reverse' : 'row' }]}>
+        <TouchableOpacity style={styles.cameraBtn} onPress={() => navigation.navigate('LiveCamera', { circleId })} activeOpacity={0.7}>
+          <Text style={styles.cameraGlyph}>◉</Text>
         </TouchableOpacity>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { textAlign: ar ? 'right' : 'left' }]}
           value={text}
           onChangeText={setText}
           placeholder={t('radar.composerPlaceholder')}
-          placeholderTextColor="#6c7a99"
+          placeholderTextColor={MUTED}
           multiline
           maxLength={500}
         />
-        <TouchableOpacity
-          style={[styles.sendBtn, !text.trim() && { opacity: 0.4 }]}
-          onPress={handleSend}
-          disabled={!text.trim()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-up" size={20} color="#fff" />
+        <TouchableOpacity onPress={handleSend} disabled={!text.trim()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+          <Text style={[styles.sendLabel, !text.trim() && { opacity: 0.35 }, { letterSpacing: ls(2, ar) }]}>
+            {ar ? '←' : `${shout(t('radar.post'), false)} →`}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -363,15 +306,16 @@ export default function CircleScreen({ route, navigation }) {
   );
 }
 
-// ── Create Poll modal ─────────────────────────────────────────────────────────
 function CreatePollModal({ visible, onClose, onCreated, circleId, userLoc }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const ar = isAr(i18n);
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);
   const [creating, setCreating] = useState(false);
 
-  const reset = () => { setQuestion(''); setOptions(['', '']); };
-  useEffect(() => { if (!visible) reset(); }, [visible]);
+  useEffect(() => {
+    if (!visible) { setQuestion(''); setOptions(['', '']); }
+  }, [visible]);
 
   const submit = async () => {
     const filled = options.filter((o) => o.trim());
@@ -385,99 +329,93 @@ function CreatePollModal({ visible, onClose, onCreated, circleId, userLoc }) {
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={pollModalStyles.container}>
-        <View style={pollModalStyles.header}>
-          <TouchableOpacity onPress={onClose}><Text style={pollModalStyles.cancel}>Cancel</Text></TouchableOpacity>
-          <Text style={pollModalStyles.title}>{t('radar.flashPoll')}</Text>
-          <TouchableOpacity onPress={submit} disabled={creating || !question.trim()}>
-            <Text style={[pollModalStyles.post, (creating || !question.trim()) && { opacity: 0.4 }]}>{t('radar.post')}</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={{ padding: 20 }}>
-          <Text style={pollModalStyles.label}>{t('radar.question')}</Text>
+      <View style={styles.container}>
+        <BrutNav
+          onBack={onClose}
+          leftLabel={t('common.cancel')}
+          right={
+            <TouchableOpacity onPress={submit} disabled={creating || !question.trim()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+              <Text style={[
+                styles.sendLabel,
+                (creating || !question.trim()) && { opacity: 0.35 },
+                { letterSpacing: ls(2, ar) },
+              ]}>
+                {creating ? '...' : shout(t('radar.post'), ar)}
+              </Text>
+            </TouchableOpacity>
+          }
+        />
+        <View style={{ paddingHorizontal: 24 }}>
+          <BrutHero title={t('radar.flashPoll')} label={ar ? '١٥ دقيقة' : '15 MINUTES'} size={42} />
+          <BrutRule mt={20} mb={24} />
+          <Text style={[styles.modalLabel, { letterSpacing: ls(2, ar), textAlign: ar ? 'right' : 'left' }]}>
+            {shout(t('radar.question'), ar)}
+          </Text>
           <TextInput
-            style={pollModalStyles.input}
+            style={[styles.modalInput, { textAlign: ar ? 'right' : 'left' }]}
             value={question}
             onChangeText={setQuestion}
             placeholder={t('radar.questionPlaceholder')}
-            placeholderTextColor="#6c7a99"
+            placeholderTextColor={MUTED}
             maxLength={100}
           />
-          <Text style={[pollModalStyles.label, { marginTop: 20 }]}>{t('radar.options')}</Text>
+          <View style={{ height: 18 }} />
+          <Text style={[styles.modalLabel, { letterSpacing: ls(2, ar), textAlign: ar ? 'right' : 'left' }]}>
+            {shout(t('radar.options'), ar)}
+          </Text>
           {options.map((opt, i) => (
             <TextInput
               key={i}
-              style={pollModalStyles.input}
+              style={[styles.modalInput, { textAlign: ar ? 'right' : 'left' }]}
               value={opt}
               onChangeText={(v) => { const next = [...options]; next[i] = v; setOptions(next); }}
               placeholder={`Option ${i + 1}`}
-              placeholderTextColor="#6c7a99"
+              placeholderTextColor={MUTED}
               maxLength={60}
             />
           ))}
           {options.length < 4 && (
-            <TouchableOpacity onPress={() => setOptions([...options, ''])}>
-              <Text style={pollModalStyles.addOpt}>+ Add option</Text>
+            <TouchableOpacity onPress={() => setOptions([...options, ''])} style={{ alignSelf: ar ? 'flex-end' : 'flex-start', paddingVertical: 8 }}>
+              <Text style={[styles.addOption, { letterSpacing: ls(2, ar) }]}>+ {ar ? 'خيار' : 'OPTION'}</Text>
             </TouchableOpacity>
           )}
-          <Text style={pollModalStyles.hint}>{t('radar.flashPollHint')}</Text>
         </View>
       </View>
     </Modal>
   );
 }
 
-const pollModalStyles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0e1a' },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.1)',
-  },
-  cancel: { fontSize: 16, color: '#6c7a99' },
-  title: { fontSize: 17, fontWeight: '700', color: '#fff' },
-  post: { fontSize: 16, color: '#4D80FF', fontWeight: '700' },
-  label: { fontSize: 12, fontWeight: '700', color: '#6c7a99', marginBottom: 8, textTransform: 'uppercase' },
-  input: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 15, color: '#fff', marginBottom: 8,
-  },
-  addOpt: { color: '#4D80FF', fontSize: 14, fontWeight: '600', paddingVertical: 10 },
-  hint: { fontSize: 12, color: '#6c7a99', marginTop: 16, textAlign: 'center' },
-});
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0e1a' },
-  header: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 8, paddingBottom: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.08)',
-  },
-  headerBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  title: { fontSize: 16, fontWeight: '700', color: '#fff' },
-  subRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
-  hereDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#4D80FF' },
-  subText: { fontSize: 12, fontWeight: '600', color: '#6c7a99' },
+  container: { flex: 1, backgroundColor: BG },
+
+  hero: { paddingHorizontal: 20, paddingTop: 8 },
+  heroRow: { alignItems: 'center', marginTop: 14, gap: 10 },
+  hereBlock: {},
+  hereDot: { width: 8, height: 8, backgroundColor: ACCENT, borderRadius: 4 },
+
   composer: {
-    flexDirection: 'row', alignItems: 'flex-end',
-    paddingHorizontal: 8, paddingTop: 8, gap: 8,
-    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'flex-end', paddingHorizontal: 16, paddingTop: 10, gap: 12,
+    borderTopWidth: 2, borderTopColor: TEXT,
   },
   cameraBtn: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    width: 44, height: 44,
+    borderWidth: 2, borderColor: TEXT,
     justifyContent: 'center', alignItems: 'center',
   },
+  cameraGlyph: { fontSize: 24, fontWeight: '900', color: TEXT },
   input: {
-    flex: 1, minHeight: 38, maxHeight: 120,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 19, paddingHorizontal: 14, paddingVertical: 9,
-    color: '#fff', fontSize: 15,
+    flex: 1, minHeight: 44, maxHeight: 120,
+    paddingHorizontal: 0, paddingVertical: 10,
+    fontSize: 16, color: TEXT, fontWeight: '600',
+    borderBottomWidth: 2, borderBottomColor: TEXT,
   },
-  sendBtn: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: '#4D80FF',
-    justifyContent: 'center', alignItems: 'center',
+  sendLabel: { fontSize: 13, fontWeight: '900', color: ACCENT, paddingBottom: 12 },
+
+  modalLabel: { fontSize: 11, fontWeight: '800', color: MUTED, marginBottom: 6 },
+  modalInput: {
+    fontSize: 18, fontWeight: '700', color: TEXT,
+    paddingVertical: 10, marginBottom: 8,
+    borderBottomWidth: 2, borderBottomColor: TEXT,
   },
+  addOption: { fontSize: 12, fontWeight: '900', color: ACCENT },
 });
