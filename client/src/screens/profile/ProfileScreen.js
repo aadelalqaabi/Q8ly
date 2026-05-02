@@ -328,9 +328,6 @@ export default function ProfileScreen({ navigation, route }) {
           ● {t('profile.kuwaiVerified')}
         </Text>
       )}
-      {!!profile?.bio && (
-        <Text style={[styles.brutBio, { textAlign: isRTL ? 'right' : 'left' }]}>{profile.bio}</Text>
-      )}
 
       {/* Action — brutalist typographic button (only for own profile) */}
       {isOwnProfile && (
@@ -463,18 +460,17 @@ export default function ProfileScreen({ navigation, route }) {
     <View style={styles.container}>
       {/* Brutalist nav row — bare typographic links */}
       <View style={[styles.brutNavRow, { paddingTop: insets.top + 14, backgroundColor: COLORS.white }]}>
-        {isPushed ? (
-          <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <Text style={styles.brutNavLink}>{isRTL ? `${t('common.back')} →` : `← ${t('common.back').toUpperCase()}`}</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity onPress={() => navigation.navigate('Notifications')} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <Text style={styles.brutNavLink}>
-              {isRTL ? t('profile.inbox') : t('profile.inbox').toUpperCase()}{unreadCount > 0 ? ` · ${unreadCount > 99 ? '99+' : unreadCount}` : ''}
-            </Text>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity onPress={() => (navigation.canGoBack() ? navigation.goBack() : null)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+          <Text style={styles.brutNavLink}>{isRTL ? `${t('common.back')} →` : `← ${t('common.back').toUpperCase()}`}</Text>
+        </TouchableOpacity>
         <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 18 }}>
+          {isOwnProfile && (
+            <TouchableOpacity onPress={() => navigation.navigate('Notifications')} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+              <Text style={styles.brutNavLink}>
+                {isRTL ? t('profile.inbox') : t('profile.inbox').toUpperCase()}{unreadCount > 0 ? ` · ${unreadCount > 99 ? '99+' : unreadCount}` : ''}
+              </Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity onPress={handleShare} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
             <Text style={styles.brutNavLink}>{isRTL ? t('common.share') : t('common.share').toUpperCase()}</Text>
           </TouchableOpacity>
