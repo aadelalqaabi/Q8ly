@@ -44,16 +44,16 @@ export default function InviteCodeScreen({ onValid }) {
 
   return (
     <KeyboardAvoidingView
-      style={[styles.container, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}
+      style={[styles.container, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 20 }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.wordmarkWrap}>
         <Text style={styles.wordmark}>KUWAI</Text>
       </View>
 
-      <View style={{ paddingHorizontal: 24 }}>
+      <View style={styles.body}>
         <BrutHero title={t('invite.title')} label={ar ? 'بالدعوة فقط' : 'INVITE ONLY'} size={48} />
-        <BrutRule mt={26} mb={26} />
+        <BrutRule mt={22} mb={26} />
         <BrutInput
           label={t('invite.placeholder') || (ar ? 'الكود' : 'CODE')}
           value={code}
@@ -68,7 +68,7 @@ export default function InviteCodeScreen({ onValid }) {
             {shout(error, ar)}
           </Text>
         )}
-        <View style={{ height: 8 }} />
+        <View style={{ height: 4 }} />
         <BrutBrick
           label={t('invite.enter')}
           onPress={handleSubmit}
@@ -76,7 +76,7 @@ export default function InviteCodeScreen({ onValid }) {
           loading={loading}
           accent
         />
-        <View style={{ height: 18 }} />
+        <View style={{ height: 14 }} />
         <BrutAction
           label={t('invite.noCode')}
           onPress={() => Linking.openURL('https://kuwai.app/waitlist')}
@@ -87,10 +87,9 @@ export default function InviteCodeScreen({ onValid }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: BG, justifyContent: 'space-between' },
-  wordmarkWrap: { alignItems: 'center', paddingTop: 40 },
-  wordmark: {
-    fontSize: 28, fontWeight: '900', color: TEXT, letterSpacing: 2,
-  },
+  container: { flex: 1, backgroundColor: BG },
+  wordmarkWrap: { alignItems: 'center', paddingTop: 12, paddingBottom: 22 },
+  wordmark: { fontSize: 22, fontWeight: '900', color: TEXT, letterSpacing: 2 },
+  body: { paddingHorizontal: 24 },
   error: { fontSize: 11, fontWeight: '800', color: '#D32F2F', marginTop: -12, marginBottom: 12 },
 });
