@@ -101,7 +101,8 @@ function HeatPulse({ pulse, onPress }) {
 
 export default function RadarScreen() {
   const insets = useSafeAreaInsets();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const ar = i18n.language === 'ar';
   const navigation = useNavigation();
   const { user: currentUser } = useSelector((s) => s.auth);
   const [pulses, setPulses] = useState([]);
@@ -109,9 +110,11 @@ export default function RadarScreen() {
   const [userLoc, setUserLoc] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tracking, setTracking] = useState(true);
+  const [nearby, setNearby] = useState(null);
   const watchRef = useRef(null);
   const mapRef = useRef(null);
   const radarPollRef = useRef(null);
+  const nearbyPollRef = useRef(null);
 
   // Location watch
   useEffect(() => {
@@ -188,6 +191,41 @@ export default function RadarScreen() {
   useEffect(() => {
     if (userLoc && pulses.length > 0) checkGeofence(userLoc);
   }, [userLoc, pulses, checkGeofence]);
+
+  // Fetch nearest circle (with name) whenever location updates
+  const fetchNearby = useCallback(async (loc) => {
+    if (!loc) return;
+    try {
+      const res = await hachiAPI.getNearby(loc.lat, loc.lng, 5000);
+      setNearby(res.circle || null);
+    } catch {}
+  }, []);
+  useEffect(() => {
+    if (!userLoc) return;
+    fetchNearby(userLoc);
+    clearInterval(nearbyPollRef.current);
+    nearbyPollRef.current = setInterval(() => fetchNearby(userLoc), 30000);
+    return () => clearInterval(nearbyPollRef.current);
+  }, [userLoc, fetchNearby]);
+
+  const handleNearbyTap = async () => {
+    if (!nearby) return;
+    if (nearby.status === 'here') {
+      navigation.navigate('Circle', { circleId: nearby._id });
+    } else {
+      // Try server check (founder bypass kicks in if applicable)
+      try {
+        const result = await hachiAPI.checkLocation(
+          nearby._id, userLoc?.lat ?? 0, userLoc?.lng ?? 0, userLoc?.speed ?? 0
+        );
+        if (result.status === 'here') {
+          navigation.navigate('Circle', { circleId: nearby._id });
+          return;
+        }
+      } catch {}
+      Alert.alert(t('radar.travelThere'), t('radar.travelThereMsg'));
+    }
+  };
 
   const handleRecenter = () => {
     if (!userLoc || !mapRef.current) return;
@@ -271,14 +309,50 @@ export default function RadarScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Recenter button */}
+      {/* Recenter button — sits above the nearby card if visible */}
       <TouchableOpacity
-        style={[styles.recenter, { bottom: insets.bottom + 24 }]}
+        style={[styles.recenter, { bottom: insets.bottom + (nearby ? 132 : 24) }]}
         onPress={handleRecenter}
         activeOpacity={0.7}
       >
         <Ionicons name="locate" size={20} color="#0a0e1a" />
       </TouchableOpacity>
+
+      {/* Nearby venue card */}
+      {nearby && (
+        <TouchableOpacity
+          style={[styles.nearbyCard, { bottom: insets.bottom + 16 }]}
+          onPress={handleNearbyTap}
+          activeOpacity={0.85}
+        >
+          <View style={[styles.nearbyRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
+            <View style={{ flex: 1 }}>
+              <View style={[styles.nearbyTagRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
+                <View style={[
+                  styles.nearbyDot,
+                  nearby.status === 'here' && { backgroundColor: '#34C759' },
+                  nearby.status === 'nearby' && { backgroundColor: '#FF9500' },
+                ]} />
+                <Text style={[styles.nearbyTag, { letterSpacing: ar ? 0 : 2 }]}>
+                  {nearby.status === 'here'
+                    ? (ar ? 'أنت هنا' : 'YOU ARE HERE')
+                    : nearby.status === 'nearby'
+                      ? (ar ? 'قريب' : 'NEARBY')
+                      : (ar ? 'الأقرب لك' : 'NEAREST')}
+                </Text>
+              </View>
+              <Text style={[styles.nearbyName, { textAlign: ar ? 'right' : 'left' }]} numberOfLines={1}>
+                {nearby.title || nearby.venueName}
+              </Text>
+              <Text style={[styles.nearbyMeta, { letterSpacing: ar ? 0 : 1.2, textAlign: ar ? 'right' : 'left' }]}>
+                {formatDist(nearby.distance, ar)}
+                {nearby.activeHere > 0 ? ` · ${nearby.activeHere} ${ar ? 'هنا' : 'HERE NOW'}` : ''}
+              </Text>
+            </View>
+            <Text style={styles.nearbyArrow}>{ar ? '←' : '→'}</Text>
+          </View>
+        </TouchableOpacity>
+      )}
 
       {loading && (
         <View style={styles.loadingOverlay}>
@@ -287,6 +361,12 @@ export default function RadarScreen() {
       )}
     </View>
   );
+}
+
+function formatDist(meters, ar) {
+  if (meters == null) return '';
+  if (meters < 1000) return ar ? `${Math.round(meters)} م` : `${Math.round(meters)}M`;
+  return ar ? `${(meters / 1000).toFixed(1)} كم` : `${(meters / 1000).toFixed(1)}KM`;
 }
 
 function haversineMeters(lat1, lng1, lat2, lng2) {
@@ -362,6 +442,22 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     elevation: 4,
   },
+  nearbyCard: {
+    position: 'absolute', left: 14, right: 14,
+    backgroundColor: '#0a0e1a',
+    paddingHorizontal: 16, paddingVertical: 14,
+    shadowColor: '#000',
+    shadowOpacity: 0.3, shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
+  },
+  nearbyRow: { alignItems: 'center', gap: 10 },
+  nearbyTagRow: { alignItems: 'center', gap: 6, marginBottom: 4 },
+  nearbyDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#4D80FF' },
+  nearbyTag: { fontSize: 9, fontWeight: '900', color: '#9CA3AF' },
+  nearbyName: { fontSize: 22, fontWeight: '900', color: '#fff', letterSpacing: -0.5 },
+  nearbyMeta: { fontSize: 11, fontWeight: '800', color: '#9CA3AF', marginTop: 4 },
+  nearbyArrow: { fontSize: 22, fontWeight: '900', color: '#fff' },
   loadingOverlay: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
     justifyContent: 'center', alignItems: 'center',
