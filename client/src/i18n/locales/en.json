@@ -228,6 +228,38 @@
     "away": "away"
   },
 
+  "radar": {
+    "title": "KUWAI",
+    "subtitle": "Drive to the pulse",
+    "live": "live",
+    "hereNow": "here now",
+    "locationNeeded": "Location required",
+    "locationNeededMsg": "KUWAI needs your location to show the live pulses near you.",
+    "travelThere": "Drive there to unlock",
+    "travelThereMsg": "You must be physically inside this location to see what's being said.",
+    "composerPlaceholder": "Say something to the room...",
+    "flashPoll": "Flash Poll",
+    "post": "Post",
+    "question": "Question",
+    "questionPlaceholder": "Is the valet full right now?",
+    "options": "Options",
+    "flashPollHint": "Self-destructs in 15 minutes",
+    "cameraPermission": "Camera access is required for live photos",
+    "grantPermission": "Grant access",
+    "liveOnly": "LIVE ONLY",
+    "retake": "Retake",
+    "requestTitle": "Request a Place",
+    "requestNameRequired": "Place name is required",
+    "requestSent": "Request sent",
+    "requestSentMsg": "We'll review your request and add the place to the map.",
+    "submit": "Send",
+    "tapToPin": "Tap on the map to drop a pin",
+    "placeName": "Place name",
+    "placeNamePlaceholder": "e.g., Saleh's Café",
+    "noteOptional": "Note (optional)",
+    "notePlaceholder": "Why should this place be on KUWAI?"
+  },
+
   "notif": {
     "title": "Notifications",
     "markAll": "Mark all read",

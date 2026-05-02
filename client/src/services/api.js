@@ -165,7 +165,14 @@ export const hachiAPI = {
     params: { ...(category && category !== 'all' ? { category } : {}) },
   }),
   createRoom: (title, category, isPublic = true) => api.post('/hachi', { title, category, isPublic }),
-  getRoom: (id) => api.get(`/hachi/${id}`),
+  getRoom: (id, location = null) => api.get(`/hachi/${id}`, {
+    params: location ? { lat: location.lat, lng: location.lng, speed: location.speed || 0 } : {},
+  }),
+  getRadar: () => api.get('/hachi/radar'),
+  checkLocation: (id, lat, lng, speed = 0) => api.get(`/hachi/${id}/check-location`, { params: { lat, lng, speed } }),
+  listPolls: (id, lat, lng) => api.get(`/hachi/${id}/polls`, { params: { lat, lng } }),
+  createPoll: (id, question, options, lat, lng) => api.post(`/hachi/${id}/polls`, { question, options, lat, lng }),
+  votePoll: (pollId, optionId, lat, lng) => api.post(`/hachi/polls/${pollId}/vote`, { optionId, lat, lng }),
   react: (id, type) => api.post(`/hachi/${id}/react`, { type }),
   closeRoom: (id) => api.delete(`/hachi/${id}`),
   getMyCircles: () => api.get('/hachi/my'),
@@ -178,6 +185,12 @@ export const hachiAPI = {
   getPinnedCircles: () => api.get('/hachi/joined'),
   getMoments: () => api.get('/hachi/moments'),
   getUserMessages: (username) => api.get(`/hachi/user-messages/${username}`),
+};
+
+// ── Location requests (user-submitted venues) ────────────────────────────────
+export const locationRequestsAPI = {
+  create: (name, lat, lng, note = '') => api.post('/location-requests', { name, lat, lng, note }),
+  listMine: () => api.get('/location-requests/mine'),
 };
 
 // ── Upload ────────────────────────────────────────────────────────────────────

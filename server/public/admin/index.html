@@ -138,6 +138,10 @@
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
         Waitlist
       </div>
+      <div class="nav-item" onclick="showPage('locationRequests')">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        Location Requests
+      </div>
     </nav>
 
     <div style="margin-top:auto;padding-top:16px;border-top:1px solid #E5E5EA">
@@ -311,6 +315,29 @@
       </div>
     </div>
 
+    <!-- Location Requests -->
+    <div id="page-locationRequests" class="page">
+      <h2 style="font-size:22px;font-weight:700;margin-bottom:20px">Location Requests</h2>
+      <div style="display:flex;gap:10px;margin-bottom:16px">
+        <button class="btn" onclick="loadLocReqs('pending')" style="padding:8px 16px;font-size:13px">Pending</button>
+        <button class="btn" onclick="loadLocReqs('approved')" style="padding:8px 16px;font-size:13px">Approved</button>
+        <button class="btn" onclick="loadLocReqs('denied')" style="padding:8px 16px;font-size:13px">Denied</button>
+      </div>
+      <div class="card" style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:14px">
+          <thead><tr style="border-bottom:1px solid #E5E5EA;text-align:left">
+            <th style="padding:10px">Place</th>
+            <th style="padding:10px">User</th>
+            <th style="padding:10px">Coords</th>
+            <th style="padding:10px">Note</th>
+            <th style="padding:10px">Status</th>
+            <th style="padding:10px">Actions</th>
+          </tr></thead>
+          <tbody id="locreq-body"></tbody>
+        </table>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -416,6 +443,7 @@ function showPage(page) {
   else if (page === 'circles') loadCircles(1);
   else if (page === 'ads') loadAds();
   else if (page === 'waitlist') loadWaitlist('waiting');
+  else if (page === 'locationRequests') loadLocReqs('pending');
   else if (page === 'push') { /* form, nothing to load */ }
 }
 
@@ -1207,6 +1235,58 @@ async function markInvited(id) {
   try {
     await apiFetch(`/admin/waitlist/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'invited' }), headers: { 'Content-Type': 'application/json' } });
     loadWaitlist('waiting');
+  } catch (e) { alert('Error: ' + e.message); }
+}
+
+// ─── Location Requests ────────────────────────────────────────────────────────
+async function loadLocReqs(status = 'pending') {
+  try {
+    const res = await apiFetch(`/admin/location-requests?status=${status}`);
+    const tbody = document.getElementById('locreq-body');
+    tbody.innerHTML = res.requests.map((r) => `
+      <tr style="border-bottom:1px solid #F2F2F7">
+        <td style="padding:10px;font-weight:600">${r.name}</td>
+        <td style="padding:10px;color:#6C6C70">${r.user?.name || '—'} <span style="font-size:11px">(${r.user?.username || ''})</span></td>
+        <td style="padding:10px;font-size:12px;color:#6C6C70">
+          <a href="https://www.google.com/maps?q=${r.coords.lat},${r.coords.lng}" target="_blank" style="color:#0033A0">${r.coords.lat.toFixed(4)}, ${r.coords.lng.toFixed(4)}</a>
+        </td>
+        <td style="padding:10px;color:#6C6C70;max-width:200px">${r.note || '—'}</td>
+        <td style="padding:10px">
+          <span style="padding:3px 8px;border-radius:6px;font-size:12px;font-weight:600;
+            background:${r.status === 'pending' ? '#FFF3CD' : r.status === 'approved' ? '#D4EDDA' : '#F8D7DA'};
+            color:${r.status === 'pending' ? '#856404' : r.status === 'approved' ? '#155724' : '#721C24'}">
+            ${r.status}
+          </span>
+        </td>
+        <td style="padding:10px">
+          ${r.status === 'pending' ? `
+            <button class="btn" style="padding:4px 12px;font-size:12px;background:#28a745;color:#fff" onclick="approveLocReq('${r._id}', '${r.name.replace(/'/g, '\\\'')}')">Approve</button>
+            <button class="btn" style="padding:4px 12px;font-size:12px" onclick="denyLocReq('${r._id}')">Deny</button>
+          ` : ''}
+        </td>
+      </tr>
+    `).join('');
+  } catch (e) { console.error(e); }
+}
+
+async function approveLocReq(id, name) {
+  const venueType = prompt(`Approve "${name}" as which venue type?\n\nOptions: cafe, restaurant, fast_food, mall, gym, cinema, hotel, default\n\nDefault: default`, 'default');
+  if (venueType === null) return;
+  try {
+    await apiFetch(`/admin/location-requests/${id}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({ venueType: venueType.trim() || 'default' }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+    loadLocReqs('pending');
+  } catch (e) { alert('Error: ' + e.message); }
+}
+
+async function denyLocReq(id) {
+  if (!confirm('Deny this request?')) return;
+  try {
+    await apiFetch(`/admin/location-requests/${id}/deny`, { method: 'POST' });
+    loadLocReqs('pending');
   } catch (e) { alert('Error: ' + e.message); }
 }
 </script>

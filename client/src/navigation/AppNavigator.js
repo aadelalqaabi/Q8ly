@@ -32,6 +32,10 @@ import EditProfileScreen from '../screens/profile/EditProfileScreen';
 import PostDetailScreen from '../screens/post/PostDetailScreen';
 import HachiScreen from '../screens/hachi/HachiScreen';
 import HachiRoomScreen from '../screens/hachi/HachiRoomScreen';
+import RadarScreen from '../screens/radar/RadarScreen';
+import CircleScreen from '../screens/radar/CircleScreen';
+import LiveCameraScreen from '../screens/radar/LiveCameraScreen';
+import RequestLocationScreen from '../screens/radar/RequestLocationScreen';
 import SettingsScreen from '../screens/settings/SettingsScreen';
 import DeveloperAccountsScreen from '../screens/dev/DeveloperAccountsScreen';
 import MediaViewerScreen from '../screens/media/MediaViewerScreen';
@@ -68,11 +72,11 @@ function MainTabs() {
       }}
     >
       <Tab.Screen
-        name="Home"
-        component={HachiScreen}
+        name="Radar"
+        component={RadarScreen}
         options={{
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'chatbubbles' : 'chatbubbles-outline'} size={29} color={color} />
+            <Ionicons name={focused ? 'radio' : 'radio-outline'} size={29} color={color} />
           ),
         }}
       />
@@ -141,6 +145,9 @@ function AppStack() {
       <Stack.Screen name="ProfileDetail" component={ProfileScreen} options={{ headerShown: false }} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ headerShown: false }} />
       <Stack.Screen name="HachiRoom" component={HachiRoomScreen} options={{ title: '', headerShadowVisible: false }} />
+      <Stack.Screen name="Circle" component={CircleScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="LiveCamera" component={LiveCameraScreen} options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+      <Stack.Screen name="RequestLocation" component={RequestLocationScreen} options={{ headerShown: false, presentation: 'modal' }} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Discover" component={DiscoverScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false }} />

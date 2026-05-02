@@ -228,6 +228,38 @@
     "away": "بعيد"
   },
 
+  "radar": {
+    "title": "كواي",
+    "subtitle": "روح للنبض",
+    "live": "حي",
+    "hereNow": "هنا الحين",
+    "locationNeeded": "الموقع مطلوب",
+    "locationNeededMsg": "كواي يحتاج موقعك ليعرض النبضات القريبة منك.",
+    "travelThere": "روح للمكان عشان تفتح",
+    "travelThereMsg": "لازم تكون داخل المكان جسدياً عشان تشوف الكلام.",
+    "composerPlaceholder": "اكتب شي...",
+    "flashPoll": "تصويت سريع",
+    "post": "نشر",
+    "question": "السؤال",
+    "questionPlaceholder": "الفاليه مزحوم الحين؟",
+    "options": "الخيارات",
+    "flashPollHint": "ينحذف بعد ١٥ دقيقة",
+    "cameraPermission": "الكاميرا مطلوبة للصور المباشرة",
+    "grantPermission": "السماح",
+    "liveOnly": "مباشر فقط",
+    "retake": "إعادة",
+    "requestTitle": "اطلب مكان",
+    "requestNameRequired": "اسم المكان مطلوب",
+    "requestSent": "تم الإرسال",
+    "requestSentMsg": "بنراجع طلبك وبنضيف المكان للخريطة.",
+    "submit": "إرسال",
+    "tapToPin": "اضغط على الخريطة لتحديد الموقع",
+    "placeName": "اسم المكان",
+    "placeNamePlaceholder": "مثال: قهوة صالح",
+    "noteOptional": "ملاحظة (اختياري)",
+    "notePlaceholder": "ليش هالمكان لازم يكون على كواي؟"
+  },
+
   "notif": {
     "title": "الإشعارات",
     "markAll": "تحديد الكل كمقروء",

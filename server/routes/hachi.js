@@ -1,9 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const { protect, optionalAuth } = require('../middleware/auth');
-const { getRooms, getArchivedRooms, createRoom, getRoom, closeRoom, reactRoom, searchRooms, getMyRooms, getJoinedRooms, deleteRoom, pinRoom, unpinRoom, leaveRoom, getPinnedMoments, getUserMessages, getSubjects, checkLocation } = require('../controllers/hachiController');
+const { getRooms, getArchivedRooms, createRoom, getRoom, closeRoom, reactRoom, searchRooms, getMyRooms, getJoinedRooms, deleteRoom, pinRoom, unpinRoom, leaveRoom, getPinnedMoments, getUserMessages, getSubjects, checkLocation, getRadar } = require('../controllers/hachiController');
+const flashPoll = require('../controllers/flashPollController');
 
 router.get('/', optionalAuth, getRooms);
+router.get('/radar', getRadar);
+router.post('/polls/:pollId/vote', protect, flashPoll.votePoll);
 router.get('/search', searchRooms);
 router.get('/subjects', getSubjects);
 router.get('/moments', getPinnedMoments);
@@ -13,6 +16,8 @@ router.get('/joined', protect, getJoinedRooms);
 router.get('/user-messages/:username', getUserMessages);
 router.post('/', protect, createRoom);
 router.get('/:id/check-location', checkLocation);
+router.get('/:id/polls', protect, flashPoll.listPolls);
+router.post('/:id/polls', protect, flashPoll.createPoll);
 router.get('/:id', optionalAuth, getRoom);
 router.post('/:id/react', protect, reactRoom);
 router.delete('/:id/delete', protect, deleteRoom);

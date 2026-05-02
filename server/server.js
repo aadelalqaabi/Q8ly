@@ -284,6 +284,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/dm', dmRoutes);
 app.use('/api/suggestions', suggestionRoutes);
 app.use('/api/ads', adRoutes);
+app.use('/api/location-requests', require('./routes/locationRequests'));
 
 // 404
 app.use((req, res) => {

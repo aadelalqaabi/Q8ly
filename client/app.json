@@ -83,7 +83,14 @@
         }
       ],
       "expo-localization",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "KUWAI uses the live camera so every photo posted in a circle is authentic and taken right now, at the place. Gallery uploads are not allowed.",
+          "microphonePermission": "KUWAI uses your microphone to record audio when capturing live videos in circles."
+        }
+      ]
     ],
     "extra": {
       "API_URL": "https://kuwai.app/api",

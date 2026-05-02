@@ -72,6 +72,12 @@ const hachiSchema = new mongoose.Schema({
     lng: { type: Number },
   },
   venueRadius: { type: Number }, // meters — derived from venue type
+  vibeTheme: {
+    primaryColor: { type: String },
+    accentColor: { type: String },
+    isDark: { type: Boolean, default: true },
+    fontWeight: { type: String, default: '600' },
+  },
 
   // Live presence: users confirmed physically at this venue in last 30 min
   hereNow: [{

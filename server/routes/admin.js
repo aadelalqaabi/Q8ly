@@ -72,4 +72,12 @@ router.patch('/waitlist/:id/status', async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
+// Location requests + circle management (Pivot 2 admin)
+const locReq = require('../controllers/locationRequestController');
+router.get('/location-requests', locReq.adminList);
+router.post('/location-requests/:id/approve', locReq.adminApprove);
+router.post('/location-requests/:id/deny', locReq.adminDeny);
+router.post('/circles-custom', locReq.adminCreateCircle);
+router.patch('/circles-custom/:id', locReq.adminUpdateCircle);
+
 module.exports = router;

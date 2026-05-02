@@ -295,6 +295,7 @@ exports.getPinnedMoments = async (req, res) => {
 };
 
 // GET /api/hachi/:id — get room with messages (works for both active and archived)
+// For venue circles: enforce geofence — if user not physically inside, return room without messages
 exports.getRoom = async (req, res) => {
   try {
     const room = await Hachi.findById(req.params.id)
@@ -308,7 +309,36 @@ exports.getRoom = async (req, res) => {
     // Blocked users can still view the room (read-only), just cannot send messages via socket
     const isBlocked = req.user && room.blockedMembers.some((b) => b.toString() === req.user._id.toString());
 
-    res.json({ success: true, room, isViewOnly: isBlocked || false });
+    // Geofence enforcement for venue circles: only return messages if user is physically inside
+    let inside = true;
+    let confidence = 1;
+    if (room.isVenueCircle && room.venueCoords?.lat) {
+      const lat = parseFloat(req.query.lat);
+      const lng = parseFloat(req.query.lng);
+      const speed = parseFloat(req.query.speed) || 0;
+      if (!isNaN(lat) && !isNaN(lng)) {
+        confidence = computeConfidence(lat, lng, speed, room.venueCoords, room.venueRadius || 250);
+      } else {
+        confidence = 0;
+      }
+      inside = confidence >= 0.6;
+    }
+
+    const roomData = room.toObject();
+    if (!inside) {
+      // Strip messages, hereNow, and lastMessage for users outside geofence
+      roomData.messages = [];
+      roomData.lastMessage = null;
+      roomData.hereNow = [];
+    }
+
+    res.json({
+      success: true,
+      room: roomData,
+      isViewOnly: isBlocked || false,
+      inside,
+      confidence,
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -513,6 +543,42 @@ exports.getUserMessages = async (req, res) => {
     // Sort by most recent first, limit to 30
     messages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     res.json({ success: true, messages: messages.slice(0, 30) });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// GET /api/hachi/radar — minimal "heat pulse" data for the dark map view.
+// Returns only circles with current activity (recent messages OR active hereNow presence).
+// Does NOT return titles/messages — just coordinates + intensity.
+exports.getRadar = async (req, res) => {
+  try {
+    const now = Date.now();
+    const recentCutoff = new Date(now - 30 * 60 * 1000); // 30 min
+    const rooms = await Hachi.find({
+      isActive: true,
+      $or: [
+        { 'lastMessage.createdAt': { $gte: recentCutoff } },
+        { hereNow: { $elemMatch: { expiresAt: { $gt: new Date(now) } } } },
+      ],
+    })
+      .select('venueCoords venueRadius hereNow lastMessage messages venueType')
+      .lean();
+
+    const pulses = rooms.map((r) => {
+      const lat = r.venueCoords?.lat;
+      const lng = r.venueCoords?.lng;
+      if (!lat || !lng) return null;
+      const activeHere = (r.hereNow || []).filter((p) => new Date(p.expiresAt) > new Date(now)).length;
+      const recentMsgs = (r.messages || []).filter(
+        (m) => new Date(m.createdAt).getTime() > now - 30 * 60 * 1000
+      ).length;
+      const intensity = Math.min(1, (activeHere * 2 + recentMsgs * 0.5) / 10);
+      if (intensity === 0) return null;
+      return { _id: r._id, lat, lng, intensity, activeHere, venueType: r.venueType };
+    }).filter(Boolean);
+
+    res.json({ success: true, pulses });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
