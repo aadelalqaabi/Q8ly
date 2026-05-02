@@ -140,18 +140,21 @@ export default function CircleScreen({ route, navigation }) {
 
   const loadRoom = useCallback(async (loc) => {
     try {
-      const res = await hachiAPI.getRoom(circleId, loc);
+      const hasLoc = loc && loc.lat != null && loc.lng != null;
+      const res = await hachiAPI.getRoom(circleId, hasLoc ? loc : null);
       if (!res.inside) {
         if (!exitedRef.current) { exitedRef.current = true; navigation.replace('Main'); }
         return;
       }
       setRoom(res.room);
       setMessages(res.room.messages || []);
-      hachiAPI.recordVisit(circleId, loc.lat, loc.lng, loc.speed || 0).catch(() => {});
-      try {
-        const pollRes = await hachiAPI.listPolls(circleId, loc.lat, loc.lng);
-        setPolls(pollRes.polls || []);
-      } catch {}
+      if (hasLoc) {
+        hachiAPI.recordVisit(circleId, loc.lat, loc.lng, loc.speed || 0).catch(() => {});
+        try {
+          const pollRes = await hachiAPI.listPolls(circleId, loc.lat, loc.lng);
+          setPolls(pollRes.polls || []);
+        } catch {}
+      }
     } catch (e) {
       if (e.status === 403 && !exitedRef.current) { exitedRef.current = true; navigation.replace('Main'); }
     } finally { setLoading(false); }
@@ -159,14 +162,26 @@ export default function CircleScreen({ route, navigation }) {
 
   useEffect(() => {
     let cancelled = false;
+    let loadedOnce = false;
+
+    const safeLoad = (loc) => {
+      if (loadedOnce || cancelled) return;
+      loadedOnce = true;
+      loadRoom(loc || {});
+    };
+
     (async () => {
-      if (!Location) return;
+      if (!Location) {
+        // No location module — try to load anyway. Server lets founders in.
+        safeLoad(null);
+        return;
+      }
       try {
         const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
         if (cancelled) return;
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude, speed: pos.coords.speed };
         setUserLoc(loc);
-        loadRoom(loc);
+        safeLoad(loc);
         watchRef.current = await Location.watchPositionAsync(
           { accuracy: Location.Accuracy.High, distanceInterval: 15, timeInterval: 6000 },
           async (p) => {
@@ -178,7 +193,10 @@ export default function CircleScreen({ route, navigation }) {
             } catch {}
           }
         );
-      } catch {}
+      } catch {
+        // Permission denied / GPS off / module missing — still try to load.
+        safeLoad(null);
+      }
     })();
     return () => { cancelled = true; if (watchRef.current) watchRef.current.remove(); };
   }, [circleId, navigation, loadRoom]);

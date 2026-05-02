@@ -554,15 +554,15 @@ exports.getUserMessages = async (req, res) => {
 exports.recordVisit = async (req, res) => {
   try {
     const { lat, lng, speed = 0 } = req.body;
-    if (lat == null || lng == null) {
-      return res.status(400).json({ success: false, message: 'lat/lng required' });
-    }
     const room = await Hachi.findById(req.params.id).select('isVenueCircle venueCoords venueRadius').lean();
     if (!room) return res.status(404).json({ success: false, message: 'Circle not found' });
     if (!room.isVenueCircle || !room.venueCoords?.lat) {
       return res.status(400).json({ success: false, message: 'Not a venue circle' });
     }
     if (!bypassesGeofence(req.user)) {
+      if (lat == null || lng == null) {
+        return res.status(400).json({ success: false, message: 'lat/lng required' });
+      }
       const confidence = computeConfidence(parseFloat(lat), parseFloat(lng), parseFloat(speed) || 0, room.venueCoords, room.venueRadius || 250);
       if (confidence < 0.6) {
         return res.status(403).json({ success: false, message: 'Not inside the venue' });
