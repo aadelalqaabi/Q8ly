@@ -151,11 +151,12 @@ export default function CircleScreen({ route, navigation }) {
       setMessages(res.room.messages || []);
       if (hasLoc) {
         hachiAPI.recordVisit(circleId, loc.lat, loc.lng, loc.speed || 0).catch(() => {});
-        try {
-          const pollRes = await hachiAPI.listPolls(circleId, loc.lat, loc.lng);
-          setPolls(pollRes.polls || []);
-        } catch {}
       }
+      // List polls — founder works without coords, others need them
+      try {
+        const pollRes = await hachiAPI.listPolls(circleId, loc?.lat, loc?.lng);
+        setPolls(pollRes.polls || []);
+      } catch {}
     } catch (e) {
       if (e.status === 403 && !exitedRef.current) { exitedRef.current = true; navigation.replace('Main'); }
     } finally { setLoading(false); }
@@ -353,12 +354,18 @@ function CreatePollModal({ visible, onClose, onCreated, circleId, userLoc }) {
 
   const submit = async () => {
     const filled = options.filter((o) => o.trim());
-    if (!question.trim() || filled.length < 2 || !userLoc) return;
+    if (!question.trim() || filled.length < 2) return;
     setCreating(true);
     try {
-      const res = await hachiAPI.createPoll(circleId, question.trim(), filled, userLoc.lat, userLoc.lng);
+      const res = await hachiAPI.createPoll(circleId, question.trim(), filled, userLoc?.lat, userLoc?.lng);
       onCreated(res.poll);
-    } catch {} finally { setCreating(false); }
+    } catch (e) {
+      if (e?.message) {
+        // surface server error so we know what blocked it
+        // eslint-disable-next-line no-console
+        console.warn('[poll] create failed:', e.message);
+      }
+    } finally { setCreating(false); }
   };
 
   return (

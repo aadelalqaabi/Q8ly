@@ -179,9 +179,24 @@ export const hachiAPI = {
   checkLocation: (id, lat, lng, speed = 0) => api.get(`/hachi/${id}/check-location`, { params: { lat, lng, speed } }),
   recordVisit: (id, lat, lng, speed = 0) => api.post(`/hachi/${id}/visit`, { lat, lng, speed }),
   getVault: () => api.get('/hachi/vault'),
-  listPolls: (id, lat, lng) => api.get(`/hachi/${id}/polls`, { params: { lat, lng } }),
-  createPoll: (id, question, options, lat, lng) => api.post(`/hachi/${id}/polls`, { question, options, lat, lng }),
-  votePoll: (pollId, optionId, lat, lng) => api.post(`/hachi/polls/${pollId}/vote`, { optionId, lat, lng }),
+  listPolls: (id, lat, lng) => {
+    const params = {};
+    if (lat != null) params.lat = lat;
+    if (lng != null) params.lng = lng;
+    return api.get(`/hachi/${id}/polls`, { params });
+  },
+  createPoll: (id, question, options, lat, lng) => {
+    const body = { question, options };
+    if (lat != null) body.lat = lat;
+    if (lng != null) body.lng = lng;
+    return api.post(`/hachi/${id}/polls`, body);
+  },
+  votePoll: (pollId, optionId, lat, lng) => {
+    const body = { optionId };
+    if (lat != null) body.lat = lat;
+    if (lng != null) body.lng = lng;
+    return api.post(`/hachi/polls/${pollId}/vote`, body);
+  },
   react: (id, type) => api.post(`/hachi/${id}/react`, { type }),
   closeRoom: (id) => api.delete(`/hachi/${id}`),
   getMyCircles: () => api.get('/hachi/my'),
