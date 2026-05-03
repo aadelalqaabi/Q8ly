@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Image,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Animated, Easing, Dimensions,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -12,42 +12,11 @@ import {
   BrutNav, BrutNavLink, BrutHero, BrutRule, BG, TEXT, MUTED, ACCENT, SEPARATOR, isAr, ls, shout,
 } from '../../components/Brut';
 import { PollCard, PollComposer } from '../../components/Poll';
+import VenueArt from '../../components/VenueArt';
 let Location = null;
 try { Location = require('expo-location'); } catch {}
 
-// ── Frequency wave (chat-speed visualizer) ────────────────────────────────
-function FrequencyWave({ activity }) {
-  const bars = 7;
-  const animValues = useRef(Array.from({ length: bars }, () => new Animated.Value(0.3))).current;
-  useEffect(() => {
-    const speed = Math.max(300, 1500 - activity * 100);
-    const animations = animValues.map((v, i) =>
-      Animated.loop(Animated.sequence([
-        Animated.timing(v, { toValue: Math.random() * 0.7 + 0.3, duration: speed + i * 80, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
-        Animated.timing(v, { toValue: Math.random() * 0.4 + 0.2, duration: speed + i * 80, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
-      ]))
-    );
-    animations.forEach((a) => a.start());
-    return () => animations.forEach((a) => a.stop());
-  }, [activity]);
-  return (
-    <View style={waveStyles.row}>
-      {animValues.map((v, i) => (
-        <Animated.View
-          key={i}
-          style={[waveStyles.bar, {
-            height: v.interpolate({ inputRange: [0, 1], outputRange: [3, 14] }),
-            opacity: v.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }),
-          }]}
-        />
-      ))}
-    </View>
-  );
-}
-const waveStyles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 3, height: 16 },
-  bar: { width: 3, backgroundColor: ACCENT },
-});
+// FrequencyWave removed — replaced by VenueArt line illustration
 
 // ── Message row ───────────────────────────────────────────────────────────
 const SW = Dimensions.get('window').width;
@@ -114,7 +83,6 @@ export default function CircleScreen({ route, navigation }) {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
   const [showCreatePoll, setShowCreatePoll] = useState(false);
-  const [recentActivity, setRecentActivity] = useState(0);
   const [userLoc, setUserLoc] = useState(null);
 
   const watchRef = useRef(null);
@@ -198,7 +166,6 @@ export default function CircleScreen({ route, navigation }) {
     const onMsg = ({ roomId, message }) => {
       if (roomId !== circleId) return;
       setMessages((m) => [...m, message]);
-      setRecentActivity((a) => Math.min(a + 1, 30));
     };
     const onPollCreated = ({ poll }) => setPolls((p) => [poll, ...p.filter((x) => x._id !== poll._id)]);
     // Public socket updates have no `mine` — preserve our local mine flags by option ID
@@ -221,12 +188,6 @@ export default function CircleScreen({ route, navigation }) {
       leaveHachiRoom(circleId);
     };
   }, [circleId]);
-
-  // Activity decay
-  useEffect(() => {
-    const id = setInterval(() => setRecentActivity((a) => Math.max(0, a - 1)), 5000);
-    return () => clearInterval(id);
-  }, []);
 
   // Auto-expire polls locally so the timer hits 0 even without a server tick
   useEffect(() => {
@@ -293,14 +254,17 @@ export default function CircleScreen({ route, navigation }) {
         right={<BrutNavLink onPress={() => setShowCreatePoll(true)} label={t('radar.flashPoll')} accent />}
       />
 
-      {/* Hero: venue name + presence + frequency wave */}
+      {/* Hero: venue name + presence + line-art illustration */}
       <View style={styles.hero}>
         <BrutHero title={room.title} label={`${activeHere} ${ar ? t('radar.hereNow') : shout(t('radar.hereNow'), false)}`} size={42} />
-        <View style={[styles.heroRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
-          <View style={styles.hereDot} />
-          <FrequencyWave activity={recentActivity} />
-        </View>
-        <BrutRule mt={18} mb={0} />
+        <BrutRule mt={18} mb={6} />
+        <VenueArt
+          name={room.venueName || room.title}
+          type={room.venueType}
+          width={SW - 40}
+          height={64}
+        />
+        <BrutRule mt={6} mb={0} />
       </View>
 
       {/* Messages + polls */}
@@ -371,8 +335,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: BG },
 
   hero: { paddingHorizontal: 20, paddingTop: 8 },
-  heroRow: { alignItems: 'center', marginTop: 14, gap: 10 },
-  hereDot: { width: 8, height: 8, backgroundColor: ACCENT, borderRadius: 4 },
 
   composer: {
     alignItems: 'flex-end', paddingHorizontal: 16, paddingTop: 10, gap: 12,
