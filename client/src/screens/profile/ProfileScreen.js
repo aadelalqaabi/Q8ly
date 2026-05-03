@@ -78,6 +78,61 @@ function fmt(n) {
   return String(n);
 }
 
+// ── Artifact fullscreen modal ─────────────────────────────────────────────
+function ArtifactModal({ item, onClose, isRTL, t }) {
+  if (!item) return null;
+  const visited = !!item.visited;
+  const bg = visited ? '#000000' : '#F2F2F7';
+  const fg = visited ? '#FFFFFF' : '#000000';
+  const tag = visited
+    ? (isRTL ? 'تم الفتح' : 'UNLOCKED')
+    : (isRTL ? 'مغلق' : 'LOCKED');
+  return (
+    <Modal visible animationType="fade" presentationStyle="overFullScreen" transparent={false} onRequestClose={onClose}>
+      <View style={[am.root, { backgroundColor: bg }]}>
+        <View style={[am.topBar, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+          <View style={[am.tagWrap, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+            <View style={[am.tagDot, { backgroundColor: fg }]} />
+            <Text style={[am.tag, { color: fg, letterSpacing: isRTL ? 0 : 2 }]}>{tag}</Text>
+          </View>
+          <TouchableOpacity onPress={onClose} hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}>
+            <Text style={[am.close, { color: fg, letterSpacing: isRTL ? 0 : 2 }]}>
+              {isRTL ? 'إغلاق ←' : '× CLOSE'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={am.body}>
+          <Text
+            style={[
+              am.name,
+              { color: fg, textAlign: isRTL ? 'right' : 'left', letterSpacing: isRTL ? 0 : -3 },
+            ]}
+            numberOfLines={4}
+            adjustsFontSizeToFit
+            minimumFontScale={0.4}
+          >
+            {isRTL ? item.title : (item.title || '').toUpperCase()}
+          </Text>
+          <View style={[am.rule, { backgroundColor: fg }]} />
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const am = StyleSheet.create({
+  root: { flex: 1, paddingHorizontal: 24, paddingTop: 64, paddingBottom: 40 },
+  topBar: { justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 },
+  tagWrap: { alignItems: 'center', gap: 8 },
+  tagDot: { width: 8, height: 8, borderRadius: 4 },
+  tag: { fontSize: 11, fontWeight: '900' },
+  close: { fontSize: 12, fontWeight: '900' },
+  body: { flex: 1, justifyContent: 'center' },
+  name: { fontSize: 96, fontWeight: '900', lineHeight: 96 },
+  rule: { height: 4, marginTop: 32, alignSelf: 'stretch' },
+});
+
 export default function ProfileScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
   const { user: currentUser } = useSelector((s) => s.auth);
@@ -110,6 +165,7 @@ export default function ProfileScreen({ navigation, route }) {
 
   // Vault — list of all venue circles + which ones the user has visited
   const [vault, setVault] = useState({ items: [], visitedCount: 0, totalCircles: 0, percentage: 0 });
+  const [selectedArtifact, setSelectedArtifact] = useState(null);
   const loadVault = useCallback(async () => {
     if (!isOwnProfile) return;
     try {
@@ -530,9 +586,13 @@ export default function ProfileScreen({ navigation, route }) {
             </View>
           }
           renderItem={({ item }) => (
-            <View style={styles.vaultCell}>
+            <TouchableOpacity
+              style={styles.vaultCell}
+              activeOpacity={0.75}
+              onPress={() => setSelectedArtifact(item)}
+            >
               <Artifact id={item._id} title={item.title} size={(SW - 32 - 18) / 4} locked={!item.visited} />
-            </View>
+            </TouchableOpacity>
           )}
           ListEmptyComponent={
             <View style={styles.empty}>
@@ -550,6 +610,14 @@ export default function ProfileScreen({ navigation, route }) {
           showsVerticalScrollIndicator={false}
         />
       )}
+
+      {/* Artifact detail — fullscreen brutalist expand */}
+      <ArtifactModal
+        item={selectedArtifact}
+        onClose={() => setSelectedArtifact(null)}
+        isRTL={isRTL}
+        t={t}
+      />
 
       {/* Followers / Following modal */}
       <Modal
