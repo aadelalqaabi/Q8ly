@@ -513,6 +513,7 @@ export default function ProfileScreen({ navigation, route }) {
           data={vault.items}
           keyExtractor={(item) => item._id}
           numColumns={4}
+          columnWrapperStyle={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}
           contentContainerStyle={{ paddingBottom: insets.bottom + 40, paddingHorizontal: 16 }}
           ListHeaderComponent={
             <View>
