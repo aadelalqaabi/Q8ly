@@ -12,7 +12,6 @@ import {
   BrutNav, BrutNavLink, BrutHero, BrutRule, BG, TEXT, MUTED, ACCENT, SEPARATOR, isAr, ls, shout,
 } from '../../components/Brut';
 import { PollCard, PollComposer } from '../../components/Poll';
-import VenueArt from '../../components/VenueArt';
 let Location = null;
 try { Location = require('expo-location'); } catch {}
 
@@ -254,17 +253,10 @@ export default function CircleScreen({ route, navigation }) {
         right={<BrutNavLink onPress={() => setShowCreatePoll(true)} label={t('radar.flashPoll')} accent />}
       />
 
-      {/* Hero: venue name + presence + line-art illustration */}
+      {/* Hero: venue name + presence */}
       <View style={styles.hero}>
         <BrutHero title={room.title} label={`${activeHere} ${ar ? t('radar.hereNow') : shout(t('radar.hereNow'), false)}`} size={42} />
-        <BrutRule mt={18} mb={6} />
-        <VenueArt
-          name={room.venueName || room.title}
-          type={room.venueType}
-          width={SW - 40}
-          height={64}
-        />
-        <BrutRule mt={6} mb={0} />
+        <BrutRule mt={18} mb={0} />
       </View>
 
       {/* Messages + polls */}
