@@ -89,6 +89,8 @@ export default function CircleScreen({ route, navigation }) {
   const watchRef = useRef(null);
   const flatRef = useRef(null);
   const exitedRef = useRef(false);
+  // Tracks the most recent vote per poll so stale HTTP responses don't revert state
+  const expectedVoteRef = useRef({});
 
   const loadRoom = useCallback(async (loc) => {
     try {
@@ -168,7 +170,13 @@ export default function CircleScreen({ route, navigation }) {
       setRecentActivity((a) => Math.min(a + 1, 30));
     };
     const onPollCreated = ({ poll }) => setPolls((p) => [poll, ...p.filter((x) => x._id !== poll._id)]);
-    const onPollUpdate = ({ poll }) => setPolls((p) => p.map((x) => (x._id === poll._id ? poll : x)));
+    // Public socket updates have no `mine` — preserve our local mine flags by option ID
+    const onPollUpdate = ({ poll }) => setPolls((p) => p.map((x) => {
+      if (x._id !== poll._id) return x;
+      const mineMap = new Map((x.options || []).map((o) => [o._id, !!o.mine]));
+      const merged = poll.options.map((o) => ({ ...o, mine: mineMap.get(o._id) || false }));
+      return { ...poll, options: merged };
+    }));
     const onPollRemoved = ({ pollId }) => setPolls((p) => p.filter((x) => x._id !== pollId));
     socket.on('hachiMessage', onMsg);
     socket.on('flashPollCreated', onPollCreated);
@@ -205,9 +213,9 @@ export default function CircleScreen({ route, navigation }) {
     setText('');
   };
 
-  // Vote — optimistic
+  // Vote — optimistic + race-safe
   const handleVote = (pollId, optionId) => {
-    const me = currentUser?._id;
+    expectedVoteRef.current[pollId] = optionId;
     setPolls((prev) => prev.map((p) => {
       if (p._id !== pollId) return p;
       const optsCleared = p.options.map((o) => ({ ...o, mine: false, count: o.mine ? Math.max(0, (o.count || 0) - 1) : (o.count || 0) }));
@@ -217,8 +225,12 @@ export default function CircleScreen({ route, navigation }) {
       return { ...p, options: optsCleared, totalVotes };
     }));
     hachiAPI.votePoll(pollId, optionId, userLoc?.lat, userLoc?.lng)
-      .then((res) => setPolls((p) => p.map((x) => (x._id === pollId ? res.poll : x))))
-      .catch(() => { /* keep optimistic, socket may reconcile */ });
+      .then((res) => {
+        // Discard stale responses — only the latest vote's response wins
+        if (expectedVoteRef.current[pollId] !== optionId) return;
+        setPolls((p) => p.map((x) => (x._id === pollId ? res.poll : x)));
+      })
+      .catch(() => { /* keep optimistic */ });
   };
 
   // Delete

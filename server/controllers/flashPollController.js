@@ -32,28 +32,37 @@ async function requireInside(req, res) {
   return room;
 }
 
-// Trim a poll for response — strip raw voter arrays, keep counts + my vote
-function shapePoll(poll, userId) {
-  const me = userId ? String(userId) : null;
+// Public shape — no per-user state. Used for socket broadcasts.
+// Each client merges its own `mine` flag locally from the previous state.
+function shapePollPublic(poll) {
   let total = 0;
   const options = poll.options.map((o) => {
-    const voters = o.voters || [];
-    const count = voters.length;
+    const count = (o.voters || []).length;
     total += count;
-    const mine = me && voters.some((v) => String(v?._id || v) === me);
-    return { _id: String(o._id), text: o.text, count, mine: !!mine };
+    return { _id: String(o._id), text: o.text, count };
   });
-  const remainingMs = Math.max(0, new Date(poll.expiresAt).getTime() - Date.now());
   return {
     _id: String(poll._id),
     question: poll.question,
     options,
     totalVotes: total,
     expiresAt: poll.expiresAt,
-    remainingMs,
+    remainingMs: Math.max(0, new Date(poll.expiresAt).getTime() - Date.now()),
     creator: String(poll.creator),
     createdAt: poll.createdAt,
   };
+}
+
+// Per-user shape — adds `mine` for each option. Used for HTTP responses.
+function shapePoll(poll, userId) {
+  const me = userId ? String(userId) : null;
+  const base = shapePollPublic(poll);
+  const minedOptions = base.options.map((o, i) => {
+    const voters = poll.options[i]?.voters || [];
+    const mine = me && voters.some((v) => String(v?._id || v) === me);
+    return { ...o, mine: !!mine };
+  });
+  return { ...base, options: minedOptions };
 }
 
 // POST /api/hachi/:id/polls
@@ -85,7 +94,7 @@ exports.createPoll = async (req, res) => {
     });
     const shaped = shapePoll(poll.toObject(), req.user._id);
     const io = req.app.get('io');
-    io.to(`hachi:${req.params.id}`).emit('flashPollCreated', { poll: shaped });
+    io.to(`hachi:${req.params.id}`).emit('flashPollCreated', { poll: shapePollPublic(poll.toObject()) });
     res.status(201).json({ success: true, poll: shaped });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -135,7 +144,7 @@ exports.votePoll = async (req, res) => {
 
     const shaped = shapePoll(poll.toObject(), req.user._id);
     const io = req.app.get('io');
-    io.to(`hachi:${poll.circle}`).emit('flashPollUpdate', { poll: shaped });
+    io.to(`hachi:${poll.circle}`).emit('flashPollUpdate', { poll: shapePollPublic(poll.toObject()) });
     res.json({ success: true, poll: shaped });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
