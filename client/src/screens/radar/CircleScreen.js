@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Modal, Animated, Easing,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Animated, Easing,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -11,6 +11,7 @@ import { getSocket, joinHachiRoom, leaveHachiRoom, sendHachiMessage } from '../.
 import {
   BrutNav, BrutNavLink, BrutHero, BrutRule, BG, TEXT, MUTED, ACCENT, SEPARATOR, isAr, ls, shout,
 } from '../../components/Brut';
+import { PollCard, PollComposer } from '../../components/Poll';
 let Location = null;
 try { Location = require('expo-location'); } catch {}
 
@@ -46,62 +47,6 @@ function FrequencyWave({ activity }) {
 const waveStyles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 3, height: 16 },
   bar: { width: 3, backgroundColor: ACCENT },
-});
-
-// ── Flash poll card ───────────────────────────────────────────────────────
-function PollCard({ poll, onVote, currentUserId, ar }) {
-  const totalVotes = poll.options.reduce((sum, o) => sum + (o.voters?.length || 0), 0);
-  const userVote = poll.options.find((o) => (o.voters || []).some((v) => v === currentUserId || v?._id === currentUserId));
-  const expiresIn = Math.max(0, Math.floor((new Date(poll.expiresAt) - Date.now()) / 60000));
-
-  return (
-    <View style={pollStyles.card}>
-      <View style={[pollStyles.header, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
-        <Text style={[pollStyles.tag, { letterSpacing: ls(2, ar) }]}>● POLL</Text>
-        <View style={{ flex: 1 }} />
-        <Text style={pollStyles.timer}>{expiresIn}m</Text>
-      </View>
-      <Text style={[pollStyles.question, { textAlign: ar ? 'right' : 'left' }]}>{poll.question}</Text>
-      {poll.options.map((opt) => {
-        const votes = opt.voters?.length || 0;
-        const pct = totalVotes > 0 ? (votes / totalVotes) * 100 : 0;
-        const isMine = userVote?._id === opt._id;
-        return (
-          <TouchableOpacity key={opt._id} style={pollStyles.option} onPress={() => onVote(opt._id)} activeOpacity={0.7}>
-            <View style={[pollStyles.fill, { width: `${pct}%`, backgroundColor: isMine ? ACCENT : '#EEF2FA', [ar ? 'right' : 'left']: 0 }]} />
-            <View style={[pollStyles.optionContent, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
-              <Text style={[pollStyles.optionText, isMine && { color: '#fff' }]} numberOfLines={1}>
-                {opt.text}
-              </Text>
-              <Text style={[pollStyles.optionPct, isMine && { color: '#fff' }]}>{Math.round(pct)}%</Text>
-            </View>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
-}
-const pollStyles = StyleSheet.create({
-  card: {
-    marginVertical: 10, padding: 14,
-    borderWidth: 2, borderColor: TEXT,
-  },
-  header: { alignItems: 'center', marginBottom: 10 },
-  tag: { fontSize: 10, fontWeight: '900', color: ACCENT },
-  timer: { fontSize: 11, fontWeight: '800', color: MUTED, fontVariant: ['tabular-nums'] },
-  question: { fontSize: 16, fontWeight: '900', color: TEXT, marginBottom: 12 },
-  option: {
-    height: 44, marginBottom: 6,
-    borderWidth: StyleSheet.hairlineWidth, borderColor: TEXT,
-    overflow: 'hidden', justifyContent: 'center',
-  },
-  fill: { position: 'absolute', top: 0, bottom: 0 },
-  optionContent: {
-    position: 'absolute', top: 0, bottom: 0, left: 0, right: 0,
-    alignItems: 'center', paddingHorizontal: 14,
-  },
-  optionText: { flex: 1, color: TEXT, fontSize: 14, fontWeight: '700' },
-  optionPct: { color: TEXT, fontSize: 12, fontWeight: '900', fontVariant: ['tabular-nums'], marginStart: 8 },
 });
 
 // ── Message row ───────────────────────────────────────────────────────────
@@ -158,7 +103,6 @@ export default function CircleScreen({ route, navigation }) {
       if (hasLoc) {
         hachiAPI.recordVisit(circleId, loc.lat, loc.lng, loc.speed || 0).catch(() => {});
       }
-      // List polls — founder works without coords, others need them
       try {
         const pollRes = await hachiAPI.listPolls(circleId, loc?.lat, loc?.lng);
         setPolls(pollRes.polls || []);
@@ -171,25 +115,15 @@ export default function CircleScreen({ route, navigation }) {
   useEffect(() => {
     let cancelled = false;
     let loadedOnce = false;
-
     const safeLoad = (loc) => {
       if (loadedOnce || cancelled) return;
       loadedOnce = true;
       loadRoom(loc);
     };
 
-    // Founder: skip GPS entirely, load instantly. Server allows them in.
-    if (isFounder) {
-      safeLoad(null);
-      return () => { cancelled = true; };
-    }
+    if (isFounder) { safeLoad(null); return () => { cancelled = true; }; }
+    if (!Location) { safeLoad(null); return () => { cancelled = true; }; }
 
-    if (!Location) {
-      safeLoad(null);
-      return () => { cancelled = true; };
-    }
-
-    // Race the location lookup against a 4s fallback so cold GPS doesn't block entry
     const fallback = setTimeout(() => safeLoad(null), 4000);
 
     (async () => {
@@ -223,6 +157,7 @@ export default function CircleScreen({ route, navigation }) {
     };
   }, [circleId, navigation, loadRoom, isFounder]);
 
+  // Sockets
   useEffect(() => {
     const socket = getSocket();
     if (!socket) return;
@@ -232,23 +167,36 @@ export default function CircleScreen({ route, navigation }) {
       setMessages((m) => [...m, message]);
       setRecentActivity((a) => Math.min(a + 1, 30));
     };
-    const onPoll = ({ poll }) => setPolls((p) => [poll, ...p.filter((x) => x._id !== poll._id)]);
+    const onPollCreated = ({ poll }) => setPolls((p) => [poll, ...p.filter((x) => x._id !== poll._id)]);
     const onPollUpdate = ({ poll }) => setPolls((p) => p.map((x) => (x._id === poll._id ? poll : x)));
+    const onPollRemoved = ({ pollId }) => setPolls((p) => p.filter((x) => x._id !== pollId));
     socket.on('hachiMessage', onMsg);
-    socket.on('flashPollCreated', onPoll);
+    socket.on('flashPollCreated', onPollCreated);
     socket.on('flashPollUpdate', onPollUpdate);
+    socket.on('flashPollRemoved', onPollRemoved);
     return () => {
       socket.off('hachiMessage', onMsg);
-      socket.off('flashPollCreated', onPoll);
+      socket.off('flashPollCreated', onPollCreated);
       socket.off('flashPollUpdate', onPollUpdate);
+      socket.off('flashPollRemoved', onPollRemoved);
       leaveHachiRoom(circleId);
     };
   }, [circleId]);
 
+  // Activity decay
   useEffect(() => {
     const id = setInterval(() => setRecentActivity((a) => Math.max(0, a - 1)), 5000);
     return () => clearInterval(id);
   }, []);
+
+  // Auto-expire polls locally so the timer hits 0 even without a server tick
+  useEffect(() => {
+    if (polls.length === 0) return;
+    const id = setInterval(() => {
+      setPolls((prev) => prev.filter((p) => new Date(p.expiresAt).getTime() > Date.now()));
+    }, 5000);
+    return () => clearInterval(id);
+  }, [polls.length]);
 
   const handleSend = () => {
     if (!text.trim()) return;
@@ -257,22 +205,32 @@ export default function CircleScreen({ route, navigation }) {
     setText('');
   };
 
+  // Vote — optimistic
   const handleVote = (pollId, optionId) => {
-    // Optimistic: move my vote locally so the bar fills instantly
     const me = currentUser?._id;
     setPolls((prev) => prev.map((p) => {
       if (p._id !== pollId) return p;
-      const next = { ...p, options: p.options.map((o) => ({
-        ...o,
-        voters: (o.voters || []).filter((v) => (v?._id || v) !== me),
-      })) };
-      const target = next.options.find((o) => o._id === optionId);
-      if (target) target.voters = [...(target.voters || []), me];
-      return next;
+      const optsCleared = p.options.map((o) => ({ ...o, mine: false, count: o.mine ? Math.max(0, (o.count || 0) - 1) : (o.count || 0) }));
+      const target = optsCleared.find((o) => o._id === optionId);
+      if (target) { target.mine = true; target.count = (target.count || 0) + 1; }
+      const totalVotes = optsCleared.reduce((s, o) => s + (o.count || 0), 0);
+      return { ...p, options: optsCleared, totalVotes };
     }));
     hachiAPI.votePoll(pollId, optionId, userLoc?.lat, userLoc?.lng)
       .then((res) => setPolls((p) => p.map((x) => (x._id === pollId ? res.poll : x))))
-      .catch(() => { /* keep optimistic state — socket will reconcile */ });
+      .catch(() => { /* keep optimistic, socket may reconcile */ });
+  };
+
+  // Delete
+  const handleDeletePoll = (pollId) => {
+    setPolls((prev) => prev.filter((p) => p._id !== pollId));
+    hachiAPI.deletePoll(pollId).catch(() => {});
+  };
+
+  // Create — fire-and-forget
+  const handleCreatePoll = ({ question, options, durationMinutes }) => {
+    hachiAPI.createPoll(circleId, question, options, userLoc?.lat, userLoc?.lng, durationMinutes)
+      .catch((e) => { console.warn('[poll] create failed:', e?.message); });
   };
 
   if (loading || !room) {
@@ -296,9 +254,7 @@ export default function CircleScreen({ route, navigation }) {
       <View style={styles.hero}>
         <BrutHero title={room.title} label={`${activeHere} ${ar ? t('radar.hereNow') : shout(t('radar.hereNow'), false)}`} size={42} />
         <View style={[styles.heroRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
-          <View style={styles.hereBlock}>
-            <View style={styles.hereDot} />
-          </View>
+          <View style={styles.hereDot} />
           <FrequencyWave activity={recentActivity} />
         </View>
         <BrutRule mt={18} mb={0} />
@@ -316,7 +272,14 @@ export default function CircleScreen({ route, navigation }) {
           polls.length > 0 ? (
             <View>
               {polls.map((poll) => (
-                <PollCard key={poll._id} poll={poll} onVote={(optId) => handleVote(poll._id, optId)} currentUserId={currentUser?._id} ar={ar} />
+                <PollCard
+                  key={poll._id}
+                  poll={poll}
+                  onVote={handleVote}
+                  onDelete={handleDeletePoll}
+                  currentUserId={currentUser?._id}
+                  ar={ar}
+                />
               ))}
             </View>
           ) : null
@@ -346,138 +309,13 @@ export default function CircleScreen({ route, navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* Create Poll modal */}
-      <CreatePollModal
+      {/* Poll composer modal */}
+      <PollComposer
         visible={showCreatePoll}
         onClose={() => setShowCreatePoll(false)}
-        circleId={circleId}
-        userLoc={userLoc}
+        onSubmit={handleCreatePoll}
       />
     </KeyboardAvoidingView>
-  );
-}
-
-const DURATION_CHOICES = [15, 30, 60];
-
-function CreatePollModal({ visible, onClose, circleId, userLoc }) {
-  const { t, i18n } = useTranslation();
-  const ar = isAr(i18n);
-  const [question, setQuestion] = useState('');
-  const [options, setOptions] = useState(['', '']);
-  const [duration, setDuration] = useState(15);
-
-  useEffect(() => {
-    if (!visible) { setQuestion(''); setOptions(['', '']); setDuration(15); }
-  }, [visible]);
-
-  // Fire-and-forget: close immediately so it feels instant; the socket
-  // event 'flashPollCreated' will surface the new poll for everyone.
-  const submit = () => {
-    const filled = options.filter((o) => o.trim());
-    if (!question.trim() || filled.length < 2) return;
-    onClose();
-    hachiAPI.createPoll(circleId, question.trim(), filled, userLoc?.lat, userLoc?.lng, duration).catch((e) => {
-      // eslint-disable-next-line no-console
-      console.warn('[poll] create failed:', e?.message);
-    });
-  };
-
-  const isReady = !!question.trim() && options.filter((o) => o.trim()).length >= 2;
-  const durLabel = (mins) => {
-    if (mins === 60) return ar ? 'ساعة' : '1H';
-    return ar ? `${mins} د` : `${mins}M`;
-  };
-
-  return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={styles.container}>
-        <BrutNav
-          onBack={onClose}
-          leftLabel={t('common.cancel')}
-          right={
-            <TouchableOpacity onPress={submit} disabled={!isReady} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-              <Text style={[
-                styles.sendLabel,
-                !isReady && { opacity: 0.35 },
-                { letterSpacing: ls(2, ar) },
-              ]}>
-                {shout(t('radar.post'), ar)}
-              </Text>
-            </TouchableOpacity>
-          }
-        />
-        <View style={{ paddingHorizontal: 24 }}>
-          <BrutHero title={t('radar.flashPoll')} label={ar ? 'تصويت مؤقت' : 'TEMPORARY VOTE'} size={42} />
-          <BrutRule mt={20} mb={24} />
-          <Text style={[styles.modalLabel, { letterSpacing: ls(2, ar), textAlign: ar ? 'right' : 'left' }]}>
-            {shout(t('radar.question'), ar)}
-          </Text>
-          <TextInput
-            style={[styles.modalInput, { textAlign: ar ? 'right' : 'left' }]}
-            value={question}
-            onChangeText={setQuestion}
-            placeholder={t('radar.questionPlaceholder')}
-            placeholderTextColor={MUTED}
-            maxLength={100}
-          />
-          <View style={{ height: 18 }} />
-          <Text style={[styles.modalLabel, { letterSpacing: ls(2, ar), textAlign: ar ? 'right' : 'left' }]}>
-            {shout(t('radar.options'), ar)}
-          </Text>
-          {options.map((opt, i) => (
-            <View key={i} style={[styles.optionRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
-              <TextInput
-                style={[styles.modalInput, styles.optionInput, { textAlign: ar ? 'right' : 'left' }]}
-                value={opt}
-                onChangeText={(v) => { const next = [...options]; next[i] = v; setOptions(next); }}
-                placeholder={ar ? `الخيار ${i + 1}` : `Option ${i + 1}`}
-                placeholderTextColor={MUTED}
-                maxLength={60}
-              />
-              {options.length > 2 && (
-                <TouchableOpacity
-                  onPress={() => setOptions(options.filter((_, idx) => idx !== i))}
-                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                  style={styles.removeOptionBtn}
-                >
-                  <Text style={styles.removeOptionGlyph}>×</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          ))}
-          {options.length < 4 && (
-            <TouchableOpacity onPress={() => setOptions([...options, ''])} style={{ alignSelf: ar ? 'flex-end' : 'flex-start', paddingVertical: 10 }}>
-              <Text style={[styles.addOption, { letterSpacing: ls(2, ar) }]}>
-                {ar ? `+ ${t('radar.options')}` : '+ ADD OPTION'}
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          {/* Duration selector */}
-          <View style={{ height: 18 }} />
-          <Text style={[styles.modalLabel, { letterSpacing: ls(2, ar), textAlign: ar ? 'right' : 'left' }]}>
-            {shout(ar ? 'المدة' : 'duration', ar)}
-          </Text>
-          <View style={[styles.durRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
-            {DURATION_CHOICES.map((mins) => {
-              const active = duration === mins;
-              return (
-                <TouchableOpacity
-                  key={mins}
-                  onPress={() => setDuration(mins)}
-                  style={[styles.durChip, active && styles.durChipActive]}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.durChipText, active && styles.durChipTextActive]}>
-                    {durLabel(mins)}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-      </View>
-    </Modal>
   );
 }
 
@@ -486,7 +324,6 @@ const styles = StyleSheet.create({
 
   hero: { paddingHorizontal: 20, paddingTop: 8 },
   heroRow: { alignItems: 'center', marginTop: 14, gap: 10 },
-  hereBlock: {},
   hereDot: { width: 8, height: 8, backgroundColor: ACCENT, borderRadius: 4 },
 
   composer: {
@@ -506,31 +343,4 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2, borderBottomColor: TEXT,
   },
   sendLabel: { fontSize: 13, fontWeight: '900', color: ACCENT, paddingBottom: 12 },
-
-  modalLabel: { fontSize: 11, fontWeight: '800', color: MUTED, marginBottom: 6 },
-  modalInput: {
-    fontSize: 18, fontWeight: '700', color: TEXT,
-    paddingVertical: 10, marginBottom: 8,
-    borderBottomWidth: 2, borderBottomColor: TEXT,
-  },
-  addOption: { fontSize: 12, fontWeight: '900', color: ACCENT },
-  optionRow: { alignItems: 'center', gap: 10 },
-  optionInput: { flex: 1, marginBottom: 0 },
-  removeOptionBtn: {
-    width: 36, height: 36,
-    justifyContent: 'center', alignItems: 'center',
-    marginBottom: 8,
-  },
-  removeOptionGlyph: {
-    fontSize: 26, fontWeight: '900', color: MUTED,
-    lineHeight: 28,
-  },
-  durRow: { gap: 8, marginTop: 8 },
-  durChip: {
-    paddingHorizontal: 18, paddingVertical: 10,
-    borderWidth: 2, borderColor: TEXT,
-  },
-  durChipActive: { backgroundColor: TEXT },
-  durChipText: { fontSize: 13, fontWeight: '900', color: TEXT, letterSpacing: 1 },
-  durChipTextActive: { color: '#fff' },
 });

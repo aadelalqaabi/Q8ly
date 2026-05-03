@@ -10,6 +10,7 @@ router.get('/nearby', optionalAuth, getNearby);
 router.get('/vault', protect, getVault);
 router.post('/:id/visit', protect, recordVisit);
 router.post('/polls/:pollId/vote', protect, flashPoll.votePoll);
+router.delete('/polls/:pollId', protect, flashPoll.deletePoll);
 router.get('/search', searchRooms);
 router.get('/subjects', getSubjects);
 router.get('/moments', getPinnedMoments);

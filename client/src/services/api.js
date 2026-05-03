@@ -198,6 +198,7 @@ export const hachiAPI = {
     if (lng != null) body.lng = lng;
     return api.post(`/hachi/polls/${pollId}/vote`, body);
   },
+  deletePoll: (pollId) => api.delete(`/hachi/polls/${pollId}`),
   react: (id, type) => api.post(`/hachi/${id}/react`, { type }),
   closeRoom: (id) => api.delete(`/hachi/${id}`),
   getMyCircles: () => api.get('/hachi/my'),
