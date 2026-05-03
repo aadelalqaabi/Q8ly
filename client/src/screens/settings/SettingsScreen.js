@@ -41,7 +41,7 @@ export default function SettingsScreen({ navigation }) {
     try {
       await Share.share({
         message: ar
-          ? `انضم لكواي بكود الدعوة: ${code}\n\nhttps://kuwai.app`
+          ? `انضم لـ KUWAI بكود الدعوة: ${code}\n\nhttps://kuwai.app`
           : `Join KUWAI with my invite code: ${code}\n\nhttps://kuwai.app`,
       });
     } catch {}

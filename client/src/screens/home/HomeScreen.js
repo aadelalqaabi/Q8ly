@@ -286,7 +286,7 @@ export default function HomeScreen({ navigation }) {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.wordmark}>{isRTL ? 'كواي' : 'KUWAI'}</Text>
+        <Text style={styles.wordmark}>KUWAI</Text>
         <View style={styles.headerRight}>
           <TouchableOpacity
             onPress={() => navigation.navigate('Notifications')}

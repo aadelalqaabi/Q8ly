@@ -405,7 +405,7 @@ export default function HachiScreen({ navigation }) {
 
       {/* ── Header ── */}
       <View style={styles.header}>
-        <Text style={styles.wordmark}>{isRTL ? 'كواي' : 'KUWAI'}</Text>
+        <Text style={styles.wordmark}>KUWAI</Text>
         <View style={styles.headerRight}>
           {currentUser && (
             <TouchableOpacity onPress={() => setShowPoints(true)} activeOpacity={0.7}>

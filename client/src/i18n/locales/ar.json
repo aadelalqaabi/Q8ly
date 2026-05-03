@@ -84,7 +84,7 @@
     "gridUnlocked": "من الخريطة فُتح",
     "theVault": "الخزنة",
     "noVaultYet": "زر مكان لتفتح أول قطعة لك.",
-    "kuwaiVerified": "موثّق كواي",
+    "kuwaiVerified": "موثّق KUWAI",
     "inbox": "الإشعارات",
     "blocked": "محظور",
     "myProfile": "ملفي الشخصي",
@@ -236,12 +236,12 @@
   },
 
   "radar": {
-    "title": "كواي",
+    "title": "KUWAI",
     "subtitle": "روح للنبض",
     "live": "حي",
     "hereNow": "هنا الحين",
     "locationNeeded": "الموقع مطلوب",
-    "locationNeededMsg": "كواي يحتاج موقعك ليعرض النبضات القريبة منك.",
+    "locationNeededMsg": "KUWAI يحتاج موقعك ليعرض النبضات القريبة منك.",
     "travelThere": "روح للمكان عشان تفتح",
     "travelThereMsg": "لازم تكون داخل المكان جسدياً عشان تشوف الكلام.",
     "composerPlaceholder": "اكتب شي...",
@@ -264,7 +264,7 @@
     "placeName": "اسم المكان",
     "placeNamePlaceholder": "مثال: قهوة صالح",
     "noteOptional": "ملاحظة (اختياري)",
-    "notePlaceholder": "ليش هالمكان لازم يكون على كواي؟"
+    "notePlaceholder": "ليش هالمكان لازم يكون على KUWAI؟"
   },
 
   "notif": {
