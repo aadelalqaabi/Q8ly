@@ -159,13 +159,16 @@ function Artifact({ id, size = 64, locked = false }) {
   const h = hash(String(id || ''));
   const idx = h % PRIMITIVES.length;
   const prim = PRIMITIVES[idx];
-  const color = locked ? '#1f2436' : '#0a0e1a';
-  const bg = locked ? '#0e1424' : '#F2F2F7';
+
+  // Unlocked: solid black tile with bright white shape (a "stamp")
+  // Locked:   light gray tile with a faded outline-only shape (a placeholder)
+  const bg = locked ? '#F2F2F7' : '#000000';
+  const fg = locked ? '#D8D8DD' : '#FFFFFF';
 
   return (
     <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
       <Rect x={0} y={0} width={size} height={size} fill={bg} />
-      {prim(size, color)}
+      {prim(size, fg)}
     </Svg>
   );
 }
