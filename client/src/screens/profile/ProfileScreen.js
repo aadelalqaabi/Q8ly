@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView,
   Image, ActivityIndicator, Alert, Share, Platform, Modal, RefreshControl, Dimensions,
@@ -122,6 +123,10 @@ export default function ProfileScreen({ navigation, route }) {
     } catch {}
   }, [isOwnProfile]);
   useEffect(() => { loadVault(); }, [loadVault]);
+
+  // Refresh the vault every time the profile comes into focus — picks up
+  // visits + new venues seeded by the admin without needing pull-to-refresh.
+  useFocusEffect(useCallback(() => { loadVault(); }, [loadVault]));
 
   const loadUserMessages = useCallback(async () => {
     if (!username) return;
