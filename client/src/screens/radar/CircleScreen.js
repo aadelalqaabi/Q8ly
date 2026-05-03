@@ -68,11 +68,13 @@ function PollCard({ poll, onVote, currentUserId, ar }) {
         const isMine = userVote?._id === opt._id;
         return (
           <TouchableOpacity key={opt._id} style={pollStyles.option} onPress={() => onVote(opt._id)} activeOpacity={0.7}>
-            <View style={[pollStyles.fill, { width: `${pct}%`, backgroundColor: isMine ? ACCENT : '#EEF2FA' }]} />
-            <Text style={[pollStyles.optionText, isMine && { color: '#fff' }, { textAlign: ar ? 'right' : 'left' }]}>
-              {opt.text}
-            </Text>
-            <Text style={[pollStyles.optionPct, isMine && { color: '#fff' }]}>{Math.round(pct)}%</Text>
+            <View style={[pollStyles.fill, { width: `${pct}%`, backgroundColor: isMine ? ACCENT : '#EEF2FA', [ar ? 'right' : 'left']: 0 }]} />
+            <View style={[pollStyles.optionContent, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
+              <Text style={[pollStyles.optionText, isMine && { color: '#fff' }]} numberOfLines={1}>
+                {opt.text}
+              </Text>
+              <Text style={[pollStyles.optionPct, isMine && { color: '#fff' }]}>{Math.round(pct)}%</Text>
+            </View>
           </TouchableOpacity>
         );
       })}
@@ -93,9 +95,13 @@ const pollStyles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth, borderColor: TEXT,
     overflow: 'hidden', justifyContent: 'center',
   },
-  fill: { position: 'absolute', left: 0, top: 0, bottom: 0 },
-  optionText: { color: TEXT, fontSize: 14, fontWeight: '700', marginStart: 14, marginEnd: 50 },
-  optionPct: { position: 'absolute', right: 14, color: TEXT, fontSize: 12, fontWeight: '900', fontVariant: ['tabular-nums'] },
+  fill: { position: 'absolute', top: 0, bottom: 0 },
+  optionContent: {
+    position: 'absolute', top: 0, bottom: 0, left: 0, right: 0,
+    alignItems: 'center', paddingHorizontal: 14,
+  },
+  optionText: { flex: 1, color: TEXT, fontSize: 14, fontWeight: '700' },
+  optionPct: { color: TEXT, fontSize: 12, fontWeight: '900', fontVariant: ['tabular-nums'], marginStart: 8 },
 });
 
 // ── Message row ───────────────────────────────────────────────────────────
@@ -405,19 +411,31 @@ function CreatePollModal({ visible, onClose, onCreated, circleId, userLoc }) {
             {shout(t('radar.options'), ar)}
           </Text>
           {options.map((opt, i) => (
-            <TextInput
-              key={i}
-              style={[styles.modalInput, { textAlign: ar ? 'right' : 'left' }]}
-              value={opt}
-              onChangeText={(v) => { const next = [...options]; next[i] = v; setOptions(next); }}
-              placeholder={`Option ${i + 1}`}
-              placeholderTextColor={MUTED}
-              maxLength={60}
-            />
+            <View key={i} style={[styles.optionRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
+              <TextInput
+                style={[styles.modalInput, styles.optionInput, { textAlign: ar ? 'right' : 'left' }]}
+                value={opt}
+                onChangeText={(v) => { const next = [...options]; next[i] = v; setOptions(next); }}
+                placeholder={ar ? `الخيار ${i + 1}` : `Option ${i + 1}`}
+                placeholderTextColor={MUTED}
+                maxLength={60}
+              />
+              {options.length > 2 && (
+                <TouchableOpacity
+                  onPress={() => setOptions(options.filter((_, idx) => idx !== i))}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  style={styles.removeOptionBtn}
+                >
+                  <Text style={styles.removeOptionGlyph}>×</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           ))}
           {options.length < 4 && (
-            <TouchableOpacity onPress={() => setOptions([...options, ''])} style={{ alignSelf: ar ? 'flex-end' : 'flex-start', paddingVertical: 8 }}>
-              <Text style={[styles.addOption, { letterSpacing: ls(2, ar) }]}>+ {ar ? 'خيار' : 'OPTION'}</Text>
+            <TouchableOpacity onPress={() => setOptions([...options, ''])} style={{ alignSelf: ar ? 'flex-end' : 'flex-start', paddingVertical: 10 }}>
+              <Text style={[styles.addOption, { letterSpacing: ls(2, ar) }]}>
+                {ar ? `+ ${t('radar.options')}` : '+ ADD OPTION'}
+              </Text>
             </TouchableOpacity>
           )}
         </View>
@@ -459,4 +477,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2, borderBottomColor: TEXT,
   },
   addOption: { fontSize: 12, fontWeight: '900', color: ACCENT },
+  optionRow: { alignItems: 'center', gap: 10 },
+  optionInput: { flex: 1, marginBottom: 0 },
+  removeOptionBtn: {
+    width: 36, height: 36,
+    justifyContent: 'center', alignItems: 'center',
+    marginBottom: 8,
+  },
+  removeOptionGlyph: {
+    fontSize: 26, fontWeight: '900', color: MUTED,
+    lineHeight: 28,
+  },
 });
