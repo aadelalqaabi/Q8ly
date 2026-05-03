@@ -124,6 +124,7 @@ export default function CircleScreen({ route, navigation }) {
   const { t, i18n } = useTranslation();
   const ar = isAr(i18n);
   const { user: currentUser } = useSelector((s) => s.auth);
+  const isFounder = currentUser?.phone === '+96599440289' || currentUser?.isFounder === true;
 
   const [room, setRoom] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -167,23 +168,33 @@ export default function CircleScreen({ route, navigation }) {
     const safeLoad = (loc) => {
       if (loadedOnce || cancelled) return;
       loadedOnce = true;
-      loadRoom(loc || {});
+      loadRoom(loc);
     };
 
+    // Founder: skip GPS entirely, load instantly. Server allows them in.
+    if (isFounder) {
+      safeLoad(null);
+      return () => { cancelled = true; };
+    }
+
+    if (!Location) {
+      safeLoad(null);
+      return () => { cancelled = true; };
+    }
+
+    // Race the location lookup against a 4s fallback so cold GPS doesn't block entry
+    const fallback = setTimeout(() => safeLoad(null), 4000);
+
     (async () => {
-      if (!Location) {
-        // No location module — try to load anyway. Server lets founders in.
-        safeLoad(null);
-        return;
-      }
       try {
-        const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+        const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
         if (cancelled) return;
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude, speed: pos.coords.speed };
         setUserLoc(loc);
+        clearTimeout(fallback);
         safeLoad(loc);
         watchRef.current = await Location.watchPositionAsync(
-          { accuracy: Location.Accuracy.High, distanceInterval: 15, timeInterval: 6000 },
+          { accuracy: Location.Accuracy.Balanced, distanceInterval: 25, timeInterval: 10000 },
           async (p) => {
             const next = { lat: p.coords.latitude, lng: p.coords.longitude, speed: p.coords.speed };
             setUserLoc(next);
@@ -194,12 +205,16 @@ export default function CircleScreen({ route, navigation }) {
           }
         );
       } catch {
-        // Permission denied / GPS off / module missing — still try to load.
+        clearTimeout(fallback);
         safeLoad(null);
       }
     })();
-    return () => { cancelled = true; if (watchRef.current) watchRef.current.remove(); };
-  }, [circleId, navigation, loadRoom]);
+    return () => {
+      cancelled = true;
+      clearTimeout(fallback);
+      if (watchRef.current) watchRef.current.remove();
+    };
+  }, [circleId, navigation, loadRoom, isFounder]);
 
   useEffect(() => {
     const socket = getSocket();
@@ -229,14 +244,15 @@ export default function CircleScreen({ route, navigation }) {
   }, []);
 
   const handleSend = () => {
-    if (!text.trim() || !userLoc) return;
-    sendHachiMessage(circleId, text.trim(), null, { lat: userLoc.lat, lng: userLoc.lng, speed: userLoc.speed });
+    if (!text.trim()) return;
+    const locParam = userLoc ? { lat: userLoc.lat, lng: userLoc.lng, speed: userLoc.speed } : null;
+    sendHachiMessage(circleId, text.trim(), null, locParam);
     setText('');
   };
 
   const handleVote = async (pollId, optionId) => {
     try {
-      const res = await hachiAPI.votePoll(pollId, optionId, userLoc.lat, userLoc.lng);
+      const res = await hachiAPI.votePoll(pollId, optionId, userLoc?.lat, userLoc?.lng);
       setPolls((p) => p.map((x) => (x._id === pollId ? res.poll : x)));
     } catch {}
   };

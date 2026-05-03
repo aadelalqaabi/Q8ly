@@ -3,7 +3,8 @@
     "allow": [
       "Bash(node server/scripts/seedVenueCircles.js)",
       "Bash(git reset *)",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(curl -s -L -o /dev/null -w \"%{url_effective}\\\\n\" \"https://maps.app.goo.gl/gxh2E8UcjyQ7D6NU8?g_st=ic\")"
     ]
   }
 }
