@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Animated, Easing,
+  View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Image,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Animated, Easing, Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -50,13 +50,35 @@ const waveStyles = StyleSheet.create({
 });
 
 // ── Message row ───────────────────────────────────────────────────────────
-function MessageRow({ msg, isMine, ar }) {
+const SW = Dimensions.get('window').width;
+const IMG_SIZE = Math.min(260, SW * 0.62);
+
+function MessageRow({ msg, isMine, ar, onImagePress }) {
+  const hasImage = !!msg.image;
+  const hasText = !!msg.text;
   return (
     <View style={[msgStyles.wrap, { alignItems: isMine ? (ar ? 'flex-start' : 'flex-end') : (ar ? 'flex-end' : 'flex-start') }]}>
       {!isMine && <Text style={[msgStyles.author, { letterSpacing: ls(1.5, ar) }]}>{shout(msg.user?.name || '', ar)}</Text>}
-      <View style={[msgStyles.bubble, isMine ? msgStyles.bubbleMine : msgStyles.bubbleOther]}>
-        {msg.text && <Text style={[msgStyles.text, isMine && { color: '#fff' }]}>{msg.text}</Text>}
-      </View>
+      {hasImage && (
+        <View style={msgStyles.imageWrap}>
+          <TouchableOpacity activeOpacity={0.85} onPress={() => onImagePress?.(msg.image)}>
+            <Image source={{ uri: msg.image }} style={{ width: IMG_SIZE, height: IMG_SIZE }} resizeMode="cover" />
+          </TouchableOpacity>
+          {msg.isLive && (
+            <View style={[msgStyles.liveTag, { [ar ? 'right' : 'left']: 8 }]}>
+              <View style={msgStyles.liveDot} />
+              <Text style={msgStyles.liveText}>LIVE</Text>
+            </View>
+          )}
+        </View>
+      )}
+      {hasText && (
+        <View style={[msgStyles.bubble, isMine ? msgStyles.bubbleMine : msgStyles.bubbleOther, hasImage && { marginTop: 4 }]}>
+          <Text style={[msgStyles.text, isMine && { color: '#fff' }, { textAlign: ar ? 'right' : 'left' }]}>
+            {msg.text}
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -67,6 +89,15 @@ const msgStyles = StyleSheet.create({
   bubbleMine: { backgroundColor: TEXT },
   bubbleOther: { backgroundColor: '#F2F2F7', borderWidth: StyleSheet.hairlineWidth, borderColor: SEPARATOR },
   text: { color: TEXT, fontSize: 15, lineHeight: 20, fontWeight: '500' },
+
+  imageWrap: { borderWidth: 2, borderColor: TEXT, position: 'relative' },
+  liveTag: {
+    position: 'absolute', top: 8,
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: TEXT, paddingHorizontal: 8, paddingVertical: 4,
+  },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#FF3B30' },
+  liveText: { color: '#fff', fontSize: 9, fontWeight: '900', letterSpacing: 1.5 },
 });
 
 export default function CircleScreen({ route, navigation }) {
@@ -278,7 +309,12 @@ export default function CircleScreen({ route, navigation }) {
         data={messages}
         keyExtractor={(m) => String(m._id)}
         renderItem={({ item }) => (
-          <MessageRow msg={item} isMine={item.user?._id === currentUser?._id} ar={ar} />
+          <MessageRow
+            msg={item}
+            isMine={item.user?._id === currentUser?._id}
+            ar={ar}
+            onImagePress={(uri) => navigation.navigate('MediaViewer', { media: [{ uri, type: 'image' }], initialIndex: 0 })}
+          />
         )}
         ListHeaderComponent={
           polls.length > 0 ? (

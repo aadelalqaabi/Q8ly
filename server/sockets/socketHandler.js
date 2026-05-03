@@ -250,20 +250,36 @@ const initSocket = (server) => {
     });
 
     // ── Send image in circle ──────────────────────────────────────
-    socket.on('hachiSendImage', async ({ roomId, imageUrl, isLive = false }) => {
+    socket.on('hachiSendImage', async ({ roomId, imageUrl, isLive = false, lat, lng, speed }) => {
       if (!socket.user || !imageUrl) return;
       try {
         const Hachi = require('../models/Hachi');
+        const { computeConfidence, bypassesGeofence } = require('../utils/locationUtils');
         const mongoose = require('mongoose');
         const now = new Date();
         const msgId = new mongoose.Types.ObjectId();
         const msgData = { _id: msgId, user: socket.user._id, image: imageUrl, isLive: !!isLive, reactions: [], createdAt: now };
 
-        const roomCheck = await Hachi.findById(roomId).select('isActive blockedMembers members').lean();
+        const roomCheck = await Hachi.findById(roomId).select('isActive blockedMembers members isVenueCircle venueCoords venueRadius').lean();
         if (!roomCheck || !roomCheck.isActive) return;
         const uid2 = socket.user._id.toString();
         if ((roomCheck.blockedMembers || []).some((b) => b.toString() === uid2)) return;
         const isNew2 = !(roomCheck.members || []).some((m) => m.toString() === uid2);
+
+        // Presence update (same logic as text send)
+        const isFounder = bypassesGeofence(socket.user);
+        const isVenue = roomCheck.isVenueCircle && roomCheck.venueCoords?.lat;
+        let presenceUpdate = {};
+        if (isVenue && (isFounder || (lat != null && lng != null))) {
+          const confidence = isFounder
+            ? 1
+            : computeConfidence(parseFloat(lat), parseFloat(lng), parseFloat(speed) || 0, roomCheck.venueCoords, roomCheck.venueRadius || 250);
+          if (confidence >= 0.3) {
+            const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+            await Hachi.findByIdAndUpdate(roomId, { $pull: { hereNow: { userId: socket.user._id } } });
+            presenceUpdate = { $push: { hereNow: { userId: socket.user._id, confidence, expiresAt } } };
+          }
+        }
 
         const updated = await Hachi.findByIdAndUpdate(
           roomId,
@@ -272,6 +288,7 @@ const initSocket = (server) => {
             $set: { lastMessage: { text: '📷', createdAt: now } },
             $addToSet: { members: socket.user._id },
             ...(isNew2 ? { $inc: { memberCount: 1 } } : {}),
+            ...presenceUpdate,
           },
           { new: false }
         );
