@@ -531,7 +531,7 @@ export default function ProfileScreen({ navigation, route }) {
           }
           renderItem={({ item }) => (
             <View style={styles.vaultCell}>
-              <Artifact id={item._id} size={(SW - 32 - 18) / 4} locked={!item.visited} />
+              <Artifact id={item._id} title={item.title} size={(SW - 32 - 18) / 4} locked={!item.visited} />
             </View>
           )}
           ListEmptyComponent={

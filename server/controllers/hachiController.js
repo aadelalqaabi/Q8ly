@@ -666,6 +666,7 @@ exports.getVault = async (req, res) => {
       .lean();
     const items = allCircles.map((c) => ({
       _id: String(c._id),
+      title: c.venueName || '',
       visited: visitedSet.has(String(c._id)),
     }));
     const totalCircles = allCircles.length;
