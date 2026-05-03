@@ -257,11 +257,22 @@ export default function CircleScreen({ route, navigation }) {
     setText('');
   };
 
-  const handleVote = async (pollId, optionId) => {
-    try {
-      const res = await hachiAPI.votePoll(pollId, optionId, userLoc?.lat, userLoc?.lng);
-      setPolls((p) => p.map((x) => (x._id === pollId ? res.poll : x)));
-    } catch {}
+  const handleVote = (pollId, optionId) => {
+    // Optimistic: move my vote locally so the bar fills instantly
+    const me = currentUser?._id;
+    setPolls((prev) => prev.map((p) => {
+      if (p._id !== pollId) return p;
+      const next = { ...p, options: p.options.map((o) => ({
+        ...o,
+        voters: (o.voters || []).filter((v) => (v?._id || v) !== me),
+      })) };
+      const target = next.options.find((o) => o._id === optionId);
+      if (target) target.voters = [...(target.voters || []), me];
+      return next;
+    }));
+    hachiAPI.votePoll(pollId, optionId, userLoc?.lat, userLoc?.lng)
+      .then((res) => setPolls((p) => p.map((x) => (x._id === pollId ? res.poll : x))))
+      .catch(() => { /* keep optimistic state — socket will reconcile */ });
   };
 
   if (loading || !room) {
@@ -339,7 +350,6 @@ export default function CircleScreen({ route, navigation }) {
       <CreatePollModal
         visible={showCreatePoll}
         onClose={() => setShowCreatePoll(false)}
-        onCreated={(poll) => { setPolls((p) => [poll, ...p]); setShowCreatePoll(false); }}
         circleId={circleId}
         userLoc={userLoc}
       />
@@ -347,31 +357,35 @@ export default function CircleScreen({ route, navigation }) {
   );
 }
 
-function CreatePollModal({ visible, onClose, onCreated, circleId, userLoc }) {
+const DURATION_CHOICES = [15, 30, 60];
+
+function CreatePollModal({ visible, onClose, circleId, userLoc }) {
   const { t, i18n } = useTranslation();
   const ar = isAr(i18n);
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);
-  const [creating, setCreating] = useState(false);
+  const [duration, setDuration] = useState(15);
 
   useEffect(() => {
-    if (!visible) { setQuestion(''); setOptions(['', '']); }
+    if (!visible) { setQuestion(''); setOptions(['', '']); setDuration(15); }
   }, [visible]);
 
-  const submit = async () => {
+  // Fire-and-forget: close immediately so it feels instant; the socket
+  // event 'flashPollCreated' will surface the new poll for everyone.
+  const submit = () => {
     const filled = options.filter((o) => o.trim());
     if (!question.trim() || filled.length < 2) return;
-    setCreating(true);
-    try {
-      const res = await hachiAPI.createPoll(circleId, question.trim(), filled, userLoc?.lat, userLoc?.lng);
-      onCreated(res.poll);
-    } catch (e) {
-      if (e?.message) {
-        // surface server error so we know what blocked it
-        // eslint-disable-next-line no-console
-        console.warn('[poll] create failed:', e.message);
-      }
-    } finally { setCreating(false); }
+    onClose();
+    hachiAPI.createPoll(circleId, question.trim(), filled, userLoc?.lat, userLoc?.lng, duration).catch((e) => {
+      // eslint-disable-next-line no-console
+      console.warn('[poll] create failed:', e?.message);
+    });
+  };
+
+  const isReady = !!question.trim() && options.filter((o) => o.trim()).length >= 2;
+  const durLabel = (mins) => {
+    if (mins === 60) return ar ? 'ساعة' : '1H';
+    return ar ? `${mins} د` : `${mins}M`;
   };
 
   return (
@@ -381,19 +395,19 @@ function CreatePollModal({ visible, onClose, onCreated, circleId, userLoc }) {
           onBack={onClose}
           leftLabel={t('common.cancel')}
           right={
-            <TouchableOpacity onPress={submit} disabled={creating || !question.trim()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <TouchableOpacity onPress={submit} disabled={!isReady} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
               <Text style={[
                 styles.sendLabel,
-                (creating || !question.trim()) && { opacity: 0.35 },
+                !isReady && { opacity: 0.35 },
                 { letterSpacing: ls(2, ar) },
               ]}>
-                {creating ? '...' : shout(t('radar.post'), ar)}
+                {shout(t('radar.post'), ar)}
               </Text>
             </TouchableOpacity>
           }
         />
         <View style={{ paddingHorizontal: 24 }}>
-          <BrutHero title={t('radar.flashPoll')} label={ar ? '١٥ دقيقة' : '15 MINUTES'} size={42} />
+          <BrutHero title={t('radar.flashPoll')} label={ar ? 'تصويت مؤقت' : 'TEMPORARY VOTE'} size={42} />
           <BrutRule mt={20} mb={24} />
           <Text style={[styles.modalLabel, { letterSpacing: ls(2, ar), textAlign: ar ? 'right' : 'left' }]}>
             {shout(t('radar.question'), ar)}
@@ -438,6 +452,29 @@ function CreatePollModal({ visible, onClose, onCreated, circleId, userLoc }) {
               </Text>
             </TouchableOpacity>
           )}
+
+          {/* Duration selector */}
+          <View style={{ height: 18 }} />
+          <Text style={[styles.modalLabel, { letterSpacing: ls(2, ar), textAlign: ar ? 'right' : 'left' }]}>
+            {shout(ar ? 'المدة' : 'duration', ar)}
+          </Text>
+          <View style={[styles.durRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
+            {DURATION_CHOICES.map((mins) => {
+              const active = duration === mins;
+              return (
+                <TouchableOpacity
+                  key={mins}
+                  onPress={() => setDuration(mins)}
+                  style={[styles.durChip, active && styles.durChipActive]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.durChipText, active && styles.durChipTextActive]}>
+                    {durLabel(mins)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
       </View>
     </Modal>
@@ -488,4 +525,12 @@ const styles = StyleSheet.create({
     fontSize: 26, fontWeight: '900', color: MUTED,
     lineHeight: 28,
   },
+  durRow: { gap: 8, marginTop: 8 },
+  durChip: {
+    paddingHorizontal: 18, paddingVertical: 10,
+    borderWidth: 2, borderColor: TEXT,
+  },
+  durChipActive: { backgroundColor: TEXT },
+  durChipText: { fontSize: 13, fontWeight: '900', color: TEXT, letterSpacing: 1 },
+  durChipTextActive: { color: '#fff' },
 });

@@ -185,10 +185,11 @@ export const hachiAPI = {
     if (lng != null) params.lng = lng;
     return api.get(`/hachi/${id}/polls`, { params });
   },
-  createPoll: (id, question, options, lat, lng) => {
+  createPoll: (id, question, options, lat, lng, durationMinutes) => {
     const body = { question, options };
     if (lat != null) body.lat = lat;
     if (lng != null) body.lng = lng;
+    if (durationMinutes != null) body.durationMinutes = durationMinutes;
     return api.post(`/hachi/${id}/polls`, body);
   },
   votePoll: (pollId, optionId, lat, lng) => {

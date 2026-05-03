@@ -2,7 +2,8 @@ const FlashPoll = require('../models/FlashPoll');
 const Hachi = require('../models/Hachi');
 const { computeConfidence, bypassesGeofence } = require('../utils/locationUtils');
 
-const POLL_DURATION_MS = 15 * 60 * 1000; // 15 min
+const ALLOWED_DURATIONS_MIN = new Set([15, 30, 60]);
+const DEFAULT_DURATION_MS = 15 * 60 * 1000;
 
 async function ensureInside(req, res) {
   const room = await Hachi.findById(req.params.id || req.body.circleId).select('isVenueCircle venueCoords venueRadius').lean();
@@ -32,16 +33,19 @@ exports.createPoll = async (req, res) => {
   try {
     const room = await ensureInside(req, res);
     if (!room) return;
-    const { question, options } = req.body;
+    const { question, options, durationMinutes } = req.body;
     if (!question?.trim() || !Array.isArray(options) || options.length < 2 || options.length > 4) {
       return res.status(400).json({ success: false, message: 'Question + 2-4 options required' });
     }
+    const dur = ALLOWED_DURATIONS_MIN.has(Number(durationMinutes))
+      ? Number(durationMinutes) * 60 * 1000
+      : DEFAULT_DURATION_MS;
     const poll = await FlashPoll.create({
       circle: req.params.id,
       creator: req.user._id,
       question: question.trim(),
       options: options.slice(0, 4).map((text) => ({ text: String(text).trim().slice(0, 60), voters: [] })),
-      expiresAt: new Date(Date.now() + POLL_DURATION_MS),
+      expiresAt: new Date(Date.now() + dur),
     });
     const io = req.app.get('io');
     io.to(`hachi:${req.params.id}`).emit('flashPollCreated', { poll });
