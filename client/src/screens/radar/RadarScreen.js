@@ -352,7 +352,7 @@ export default function RadarScreen() {
             <View style={[styles.counterBlock, { alignItems: ar ? 'flex-start' : 'flex-end' }]}>
               <Text style={styles.counterNum}>{nearby.activeHere || 0}</Text>
               <Text style={[styles.counterLabel, { letterSpacing: ar ? 0 : 1.5 }]}>
-                {ar ? 'هنا الحين' : 'HERE NOW'}
+                {ar ? 'هني' : 'HERE NOW'}
               </Text>
             </View>
 
