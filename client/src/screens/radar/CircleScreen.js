@@ -199,6 +199,13 @@ export default function CircleScreen({ route, navigation }) {
 
   const handleSend = () => {
     if (!text.trim()) return;
+    const sock = getSocket();
+    if (!sock || !sock.connected) {
+      // Try once to reconnect, then warn the user instead of silently dropping
+      sock?.connect?.();
+      console.warn('[circle] socket not connected, message dropped:', text);
+      return;
+    }
     const locParam = userLoc ? { lat: userLoc.lat, lng: userLoc.lng, speed: userLoc.speed } : null;
     sendHachiMessage(circleId, text.trim(), null, locParam);
     setText('');

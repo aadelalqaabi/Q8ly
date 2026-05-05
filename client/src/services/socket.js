@@ -11,20 +11,27 @@ export const initSocket = async () => {
 
   socket = io(SOCKET_URL, {
     auth: { token },
-    transports: ['websocket'],
+    // Try websocket first, fall back to long-polling if blocked (some proxies,
+    // captive portals, and EAS dev builds drop WS but allow polling)
+    transports: ['websocket', 'polling'],
+    upgrade: true,
     reconnection: true,
-    reconnectionAttempts: 5,
+    reconnectionAttempts: 10,
     reconnectionDelay: 1000,
     reconnectionDelayMax: 5000,
-    timeout: 10000,
+    timeout: 15000,
   });
 
   socket.on('connect', () => {
-    console.log('Socket connected:', socket.id);
+    console.log('[socket] connected', socket.id, 'via', socket.io.engine.transport.name);
   });
 
   socket.on('connect_error', (err) => {
-    console.warn('Socket connection error:', err.message);
+    console.warn('[socket] connect_error:', err.message);
+  });
+
+  socket.on('reconnect_attempt', (n) => {
+    console.log('[socket] reconnect_attempt', n);
   });
 
   socket.on('disconnect', (reason) => {
