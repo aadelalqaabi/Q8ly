@@ -9,8 +9,9 @@ import { useSelector } from 'react-redux';
 import { hachiAPI } from '../../services/api';
 import { getSocket, joinHachiRoom, leaveHachiRoom, sendHachiMessage } from '../../services/socket';
 import {
-  BrutNav, BrutNavLink, BrutHero, BrutRule, BG, TEXT, MUTED, ACCENT, SEPARATOR, isAr, ls, shout,
+  BrutNav, BrutNavLink, BrutHero, BrutRule, useBrutColors, isAr, ls, shout,
 } from '../../components/Brut';
+import { useTheme } from '../../context/ThemeContext';
 import { PollCard, PollComposer } from '../../components/Poll';
 let Location = null;
 try { Location = require('expo-location'); } catch {}
@@ -22,18 +23,19 @@ const SW = Dimensions.get('window').width;
 const IMG_SIZE = Math.min(260, SW * 0.62);
 
 function MessageRow({ msg, isMine, ar, onImagePress }) {
+  const { TEXT, MUTED, SEPARATOR, FILL } = useBrutColors();
   const hasImage = !!msg.image;
   const hasText = !!msg.text;
   return (
     <View style={[msgStyles.wrap, { alignItems: isMine ? (ar ? 'flex-start' : 'flex-end') : (ar ? 'flex-end' : 'flex-start') }]}>
-      {!isMine && <Text style={[msgStyles.author, { letterSpacing: ls(1.5, ar) }]}>{shout(msg.user?.name || '', ar)}</Text>}
+      {!isMine && <Text style={[msgStyles.author, { color: MUTED, letterSpacing: ls(1.5, ar) }]}>{shout(msg.user?.name || '', ar)}</Text>}
       {hasImage && (
-        <View style={msgStyles.imageWrap}>
+        <View style={[msgStyles.imageWrap, { borderColor: TEXT }]}>
           <TouchableOpacity activeOpacity={0.85} onPress={() => onImagePress?.(msg.image)}>
             <Image source={{ uri: msg.image }} style={{ width: IMG_SIZE, height: IMG_SIZE }} resizeMode="cover" />
           </TouchableOpacity>
           {msg.isLive && (
-            <View style={[msgStyles.liveTag, { [ar ? 'right' : 'left']: 8 }]}>
+            <View style={[msgStyles.liveTag, { backgroundColor: TEXT, [ar ? 'right' : 'left']: 8 }]}>
               <View style={msgStyles.liveDot} />
               <Text style={msgStyles.liveText}>LIVE</Text>
             </View>
@@ -41,8 +43,8 @@ function MessageRow({ msg, isMine, ar, onImagePress }) {
         </View>
       )}
       {hasText && (
-        <View style={[msgStyles.bubble, isMine ? msgStyles.bubbleMine : msgStyles.bubbleOther, hasImage && { marginTop: 4 }]}>
-          <Text style={[msgStyles.text, isMine && { color: '#fff' }, { textAlign: ar ? 'right' : 'left' }]}>
+        <View style={[msgStyles.bubble, isMine ? { backgroundColor: TEXT } : { backgroundColor: FILL, borderWidth: StyleSheet.hairlineWidth, borderColor: SEPARATOR }, hasImage && { marginTop: 4 }]}>
+          <Text style={[msgStyles.text, { color: isMine ? '#fff' : TEXT }, { textAlign: ar ? 'right' : 'left' }]}>
             {msg.text}
           </Text>
         </View>
@@ -52,18 +54,11 @@ function MessageRow({ msg, isMine, ar, onImagePress }) {
 }
 const msgStyles = StyleSheet.create({
   wrap: { paddingHorizontal: 4, paddingVertical: 5 },
-  author: { fontSize: 10, fontWeight: '800', color: MUTED, marginBottom: 4 },
+  author: { fontSize: 10, fontWeight: '800', marginBottom: 4 },
   bubble: { maxWidth: '78%', padding: 12 },
-  bubbleMine: { backgroundColor: TEXT },
-  bubbleOther: { backgroundColor: '#F2F2F7', borderWidth: StyleSheet.hairlineWidth, borderColor: SEPARATOR },
-  text: { color: TEXT, fontSize: 15, lineHeight: 20, fontWeight: '500' },
-
-  imageWrap: { borderWidth: 2, borderColor: TEXT, position: 'relative' },
-  liveTag: {
-    position: 'absolute', top: 8,
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: TEXT, paddingHorizontal: 8, paddingVertical: 4,
-  },
+  text: { fontSize: 15, lineHeight: 20, fontWeight: '500' },
+  imageWrap: { borderWidth: 2, position: 'relative' },
+  liveTag: { position: 'absolute', top: 8, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 8, paddingVertical: 4 },
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#FF3B30' },
   liveText: { color: '#fff', fontSize: 9, fontWeight: '900', letterSpacing: 1.5 },
 });
@@ -73,6 +68,7 @@ export default function CircleScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
   const ar = isAr(i18n);
+  const { TEXT, MUTED, ACCENT, BG } = useBrutColors();
   const { user: currentUser } = useSelector((s) => s.auth);
   const isFounder = currentUser?.phone === '+96599440289' || currentUser?.isFounder === true;
 
@@ -258,7 +254,7 @@ export default function CircleScreen({ route, navigation }) {
   const activeHere = (room.hereNow || []).filter((p) => new Date(p.expiresAt) > new Date()).length;
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={[styles.container, { backgroundColor: BG }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <BrutNav
         onBack={() => navigation.goBack()}
         right={<BrutNavLink onPress={() => setShowCreatePoll(true)} label={t('radar.flashPoll')} accent />}
@@ -306,12 +302,12 @@ export default function CircleScreen({ route, navigation }) {
       </Animated.View>
 
       {/* Composer */}
-      <View style={[styles.composer, { paddingBottom: insets.bottom + 12, flexDirection: ar ? 'row-reverse' : 'row' }]}>
-        <TouchableOpacity style={styles.cameraBtn} onPress={() => navigation.navigate('LiveCamera', { circleId })} activeOpacity={0.7}>
-          <Text style={styles.cameraGlyph}>◉</Text>
+      <View style={[styles.composer, { borderTopColor: TEXT, paddingBottom: insets.bottom + 12, flexDirection: ar ? 'row-reverse' : 'row' }]}>
+        <TouchableOpacity style={[styles.cameraBtn, { borderColor: TEXT }]} onPress={() => navigation.navigate('LiveCamera', { circleId })} activeOpacity={0.7}>
+          <Text style={[styles.cameraGlyph, { color: TEXT }]}>◉</Text>
         </TouchableOpacity>
         <TextInput
-          style={[styles.input, { textAlign: ar ? 'right' : 'left' }]}
+          style={[styles.input, { color: TEXT, borderBottomColor: TEXT, textAlign: ar ? 'right' : 'left' }]}
           value={text}
           onChangeText={setText}
           placeholder={t('radar.composerPlaceholder')}
@@ -320,7 +316,7 @@ export default function CircleScreen({ route, navigation }) {
           maxLength={500}
         />
         <TouchableOpacity onPress={handleSend} disabled={!text.trim()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <Text style={[styles.sendLabel, !text.trim() && { opacity: 0.35 }, { letterSpacing: ls(2, ar) }]}>
+          <Text style={[styles.sendLabel, { color: ACCENT }, !text.trim() && { opacity: 0.35 }, { letterSpacing: ls(2, ar) }]}>
             {ar ? '←' : `${shout(t('radar.post'), false)} →`}
           </Text>
         </TouchableOpacity>
@@ -337,25 +333,11 @@ export default function CircleScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: BG },
-
+  container: { flex: 1 },
   hero: { paddingHorizontal: 20, paddingTop: 8 },
-
-  composer: {
-    alignItems: 'flex-end', paddingHorizontal: 16, paddingTop: 10, gap: 12,
-    borderTopWidth: 2, borderTopColor: TEXT,
-  },
-  cameraBtn: {
-    width: 44, height: 44,
-    borderWidth: 2, borderColor: TEXT,
-    justifyContent: 'center', alignItems: 'center',
-  },
-  cameraGlyph: { fontSize: 24, fontWeight: '900', color: TEXT },
-  input: {
-    flex: 1, minHeight: 44, maxHeight: 120,
-    paddingHorizontal: 0, paddingVertical: 10,
-    fontSize: 16, color: TEXT, fontWeight: '600',
-    borderBottomWidth: 2, borderBottomColor: TEXT,
-  },
-  sendLabel: { fontSize: 13, fontWeight: '900', color: ACCENT, paddingBottom: 12 },
+  composer: { alignItems: 'flex-end', paddingHorizontal: 16, paddingTop: 10, gap: 12, borderTopWidth: 2 },
+  cameraBtn: { width: 44, height: 44, borderWidth: 2, justifyContent: 'center', alignItems: 'center' },
+  cameraGlyph: { fontSize: 24, fontWeight: '900' },
+  input: { flex: 1, minHeight: 44, maxHeight: 120, paddingHorizontal: 0, paddingVertical: 10, fontSize: 16, fontWeight: '600', borderBottomWidth: 2 },
+  sendLabel: { fontSize: 13, fontWeight: '900', paddingBottom: 12 },
 });

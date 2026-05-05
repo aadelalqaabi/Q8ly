@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { locationRequestsAPI } from '../../services/api';
 import {
-  BrutNav, BrutHero, BrutRule, BrutInput, BG, ACCENT, TEXT, isAr, ls, shout,
+  BrutNav, BrutHero, BrutRule, BrutInput, useBrutColors, isAr, ls, shout,
 } from '../../components/Brut';
 
 const KUWAIT_REGION = {
@@ -22,6 +22,7 @@ export default function RequestLocationScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
   const ar = isAr(i18n);
+  const { TEXT, ACCENT, BG } = useBrutColors();
 
   const [pin, setPin] = useState(
     initialCoords
@@ -48,14 +49,14 @@ export default function RequestLocationScreen({ route, navigation }) {
   };
 
   return (
-    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={[styles.root, { backgroundColor: BG }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <BrutNav
         onBack={() => navigation.goBack()}
         leftLabel={t('common.cancel')}
         right={
           <TouchableOpacity onPress={submit} disabled={submitting || !name.trim()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
             <Text style={[
-              styles.submitLink,
+              styles.submitLink, { color: ACCENT },
               (submitting || !name.trim()) && { opacity: 0.35 },
               { letterSpacing: ls(2, ar) },
             ]}>
@@ -70,7 +71,7 @@ export default function RequestLocationScreen({ route, navigation }) {
         <BrutRule mt={22} mb={20} />
 
         {/* Map */}
-        <View style={styles.mapWrap}>
+        <View style={[styles.mapWrap, { borderColor: TEXT }]}>
           <MapView
             style={StyleSheet.absoluteFill}
             provider={PROVIDER_DEFAULT}
@@ -84,10 +85,10 @@ export default function RequestLocationScreen({ route, navigation }) {
             showsMyLocationButton={false}
           >
             <Marker coordinate={pin} draggable onDragEnd={(e) => setPin(e.nativeEvent.coordinate)}>
-              <View style={styles.pinDot} />
+              <View style={[styles.pinDot, { backgroundColor: ACCENT }]} />
             </Marker>
           </MapView>
-          <View pointerEvents="none" style={styles.mapHint}>
+          <View pointerEvents="none" style={[styles.mapHint, { backgroundColor: TEXT }]}>
             <Text style={[styles.mapHintText, { letterSpacing: ls(1.5, ar) }]}>
               {shout(t('radar.tapToPin'), ar)}
             </Text>
@@ -119,24 +120,11 @@ export default function RequestLocationScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: BG },
+  root: { flex: 1 },
   body: { flex: 1, paddingHorizontal: 24 },
-  submitLink: { fontSize: 12, fontWeight: '900', color: ACCENT },
-
-  mapWrap: {
-    height: 260,
-    borderWidth: 2, borderColor: TEXT,
-    overflow: 'hidden',
-  },
-  mapHint: {
-    position: 'absolute', top: 12, alignSelf: 'center',
-    backgroundColor: TEXT, paddingHorizontal: 12, paddingVertical: 6,
-  },
+  submitLink: { fontSize: 12, fontWeight: '900' },
+  mapWrap: { height: 260, borderWidth: 2, overflow: 'hidden' },
+  mapHint: { position: 'absolute', top: 12, alignSelf: 'center', paddingHorizontal: 12, paddingVertical: 6 },
   mapHintText: { color: '#fff', fontSize: 10, fontWeight: '900' },
-
-  pinDot: {
-    width: 22, height: 22,
-    backgroundColor: ACCENT,
-    borderWidth: 3, borderColor: '#fff',
-  },
+  pinDot: { width: 22, height: 22, borderWidth: 3, borderColor: '#fff' },
 });

@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { updateProfile } from '../../store/slices/authSlice';
 import {
-  BrutNav, BrutHero, BrutRule, BrutInput, BG, ACCENT, isAr, ls, shout,
+  BrutNav, BrutHero, BrutRule, BrutInput, useBrutColors, isAr, ls, shout,
 } from '../../components/Brut';
 
 export default function EditProfileScreen({ navigation }) {
@@ -16,6 +16,7 @@ export default function EditProfileScreen({ navigation }) {
   const { user } = useSelector((s) => s.auth);
   const { t, i18n } = useTranslation();
   const ar = isAr(i18n);
+  const { ACCENT, BG } = useBrutColors();
 
   const [name, setName] = useState(user?.name || '');
   const [saving, setSaving] = useState(false);
@@ -42,7 +43,7 @@ export default function EditProfileScreen({ navigation }) {
         right={
           <TouchableOpacity onPress={handleSave} disabled={saving || !name.trim()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
             <Text style={[
-              styles.saveLink,
+              styles.saveLink, { color: ACCENT },
               (saving || !name.trim()) && { opacity: 0.35 },
               { letterSpacing: ls(2, ar) },
             ]}>
@@ -68,5 +69,5 @@ export default function EditProfileScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  saveLink: { fontSize: 12, fontWeight: '900', color: ACCENT },
+  saveLink: { fontSize: 12, fontWeight: '900' },
 });

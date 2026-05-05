@@ -11,7 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { verifyOtp, clearError } from '../../store/slices/authSlice';
 import { authAPI } from '../../services/api';
 import {
-  BrutNav, BrutHero, BrutRule, BG, TEXT, MUTED, ACCENT, isAr, ls, shout,
+  BrutNav, BrutHero, BrutRule, useBrutColors, isAr, ls, shout,
 } from '../../components/Brut';
 
 const CODE_LENGTH = 6;
@@ -23,6 +23,7 @@ export default function OtpScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
   const ar = isAr(i18n);
+  const { TEXT, MUTED, ACCENT, BG } = useBrutColors();
   const { isLoading, error } = useSelector((s) => s.auth);
 
   const [digits, setDigits] = useState(Array(CODE_LENGTH).fill(''));
@@ -40,8 +41,8 @@ export default function OtpScreen({ navigation, route }) {
 
   useFocusEffect(
     React.useCallback(() => {
-      const t = setTimeout(() => inputRefs.current[0]?.focus(), 500);
-      return () => clearTimeout(t);
+      const timer = setTimeout(() => inputRefs.current[0]?.focus(), 500);
+      return () => clearTimeout(timer);
     }, [])
   );
 
@@ -111,19 +112,19 @@ export default function OtpScreen({ navigation, route }) {
   const displayPhone = phone.replace('+965', '+965 ');
 
   return (
-    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={[styles.root, { backgroundColor: BG }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <BrutNav onBack={() => navigation.goBack()} />
       <View style={[styles.inner, { paddingBottom: insets.bottom + 28 }]}>
         <View>
           <BrutHero title={t('auth.otpTitle')} label={isNewUser ? '02 / 03' : '02 / 02'} size={42} />
           <BrutRule mt={24} mb={24} />
 
-          <Text style={[styles.subtitle, { textAlign: ar ? 'right' : 'left' }]}>
-            {t('auth.otpSub')} <Text style={styles.phoneHighlight}>{displayPhone}</Text>
+          <Text style={[styles.subtitle, { color: MUTED, textAlign: ar ? 'right' : 'left' }]}>
+            {t('auth.otpSub')} <Text style={[styles.phoneHighlight, { color: TEXT }]}>{displayPhone}</Text>
           </Text>
 
           {testMode && (
-            <Text style={[styles.testTag, { letterSpacing: ls(2, ar), textAlign: ar ? 'right' : 'left' }]}>
+            <Text style={[styles.testTag, { color: ACCENT, letterSpacing: ls(2, ar), textAlign: ar ? 'right' : 'left' }]}>
               ● {shout(t('auth.testMode'), ar)}
             </Text>
           )}
@@ -134,7 +135,6 @@ export default function OtpScreen({ navigation, route }) {
             </Text>
           )}
 
-          {/* OTP boxes */}
           <View style={[styles.boxRow, { flexDirection: 'row' }]}>
             {Array.from({ length: CODE_LENGTH }).map((_, i) => (
               <TextInput
@@ -147,7 +147,7 @@ export default function OtpScreen({ navigation, route }) {
                 maxLength={1}
                 textContentType="oneTimeCode"
                 autoComplete="sms-otp"
-                style={[styles.box, !!digits[i] && styles.boxFilled]}
+                style={[styles.box, { borderBottomColor: TEXT, color: TEXT }, !!digits[i] && { borderBottomColor: ACCENT }]}
               />
             ))}
           </View>
@@ -155,12 +155,12 @@ export default function OtpScreen({ navigation, route }) {
 
         <View>
           {countdown > 0 ? (
-            <Text style={[styles.resendDim, { letterSpacing: ls(1.5, ar), textAlign: 'center' }]}>
+            <Text style={[styles.resendDim, { color: MUTED, letterSpacing: ls(1.5, ar), textAlign: 'center' }]}>
               {shout(`${t('auth.resendIn')} ${countdown}s`, ar)}
             </Text>
           ) : (
             <TouchableOpacity onPress={handleResend} disabled={resending} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} style={{ alignItems: 'center' }}>
-              <Text style={[styles.resend, { letterSpacing: ls(2, ar) }]}>
+              <Text style={[styles.resend, { color: ACCENT, letterSpacing: ls(2, ar) }]}>
                 {resending ? '...' : shout(t('auth.resendCode'), ar)}
               </Text>
             </TouchableOpacity>
@@ -172,24 +172,14 @@ export default function OtpScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: BG },
+  root: { flex: 1 },
   inner: { flex: 1, paddingHorizontal: 24, justifyContent: 'space-between' },
-
-  subtitle: { fontSize: 14, color: MUTED, marginBottom: 16 },
-  phoneHighlight: { fontWeight: '900', color: TEXT, fontVariant: ['tabular-nums'] },
-
-  testTag: { fontSize: 11, fontWeight: '900', color: ACCENT, marginBottom: 12 },
+  subtitle: { fontSize: 14, marginBottom: 16 },
+  phoneHighlight: { fontWeight: '900', fontVariant: ['tabular-nums'] },
+  testTag: { fontSize: 11, fontWeight: '900', marginBottom: 12 },
   error: { fontSize: 11, fontWeight: '800', color: '#D32F2F', marginBottom: 14 },
-
   boxRow: { gap: 8, marginTop: 18 },
-  box: {
-    flex: 1, height: 64,
-    borderBottomWidth: 2, borderBottomColor: TEXT,
-    fontSize: 32, fontWeight: '900', color: TEXT,
-    textAlign: 'center', fontVariant: ['tabular-nums'],
-  },
-  boxFilled: { borderBottomColor: ACCENT },
-
-  resend: { fontSize: 13, fontWeight: '900', color: ACCENT },
-  resendDim: { fontSize: 11, fontWeight: '800', color: MUTED },
+  box: { flex: 1, height: 64, borderBottomWidth: 2, fontSize: 32, fontWeight: '900', textAlign: 'center', fontVariant: ['tabular-nums'] },
+  resend: { fontSize: 13, fontWeight: '900' },
+  resendDim: { fontSize: 11, fontWeight: '800' },
 });

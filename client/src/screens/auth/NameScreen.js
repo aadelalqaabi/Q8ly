@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { updateProfile, redeemReferral } from '../../store/slices/authSlice';
 import {
-  BrutHero, BrutRule, BrutInput, BrutBrick, BG, isAr,
+  BrutHero, BrutRule, BrutInput, BrutBrick, useBrutColors, isAr,
 } from '../../components/Brut';
 
 export default function NameScreen() {
@@ -13,6 +13,7 @@ export default function NameScreen() {
   const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
   const ar = isAr(i18n);
+  const { BG } = useBrutColors();
   const { isLoading } = useSelector((s) => s.auth);
   const [name, setName] = useState('');
   const [referral, setReferral] = useState('');
@@ -28,7 +29,7 @@ export default function NameScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={[styles.root, { backgroundColor: BG }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={[styles.inner, { paddingTop: insets.top + 36, paddingBottom: insets.bottom + 28 }]}>
         <View>
           <BrutHero title={t('auth.nameTitle')} label="03 / 03" size={42} />
@@ -65,6 +66,6 @@ export default function NameScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: BG },
+  root: { flex: 1 },
   inner: { flex: 1, paddingHorizontal: 24, justifyContent: 'space-between' },
 });

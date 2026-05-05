@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { sendOtp, clearError } from '../../store/slices/authSlice';
 import {
-  BrutHero, BrutRule, BrutBrick, BG, TEXT, MUTED, ACCENT, SEPARATOR, isAr, ls, shout,
+  BrutHero, BrutRule, BrutBrick, useBrutColors, isAr, ls, shout,
 } from '../../components/Brut';
 
 export default function PhoneScreen({ navigation }) {
@@ -16,6 +16,7 @@ export default function PhoneScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
   const ar = isAr(i18n);
+  const { TEXT, MUTED, ACCENT, BG } = useBrutColors();
   const { isLoading, error } = useSelector((s) => s.auth);
   const [phone, setPhone] = useState('');
   const inputRef = useRef(null);
@@ -48,27 +49,26 @@ export default function PhoneScreen({ navigation }) {
   };
 
   return (
-    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={[styles.root, { backgroundColor: BG }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={[styles.inner, { paddingTop: insets.top + 28, paddingBottom: insets.bottom + 28 }]}>
         <View>
           <BrutHero title={t('auth.phoneTitle')} label="01 / 02" size={42} />
           <BrutRule mt={24} mb={28} />
 
-          <Text style={[styles.label, { letterSpacing: ls(2, ar), textAlign: ar ? 'right' : 'left' }]}>
+          <Text style={[styles.label, { color: MUTED, letterSpacing: ls(2, ar), textAlign: ar ? 'right' : 'left' }]}>
             {shout(t('auth.phoneSub'), ar)}
           </Text>
 
-          {/* Brutalist phone input — flat 2pt baseline, +965 prefix */}
           <TouchableOpacity
             activeOpacity={1}
             style={[styles.inputRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}
             onPress={() => inputRef.current?.focus()}
           >
-            <Text style={styles.prefix}>+965</Text>
-            <View style={styles.divider} />
+            <Text style={[styles.prefix, { color: TEXT }]}>+965</Text>
+            <View style={[styles.divider, { backgroundColor: TEXT }]} />
             <TextInput
               ref={inputRef}
-              style={[styles.phoneInput, { textAlign: ar ? 'right' : 'left' }]}
+              style={[styles.phoneInput, { color: TEXT, textAlign: ar ? 'right' : 'left' }]}
               value={formatDisplay(phone)}
               onChangeText={handleChange}
               keyboardType="phone-pad"
@@ -80,7 +80,7 @@ export default function PhoneScreen({ navigation }) {
               onSubmitEditing={handleContinue}
             />
           </TouchableOpacity>
-          <View style={styles.inputUnderline} />
+          <View style={[styles.inputUnderline, { backgroundColor: TEXT }]} />
 
           {!!error && (
             <Text style={[styles.error, { letterSpacing: ls(1.5, ar), textAlign: ar ? 'right' : 'left' }]}>
@@ -97,11 +97,11 @@ export default function PhoneScreen({ navigation }) {
             loading={isLoading}
             accent
           />
-          <Text style={[styles.legal, { textAlign: 'center' }]}>
+          <Text style={[styles.legal, { color: MUTED, textAlign: 'center' }]}>
             {t('auth.termsPrefix')}{' '}
-            <Text style={styles.legalLink} onPress={() => navigation.navigate('Terms')}>{t('auth.terms')}</Text>
+            <Text style={[styles.legalLink, { color: ACCENT }]} onPress={() => navigation.navigate('Terms')}>{t('auth.terms')}</Text>
             {' '}{t('auth.and')}{' '}
-            <Text style={styles.legalLink} onPress={() => navigation.navigate('Terms')}>{t('auth.privacy')}</Text>
+            <Text style={[styles.legalLink, { color: ACCENT }]} onPress={() => navigation.navigate('Terms')}>{t('auth.privacy')}</Text>
           </Text>
         </View>
       </View>
@@ -110,22 +110,15 @@ export default function PhoneScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: BG },
+  root: { flex: 1 },
   inner: { flex: 1, paddingHorizontal: 24, justifyContent: 'space-between' },
-
-  label: { fontSize: 11, fontWeight: '800', color: MUTED, marginBottom: 12 },
-
+  label: { fontSize: 11, fontWeight: '800', marginBottom: 12 },
   inputRow: { alignItems: 'center', paddingTop: 4, paddingBottom: 6 },
-  prefix: { fontSize: 26, fontWeight: '900', color: TEXT, paddingRight: 12, paddingLeft: 0 },
-  divider: { width: 2, height: 28, backgroundColor: TEXT, marginHorizontal: 6 },
-  phoneInput: {
-    flex: 1, fontSize: 26, fontWeight: '700', color: TEXT,
-    paddingVertical: 6, fontVariant: ['tabular-nums'],
-  },
-  inputUnderline: { height: 2, backgroundColor: TEXT, marginTop: 4 },
-
+  prefix: { fontSize: 26, fontWeight: '900', paddingRight: 12, paddingLeft: 0 },
+  divider: { width: 2, height: 28, marginHorizontal: 6 },
+  phoneInput: { flex: 1, fontSize: 26, fontWeight: '700', paddingVertical: 6, fontVariant: ['tabular-nums'] },
+  inputUnderline: { height: 2, marginTop: 4 },
   error: { fontSize: 11, fontWeight: '800', color: '#D32F2F', marginTop: 14 },
-
-  legal: { fontSize: 11, color: MUTED, marginTop: 20, lineHeight: 18 },
-  legalLink: { color: ACCENT, fontWeight: '800' },
+  legal: { fontSize: 11, marginTop: 20, lineHeight: 18 },
+  legalLink: { fontWeight: '800' },
 });

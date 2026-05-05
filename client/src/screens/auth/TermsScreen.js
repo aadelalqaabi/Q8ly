@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { BrutNav, BrutHero, BrutRule, BG, TEXT, MUTED, isAr as ar_, ls, shout } from '../../components/Brut';
+import { BrutNav, BrutHero, BrutRule, useBrutColors, isAr as ar_, ls, shout } from '../../components/Brut';
 
 // ── Content ──────────────────────────────────────────────────────────────────
 
@@ -156,6 +156,7 @@ export default function TermsScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { i18n } = useTranslation();
   const ar = ar_(i18n);
+  const { TEXT, MUTED, BG } = useBrutColors();
   const content = ar ? TERMS_AR : TERMS_EN;
 
   return (
@@ -170,10 +171,10 @@ export default function TermsScreen({ navigation }) {
 
         {content.sections.map((sec, idx) => (
           <View key={idx} style={styles.section}>
-            <Text style={[styles.sectionHeading, { textAlign: ar ? 'right' : 'left' }]}>
+            <Text style={[styles.sectionHeading, { color: TEXT, textAlign: ar ? 'right' : 'left' }]}>
               {sec.heading}
             </Text>
-            <Text style={[styles.sectionBody, { textAlign: ar ? 'right' : 'left' }]}>
+            <Text style={[styles.sectionBody, { color: MUTED, textAlign: ar ? 'right' : 'left' }]}>
               {sec.body}
             </Text>
           </View>
@@ -186,6 +187,6 @@ export default function TermsScreen({ navigation }) {
 const styles = StyleSheet.create({
   body: { paddingHorizontal: 24, paddingTop: 8 },
   section: { marginBottom: 28 },
-  sectionHeading: { fontSize: 15, fontWeight: '900', color: TEXT, marginBottom: 8, lineHeight: 22 },
-  sectionBody: { fontSize: 14, color: MUTED, lineHeight: 22, fontWeight: '500' },
+  sectionHeading: { fontSize: 15, fontWeight: '900', marginBottom: 8, lineHeight: 22 },
+  sectionBody: { fontSize: 14, lineHeight: 22, fontWeight: '500' },
 });

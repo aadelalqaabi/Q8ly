@@ -7,7 +7,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { getDateLocale } from '../../i18n';
 import { fetchNotifications, markAsRead } from '../../store/slices/notificationsSlice';
 import {
-  BrutNav, BrutHero, BrutRule, BrutHair, BG, TEXT, MUTED, ACCENT, isAr, ls, shout,
+  BrutNav, BrutHero, BrutRule, BrutHair, useBrutColors, isAr, ls, shout,
 } from '../../components/Brut';
 
 const ALLOWED_TYPES = ['pin', 'message_reaction', 'follow'];
@@ -17,6 +17,7 @@ export default function NotificationsScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
   const ar = isAr(i18n);
+  const { TEXT, MUTED, ACCENT, BG } = useBrutColors();
   const { notifications, isLoading } = useSelector((s) => s.notifications);
   const filtered = notifications.filter((n) => ALLOWED_TYPES.includes(n.type));
 
@@ -53,14 +54,14 @@ export default function NotificationsScreen({ navigation }) {
           style={[styles.row, { flexDirection: ar ? 'row-reverse' : 'row' }]}
         >
           <View style={{ flex: 1 }}>
-            <Text style={[styles.message, !item.read && { fontWeight: '900' }, { textAlign: ar ? 'right' : 'left' }]}>
+            <Text style={[styles.message, { color: TEXT }, !item.read && { fontWeight: '900' }, { textAlign: ar ? 'right' : 'left' }]}>
               {getMessage(item)}
             </Text>
-            <Text style={[styles.time, { letterSpacing: ls(1.5, ar), textAlign: ar ? 'right' : 'left' }]}>
+            <Text style={[styles.time, { color: MUTED, letterSpacing: ls(1.5, ar), textAlign: ar ? 'right' : 'left' }]}>
               {shout(time, ar)}
             </Text>
           </View>
-          {!item.read && <View style={styles.unreadDot} />}
+          {!item.read && <View style={[styles.unreadDot, { backgroundColor: ACCENT }]} />}
         </TouchableOpacity>
         <BrutHair />
       </>
@@ -87,8 +88,8 @@ export default function NotificationsScreen({ navigation }) {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={{ paddingTop: 80, alignItems: ar ? 'flex-end' : 'flex-start' }}>
-              <Text style={[styles.emptyTitle, { textAlign: ar ? 'right' : 'left' }]}>{t('notif.noNotifs')}</Text>
-              <Text style={[styles.emptySub, { letterSpacing: ls(1.5, ar), textAlign: ar ? 'right' : 'left' }]}>
+              <Text style={[styles.emptyTitle, { color: TEXT, textAlign: ar ? 'right' : 'left' }]}>{t('notif.noNotifs')}</Text>
+              <Text style={[styles.emptySub, { color: MUTED, letterSpacing: ls(1.5, ar), textAlign: ar ? 'right' : 'left' }]}>
                 {shout(t('notif.noNotifsSub'), ar)}
               </Text>
             </View>
@@ -101,9 +102,9 @@ export default function NotificationsScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   row: { paddingVertical: 18, alignItems: 'center', gap: 12 },
-  message: { fontSize: 15, fontWeight: '600', color: TEXT, lineHeight: 22 },
-  time: { fontSize: 10, fontWeight: '800', color: MUTED, marginTop: 6 },
-  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: ACCENT },
-  emptyTitle: { fontSize: 36, fontWeight: '900', color: TEXT, lineHeight: 42 },
-  emptySub: { fontSize: 11, fontWeight: '800', color: MUTED, marginTop: 8 },
+  message: { fontSize: 15, fontWeight: '600', lineHeight: 22 },
+  time: { fontSize: 10, fontWeight: '800', marginTop: 6 },
+  unreadDot: { width: 8, height: 8, borderRadius: 4 },
+  emptyTitle: { fontSize: 36, fontWeight: '900', lineHeight: 42 },
+  emptySub: { fontSize: 11, fontWeight: '800', marginTop: 8 },
 });
