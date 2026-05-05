@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Image,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Dimensions,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Dimensions, Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -87,8 +87,12 @@ export default function CircleScreen({ route, navigation }) {
   const watchRef = useRef(null);
   const flatRef = useRef(null);
   const exitedRef = useRef(false);
-  // Tracks the most recent vote per poll so stale HTTP responses don't revert state
   const expectedVoteRef = useRef({});
+  const slideAnim = useRef(new Animated.Value(80)).current;
+
+  useEffect(() => {
+    Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, damping: 22, stiffness: 220 }).start();
+  }, [slideAnim]);
 
   const loadRoom = useCallback(async (loc) => {
     try {
@@ -260,44 +264,46 @@ export default function CircleScreen({ route, navigation }) {
         right={<BrutNavLink onPress={() => setShowCreatePoll(true)} label={t('radar.flashPoll')} accent />}
       />
 
-      {/* Hero: venue name + presence */}
-      <View style={styles.hero}>
-        <BrutHero title={room.title} label={`${activeHere} ${ar ? t('radar.hereNow') : shout(t('radar.hereNow'), false)}`} size={42} />
-        <BrutRule mt={18} mb={0} />
-      </View>
+      <Animated.View style={[{ flex: 1 }, { transform: [{ translateY: slideAnim }] }]}>
+        {/* Hero: venue name + presence */}
+        <View style={styles.hero}>
+          <BrutHero title={room.title} label={`${activeHere} ${ar ? t('radar.hereNow') : shout(t('radar.hereNow'), false)}`} size={42} />
+          <BrutRule mt={18} mb={0} />
+        </View>
 
-      {/* Messages + polls */}
-      <FlatList
-        ref={flatRef}
-        data={messages}
-        keyExtractor={(m) => String(m._id)}
-        renderItem={({ item }) => (
-          <MessageRow
-            msg={item}
-            isMine={item.user?._id === currentUser?._id}
-            ar={ar}
-            onImagePress={(uri) => navigation.navigate('MediaViewer', { media: [{ uri, type: 'image' }], initialIndex: 0 })}
-          />
+        {/* Polls — fixed above the message list */}
+        {polls.length > 0 && (
+          <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
+            {polls.map((poll) => (
+              <PollCard
+                key={poll._id}
+                poll={poll}
+                onVote={handleVote}
+                onDelete={handleDeletePoll}
+                currentUserId={currentUser?._id}
+                ar={ar}
+              />
+            ))}
+          </View>
         )}
-        ListHeaderComponent={
-          polls.length > 0 ? (
-            <View>
-              {polls.map((poll) => (
-                <PollCard
-                  key={poll._id}
-                  poll={poll}
-                  onVote={handleVote}
-                  onDelete={handleDeletePoll}
-                  currentUserId={currentUser?._id}
-                  ar={ar}
-                />
-              ))}
-            </View>
-          ) : null
-        }
-        contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 12 }}
-        onContentSizeChange={() => flatRef.current?.scrollToEnd({ animated: false })}
-      />
+
+        {/* Messages — inverted so newest appear at the bottom, pushing up naturally */}
+        <FlatList
+          ref={flatRef}
+          data={[...messages].reverse()}
+          inverted
+          keyExtractor={(m) => String(m._id)}
+          renderItem={({ item }) => (
+            <MessageRow
+              msg={item}
+              isMine={item.user?._id === currentUser?._id}
+              ar={ar}
+              onImagePress={(uri) => navigation.navigate('MediaViewer', { media: [{ uri, type: 'image' }], initialIndex: 0 })}
+            />
+          )}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 12 }}
+        />
+      </Animated.View>
 
       {/* Composer */}
       <View style={[styles.composer, { paddingBottom: insets.bottom + 12, flexDirection: ar ? 'row-reverse' : 'row' }]}>
