@@ -345,9 +345,17 @@ export default function RadarScreen() {
               </Text>
               <Text style={[styles.nearbyMeta, { letterSpacing: ar ? 0 : 1.2, textAlign: ar ? 'right' : 'left' }]}>
                 {formatDist(nearby.distance, ar)}
-                {nearby.activeHere > 0 ? ` · ${nearby.activeHere} ${ar ? 'هنا' : 'HERE NOW'}` : ''}
               </Text>
             </View>
+
+            {/* Live presence counter — how many people are physically here right now */}
+            <View style={[styles.counterBlock, { alignItems: ar ? 'flex-start' : 'flex-end' }]}>
+              <Text style={styles.counterNum}>{nearby.activeHere || 0}</Text>
+              <Text style={[styles.counterLabel, { letterSpacing: ar ? 0 : 1.5 }]}>
+                {ar ? 'هنا الحين' : 'HERE NOW'}
+              </Text>
+            </View>
+
             <Text style={styles.nearbyArrow}>{ar ? '←' : '→'}</Text>
           </View>
         </TouchableOpacity>
@@ -455,6 +463,15 @@ const styles = StyleSheet.create({
   nearbyDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#4D80FF' },
   nearbyTag: { fontSize: 9, fontWeight: '900', color: '#9CA3AF' },
   nearbyName: { fontSize: 22, fontWeight: '900', color: '#fff', letterSpacing: -0.5 },
+  counterBlock: { paddingHorizontal: 14, justifyContent: 'center' },
+  counterNum: {
+    fontSize: 32, fontWeight: '900', color: '#fff',
+    lineHeight: 32, fontVariant: ['tabular-nums'],
+  },
+  counterLabel: {
+    fontSize: 9, fontWeight: '900', color: '#9CA3AF',
+    marginTop: 4,
+  },
   nearbyMeta: { fontSize: 11, fontWeight: '800', color: '#9CA3AF', marginTop: 4 },
   nearbyArrow: { fontSize: 22, fontWeight: '900', color: '#fff' },
   loadingOverlay: {
