@@ -176,7 +176,7 @@ const initSocket = (server) => {
 
         // Compute presence confidence if location provided.
         // Founders are always counted as "here now" without needing a location.
-        let presenceUpdate = {};
+        const pushOps = { messages: { $each: [msgData], $slice: -500 } };
         const isFounder = bypassesGeofence(socket.user);
         const isVenue = room.isVenueCircle && room.venueCoords?.lat;
         if (isVenue && (isFounder || (lat != null && lng != null))) {
@@ -189,18 +189,19 @@ const initSocket = (server) => {
           if (confidence >= 0.3) {
             const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
             await Hachi.findByIdAndUpdate(roomId, { $pull: { hereNow: { userId: socket.user._id } } });
-            presenceUpdate = { $push: { hereNow: { userId: socket.user._id, confidence, expiresAt } } };
+            // Merge presence push INTO the same $push op — object spread can't
+            // be used here or the second $push key would overwrite messages
+            pushOps.hereNow = { userId: socket.user._id, confidence, expiresAt };
           }
         }
 
         const updated = await Hachi.findByIdAndUpdate(
           roomId,
           {
-            $push: { messages: { $each: [msgData], $slice: -500 } },
+            $push: pushOps,
             $set: { lastMessage: { text: text.trim(), createdAt: now } },
             $addToSet: { members: socket.user._id },
             ...(isNewMember ? { $inc: { memberCount: 1 } } : {}),
-            ...presenceUpdate,
           },
           { new: false }
         );
@@ -266,10 +267,10 @@ const initSocket = (server) => {
         if ((roomCheck.blockedMembers || []).some((b) => b.toString() === uid2)) return;
         const isNew2 = !(roomCheck.members || []).some((m) => m.toString() === uid2);
 
-        // Presence update (same logic as text send)
+        // Presence update (same logic as text send) — must merge into one $push op
+        const pushOps = { messages: { $each: [msgData], $slice: -500 } };
         const isFounder = bypassesGeofence(socket.user);
         const isVenue = roomCheck.isVenueCircle && roomCheck.venueCoords?.lat;
-        let presenceUpdate = {};
         if (isVenue && (isFounder || (lat != null && lng != null))) {
           const confidence = isFounder
             ? 1
@@ -277,18 +278,17 @@ const initSocket = (server) => {
           if (confidence >= 0.3) {
             const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
             await Hachi.findByIdAndUpdate(roomId, { $pull: { hereNow: { userId: socket.user._id } } });
-            presenceUpdate = { $push: { hereNow: { userId: socket.user._id, confidence, expiresAt } } };
+            pushOps.hereNow = { userId: socket.user._id, confidence, expiresAt };
           }
         }
 
         const updated = await Hachi.findByIdAndUpdate(
           roomId,
           {
-            $push: { messages: { $each: [msgData], $slice: -500 } },
+            $push: pushOps,
             $set: { lastMessage: { text: '📷', createdAt: now } },
             $addToSet: { members: socket.user._id },
             ...(isNew2 ? { $inc: { memberCount: 1 } } : {}),
-            ...presenceUpdate,
           },
           { new: false }
         );
