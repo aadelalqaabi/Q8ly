@@ -11,15 +11,17 @@ export const initSocket = async () => {
 
   socket = io(SOCKET_URL, {
     auth: { token },
-    // Try websocket first, fall back to long-polling if blocked (some proxies,
-    // captive portals, and EAS dev builds drop WS but allow polling)
-    transports: ['websocket', 'polling'],
+    // Start with long-polling (always works) and let the engine UPGRADE to
+    // websocket once it's confirmed available. This is the safest path for
+    // mobile networks, dev tunnels, and proxies that mangle WS handshakes.
+    transports: ['polling', 'websocket'],
     upgrade: true,
+    rememberUpgrade: true,
     reconnection: true,
     reconnectionAttempts: 10,
     reconnectionDelay: 1000,
     reconnectionDelayMax: 5000,
-    timeout: 15000,
+    timeout: 20000,
   });
 
   socket.on('connect', () => {

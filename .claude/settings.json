@@ -4,7 +4,11 @@
       "Bash(node server/scripts/seedVenueCircles.js)",
       "Bash(git reset *)",
       "Bash(node -e ' *)",
-      "Bash(curl -s -L -o /dev/null -w \"%{url_effective}\\\\n\" \"https://maps.app.goo.gl/gxh2E8UcjyQ7D6NU8?g_st=ic\")"
+      "Bash(curl -s -L -o /dev/null -w \"%{url_effective}\\\\n\" \"https://maps.app.goo.gl/gxh2E8UcjyQ7D6NU8?g_st=ic\")",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code} · %{time_total}s\\\\n\" https://kuwai.app/api/hachi/radar)",
+      "Bash(curl -s -I https://kuwai.app/socket.io/?EIO=4\\\\&transport=polling)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" 'https://kuwai.app/socket.io/?EIO=4&transport=polling')",
+      "Bash(curl -s 'https://kuwai.app/socket.io/?EIO=4&transport=polling')"
     ]
   }
 }
