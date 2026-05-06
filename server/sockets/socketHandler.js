@@ -133,7 +133,7 @@ const initSocket = (server) => {
         socket.join(`hachi:${roomId}`);
         // Broadcast updated online count
         const onlineCount = io.sockets.adapter.rooms.get(`hachi:${roomId}`)?.size || 0;
-        io.to(`hachi:${roomId}`).emit('hachiOnlineCount', { roomId, online: onlineCount });
+        io.to(`hachi:${roomId}`).emit('hachiMemberCount', { roomId, count: onlineCount });
       } catch (err) {
         console.error('joinHachi error:', err.message);
         socket.join(`hachi:${roomId}`);
@@ -144,7 +144,7 @@ const initSocket = (server) => {
       socket.leave(`hachi:${roomId}`);
       // Broadcast updated online count
       const onlineCount = io.sockets.adapter.rooms.get(`hachi:${roomId}`)?.size || 0;
-      io.to(`hachi:${roomId}`).emit('hachiOnlineCount', { roomId, online: onlineCount });
+      io.to(`hachi:${roomId}`).emit('hachiMemberCount', { roomId, count: onlineCount });
     });
 
     socket.on('hachiSend', async ({ roomId, text, replyTo, lat, lng, speed }) => {

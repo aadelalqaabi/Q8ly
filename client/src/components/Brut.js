@@ -1,6 +1,6 @@
 /**
- * Brutalist primitives — reusable building blocks for the KUWAI app.
- * Black and white as the canvas, Kuwait blue (#0033A0) used sparingly as accent.
+ * Clean Social design system — KUWAI app.
+ * Warm off-white canvas, rounded cards, Kuwait blue (#0033A0) accent.
  */
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, TextInput } from 'react-native';
@@ -11,11 +11,11 @@ import { useTheme } from '../context/ThemeContext';
 // Static light-mode defaults — kept for backward compat in module-level StyleSheet.create calls.
 // Inside components always prefer useBrutColors() so colors respond to theme.
 export const ACCENT    = '#0033A0';
-export const TEXT      = '#000000';
-export const MUTED     = '#6C6C70';
-export const SEPARATOR = '#E5E5EA';
-export const FILL      = '#F2F2F7';
-export const BG        = '#FFFFFF';
+export const TEXT      = '#1A1A1A';
+export const MUTED     = '#8A857E';
+export const SEPARATOR = '#E8E4DE';
+export const FILL      = '#F0EDE8';
+export const BG        = '#FAF8F5';
 
 /** Returns live theme-aware color primitives. Use inside any function component. */
 export function useBrutColors() {
@@ -27,6 +27,7 @@ export function useBrutColors() {
     SEPARATOR: colors.separator,
     FILL:      colors.fill,
     BG:        colors.background,
+    CARD:      colors.card,
     isDark,
   };
 }
@@ -40,21 +41,26 @@ export function shout(text, ar) {
   return ar ? String(text) : String(text).toUpperCase();
 }
 
-export const ls = (n, ar) => (ar ? 0 : n);
+export const ls = (n, ar) => (ar ? 0 : n * 0.5);
 
 // ── Top nav row ──────────────────────────────────────────────────────────────
 export function BrutNav({ onBack, right, leftLabel }) {
   const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
   const ar = isAr(i18n);
-  const { TEXT, BG } = useBrutColors();
+  const { TEXT, BG, SEPARATOR } = useBrutColors();
   return (
-    <View style={[styles.navRow, { paddingTop: insets.top + 14, flexDirection: ar ? 'row-reverse' : 'row', backgroundColor: BG }]}>
+    <View style={[styles.navRow, {
+      paddingTop: insets.top + 14,
+      flexDirection: ar ? 'row-reverse' : 'row',
+      backgroundColor: BG,
+      borderBottomColor: SEPARATOR,
+    }]}>
       <TouchableOpacity onPress={onBack} hitSlop={hitSlop}>
         <Text style={[styles.navLink, { color: TEXT }]}>
           {ar
-            ? `${leftLabel || t('common.back')} →`
-            : `← ${shout(leftLabel || t('common.back'), false)}`}
+            ? `${leftLabel || t('common.back')} ›`
+            : `‹ ${leftLabel || t('common.back')}`}
         </Text>
       </TouchableOpacity>
       <View style={{ flexDirection: ar ? 'row-reverse' : 'row', alignItems: 'center', gap: 18 }}>
@@ -70,31 +76,31 @@ export function BrutNavLink({ onPress, label, accent }) {
   const { TEXT, ACCENT } = useBrutColors();
   return (
     <TouchableOpacity onPress={onPress} hitSlop={hitSlop}>
-      <Text style={[styles.navLink, { color: accent ? ACCENT : TEXT, letterSpacing: ls(1.5, ar) }]}>
-        {shout(label, ar)}
+      <Text style={[styles.navLink, { color: accent ? ACCENT : TEXT }]}>
+        {label}
       </Text>
     </TouchableOpacity>
   );
 }
 
-// ── Hero: massive headline + tracked-letterspace caps subline ────────────────
-export function BrutHero({ title, label, size = 56 }) {
+// ── Hero ─────────────────────────────────────────────────────────────────────
+export function BrutHero({ title, label, size = 44 }) {
   const { i18n } = useTranslation();
   const ar = isAr(i18n);
   const { TEXT, MUTED } = useBrutColors();
   return (
     <View style={{ paddingHorizontal: 4, paddingTop: 8 }}>
       <Text
-        style={[styles.hero, { fontSize: size, lineHeight: ar ? size * 1.18 : size, letterSpacing: ls(-2, ar), textAlign: ar ? 'right' : 'left', color: TEXT }]}
+        style={[styles.hero, { fontSize: size, lineHeight: ar ? size * 1.18 : size * 1.1, letterSpacing: ar ? 0 : -0.3, textAlign: ar ? 'right' : 'left', color: TEXT }]}
         numberOfLines={2}
         adjustsFontSizeToFit
         minimumFontScale={0.5}
       >
-        {shout(title, ar)}
+        {title}
       </Text>
       {label ? (
-        <Text style={[styles.heroLabel, { letterSpacing: ls(2, ar), textAlign: ar ? 'right' : 'left', color: MUTED }]}>
-          {shout(label, ar)}
+        <Text style={[styles.heroLabel, { textAlign: ar ? 'right' : 'left', color: MUTED }]}>
+          {label}
         </Text>
       ) : null}
     </View>
@@ -107,8 +113,8 @@ export function BrutSection({ title }) {
   const ar = isAr(i18n);
   const { MUTED } = useBrutColors();
   return (
-    <Text style={[styles.section, { letterSpacing: ls(2, ar), textAlign: ar ? 'right' : 'left', color: MUTED }]}>
-      {shout(title, ar)}
+    <Text style={[styles.section, { textAlign: ar ? 'right' : 'left', color: MUTED }]}>
+      {title}
     </Text>
   );
 }
@@ -126,30 +132,26 @@ export function BrutRow({ label, value, onPress, danger, accent, disabled }) {
       disabled={disabled}
       style={[styles.row, { flexDirection: ar ? 'row-reverse' : 'row', opacity: disabled ? 0.4 : 1 }]}
     >
-      <Text style={[
-        styles.rowLabel,
-        { color: danger ? '#D32F2F' : accent ? ACCENT : TEXT },
-        { letterSpacing: ls(1.5, ar) },
-      ]}>
-        {shout(label, ar)}
+      <Text style={[styles.rowLabel, { color: danger ? '#D32F2F' : accent ? ACCENT : TEXT }]}>
+        {label}
       </Text>
       <View style={{ flex: 1 }} />
       {value != null && (
-        <Text style={[styles.rowValue, { color: MUTED, letterSpacing: ls(0.5, ar) }]}>{value}</Text>
+        <Text style={[styles.rowValue, { color: MUTED }]}>{value}</Text>
       )}
       {onPress && (
-        <Text style={[styles.rowArrow, { color: TEXT }, ar ? { marginEnd: 0, marginStart: 10 } : { marginStart: 10 }]}>
-          {ar ? '←' : '→'}
+        <Text style={[styles.rowArrow, { color: MUTED }, ar ? { marginEnd: 0, marginStart: 10 } : { marginStart: 10 }]}>
+          {ar ? '‹' : '›'}
         </Text>
       )}
     </Wrap>
   );
 }
 
-// ── Hard rule ────────────────────────────────────────────────────────────────
-export function BrutRule({ thickness = 2, color, mt = 24, mb = 0 }) {
-  const { TEXT } = useBrutColors();
-  return <View style={{ height: thickness, backgroundColor: color ?? TEXT, marginTop: mt, marginBottom: mb }} />;
+// ── Divider — hairline ────────────────────────────────────────────────────────
+export function BrutRule({ thickness = StyleSheet.hairlineWidth, color, mt = 24, mb = 0 }) {
+  const { SEPARATOR } = useBrutColors();
+  return <View style={{ height: thickness, backgroundColor: color ?? SEPARATOR, marginTop: mt, marginBottom: mb }} />;
 }
 
 // ── Hairline divider ─────────────────────────────────────────────────────────
@@ -162,33 +164,33 @@ export function BrutHair({ inset = 0 }) {
 export function BrutAction({ label, onPress, accent, disabled }) {
   const { i18n } = useTranslation();
   const ar = isAr(i18n);
-  const { TEXT, ACCENT } = useBrutColors();
+  const { ACCENT } = useBrutColors();
   return (
     <TouchableOpacity onPress={onPress} disabled={disabled} activeOpacity={0.6} style={{ alignSelf: ar ? 'flex-end' : 'flex-start', paddingVertical: 6 }}>
-      <Text style={[styles.action, { color: accent ? ACCENT : TEXT }, disabled && { opacity: 0.35 }, { letterSpacing: ls(2, ar) }]}>
-        {ar ? `← ${label}` : `${shout(label, false)} →`}
+      <Text style={[styles.action, { color: ACCENT }, disabled && { opacity: 0.35 }]}>
+        {ar ? `‹ ${label}` : `${label} ›`}
       </Text>
     </TouchableOpacity>
   );
 }
 
-// ── Input ────────────────────────────────────────────────────────────────────
+// ── Input — filled rounded rect ───────────────────────────────────────────────
 export function BrutInput({ label, value, onChangeText, placeholder, secureTextEntry, keyboardType, autoCapitalize, maxLength, multiline, accent, ...rest }) {
   const { i18n } = useTranslation();
   const ar = isAr(i18n);
-  const { TEXT, MUTED, ACCENT } = useBrutColors();
+  const { TEXT, MUTED, ACCENT, FILL, SEPARATOR } = useBrutColors();
   return (
-    <View style={{ marginBottom: 24 }}>
+    <View style={{ marginBottom: 16 }}>
       {label && (
-        <Text style={[styles.inputLabel, { color: MUTED, letterSpacing: ls(2, ar), textAlign: ar ? 'right' : 'left' }]}>
-          {shout(label, ar)}
+        <Text style={[styles.inputLabel, { color: MUTED, textAlign: ar ? 'right' : 'left' }]}>
+          {label}
         </Text>
       )}
       <TextInput
         style={[
           styles.input,
-          { color: TEXT, borderBottomColor: accent ? ACCENT : TEXT, textAlign: ar ? 'right' : 'left' },
-          multiline && { minHeight: 80 },
+          { color: TEXT, backgroundColor: FILL, borderColor: accent ? ACCENT : SEPARATOR, textAlign: ar ? 'right' : 'left' },
+          multiline && { minHeight: 90, paddingTop: 14 },
         ]}
         value={value}
         onChangeText={onChangeText}
@@ -205,7 +207,7 @@ export function BrutInput({ label, value, onChangeText, placeholder, secureTextE
   );
 }
 
-// ── Brick CTA ────────────────────────────────────────────────────────────────
+// ── Primary button ────────────────────────────────────────────────────────────
 export function BrutBrick({ label, onPress, disabled, loading, accent }) {
   const { i18n } = useTranslation();
   const ar = isAr(i18n);
@@ -214,11 +216,11 @@ export function BrutBrick({ label, onPress, disabled, loading, accent }) {
     <TouchableOpacity
       onPress={onPress}
       disabled={disabled || loading}
-      activeOpacity={0.7}
-      style={[styles.brick, { backgroundColor: accent ? ACCENT : TEXT, opacity: (disabled || loading) ? 0.35 : 1 }]}
+      activeOpacity={0.75}
+      style={[styles.brick, { backgroundColor: accent ? ACCENT : TEXT, opacity: (disabled || loading) ? 0.4 : 1 }]}
     >
-      <Text style={[styles.brickText, { color: BG, letterSpacing: ls(2, ar) }]}>
-        {loading ? '...' : shout(label, ar)}
+      <Text style={[styles.brickText, { color: BG }]}>
+        {loading ? '...' : label}
       </Text>
     </TouchableOpacity>
   );
@@ -226,36 +228,42 @@ export function BrutBrick({ label, onPress, disabled, loading, accent }) {
 
 const hitSlop = { top: 12, bottom: 12, left: 12, right: 12 };
 
-// Layout-only styles — no color values here (colors applied inline via useBrutColors)
+// Layout-only styles — no color values (colors applied inline via useBrutColors)
 const styles = StyleSheet.create({
   navRow: {
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  navLink: { fontSize: 11, fontWeight: '900' },
+  navLink: { fontSize: 15, fontWeight: '600' },
 
-  hero: { fontSize: 56, fontWeight: '900' },
-  heroLabel: { fontSize: 11, fontWeight: '800', marginTop: 6 },
-  section: { fontSize: 11, fontWeight: '800', paddingTop: 22, paddingBottom: 10 },
+  hero: { fontSize: 44, fontWeight: '700' },
+  heroLabel: { fontSize: 13, fontWeight: '400', marginTop: 4, letterSpacing: 0.1 },
+  section: { fontSize: 12, fontWeight: '600', paddingTop: 24, paddingBottom: 8, letterSpacing: 0.2 },
 
-  row: { minHeight: 56, alignItems: 'center', paddingHorizontal: 4 },
-  rowLabel: { fontSize: 14, fontWeight: '800' },
-  rowValue: { fontSize: 13, fontWeight: '600' },
-  rowArrow: { fontSize: 14, fontWeight: '900' },
+  row: { minHeight: 52, alignItems: 'center', paddingHorizontal: 4 },
+  rowLabel: { fontSize: 15, fontWeight: '500' },
+  rowValue: { fontSize: 14, fontWeight: '400' },
+  rowArrow: { fontSize: 18, fontWeight: '300' },
 
-  action: { fontSize: 13, fontWeight: '900' },
+  action: { fontSize: 15, fontWeight: '600' },
 
-  inputLabel: { fontSize: 11, fontWeight: '800', marginBottom: 8 },
+  inputLabel: { fontSize: 13, fontWeight: '500', marginBottom: 6 },
   input: {
-    fontSize: 16, fontWeight: '600',
-    paddingVertical: 10, paddingHorizontal: 0,
-    borderBottomWidth: 2,
+    fontSize: 16, fontWeight: '400',
+    paddingVertical: 14, paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
   },
 
-  brick: { paddingVertical: 18, alignItems: 'center', justifyContent: 'center' },
-  brickText: { fontSize: 14, fontWeight: '900' },
+  brick: {
+    paddingVertical: 17, alignItems: 'center', justifyContent: 'center',
+    borderRadius: 16,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 3,
+  },
+  brickText: { fontSize: 16, fontWeight: '600' },
 });
 
 export default {

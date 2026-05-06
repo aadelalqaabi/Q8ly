@@ -13,7 +13,7 @@ import { logout, getMe } from '../../store/slices/authSlice';
 import { suggestionsAPI, usersAPI } from '../../services/api';
 import {
   BrutNav, BrutHero, BrutSection, BrutRow, BrutRule, BrutHair, BrutBrick, BrutInput,
-  ACCENT, TEXT, MUTED, SEPARATOR, BG, isAr, ls, shout,
+  useBrutColors, isAr, ls, shout,
 } from '../../components/Brut';
 
 const THEME_KEYS = ['auto', 'light', 'dark'];
@@ -25,6 +25,7 @@ export default function SettingsScreen({ navigation }) {
   const ar = isAr(i18n);
   const restartApp = useContext(AppRestartContext);
   const { scheme, setScheme } = useTheme();
+  const { TEXT, MUTED, ACCENT, BG, SEPARATOR } = useBrutColors();
   const { user: currentUser } = useSelector((s) => s.auth);
   const isFounder = currentUser?.phone === '+96599440289'
     || currentUser?.isFounder
@@ -103,6 +104,7 @@ export default function SettingsScreen({ navigation }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
+
       <BrutNav onBack={() => navigation.goBack()} />
 
       <ScrollView
@@ -123,22 +125,20 @@ export default function SettingsScreen({ navigation }) {
                   <View style={[styles.inviteRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
                     <View style={{ flex: 1 }}>
                       <Text style={[
-                        styles.inviteCode,
+                        styles.inviteCode, { color: TEXT },
                         used && { color: MUTED, textDecorationLine: 'line-through' },
                         { textAlign: ar ? 'right' : 'left' },
                       ]}>
                         {invite.code}
                       </Text>
-                      <Text style={[styles.inviteStatus, { letterSpacing: ls(1.5, ar), textAlign: ar ? 'right' : 'left' }]}>
-                        {used
-                          ? shout(t('settings.inviteUsed'), ar)
-                          : shout(t('settings.inviteAvailable'), ar)}
+                      <Text style={[styles.inviteStatus, { color: MUTED, textAlign: ar ? 'right' : 'left' }]}>
+                        {used ? t('settings.inviteUsed') : t('settings.inviteAvailable')}
                       </Text>
                     </View>
                     {!used && (
                       <TouchableOpacity onPress={() => handleShareInvite(invite.code)}>
-                        <Text style={[styles.shareLink, { letterSpacing: ls(2, ar) }]}>
-                          {ar ? `← ${t('common.share')}` : `${shout(t('common.share'), false)} →`}
+                        <Text style={[styles.shareLink, { color: ACCENT }]}>
+                          {ar ? `‹ ${t('common.share')}` : `${t('common.share')} ›`}
                         </Text>
                       </TouchableOpacity>
                     )}
@@ -206,23 +206,23 @@ export default function SettingsScreen({ navigation }) {
         />
 
         <View style={{ height: 40 }} />
-        <Text style={[styles.version, { textAlign: ar ? 'right' : 'left' }]}>KUWAI · v1.1.3</Text>
+        <Text style={[styles.version, { color: MUTED, textAlign: ar ? 'right' : 'left' }]}>KUWAI · v1.1.3</Text>
       </ScrollView>
 
       {/* Suggest modal */}
       <Modal visible={suggestVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setSuggestVisible(false)}>
         <KeyboardAvoidingView style={{ flex: 1, backgroundColor: BG }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+
           <BrutNav
             onBack={() => setSuggestVisible(false)}
             leftLabel={t('common.cancel')}
             right={
               <TouchableOpacity onPress={handleSuggest} disabled={!suggestText.trim() || suggestLoading} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
                 <Text style={[
-                  styles.sendLink,
+                  styles.sendLink, { color: ACCENT },
                   (!suggestText.trim() || suggestLoading) && { opacity: 0.35 },
-                  { letterSpacing: ls(2, ar) },
                 ]}>
-                  {suggestLoading ? '...' : shout(t('suggest.send'), ar)}
+                  {suggestLoading ? '...' : t('suggest.send')}
                 </Text>
               </TouchableOpacity>
             }
@@ -251,18 +251,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   inviteCode: {
-    fontSize: 22, fontWeight: '900', color: TEXT,
+    fontSize: 20, fontWeight: '600',
     fontVariant: ['tabular-nums'],
   },
   inviteStatus: {
-    fontSize: 10, fontWeight: '800', color: MUTED, marginTop: 4,
+    fontSize: 12, fontWeight: '400', marginTop: 3,
   },
   shareLink: {
-    fontSize: 12, fontWeight: '900', color: ACCENT,
+    fontSize: 14, fontWeight: '600',
   },
-  sendLink: { fontSize: 12, fontWeight: '900', color: ACCENT },
+  sendLink: { fontSize: 14, fontWeight: '600' },
   version: {
-    fontSize: 10, fontWeight: '800', color: MUTED,
-    letterSpacing: 1.5, marginTop: 24,
+    fontSize: 12, fontWeight: '400',
+    marginTop: 24,
   },
 });

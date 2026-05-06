@@ -62,12 +62,12 @@ function AppStack() {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: COLORS.white },
+        headerStyle: { backgroundColor: COLORS.background },
         headerTintColor: COLORS.accent,
         headerTitleStyle: { fontWeight: '600', fontSize: 17, color: COLORS.text },
         headerShadowVisible: false,
         headerBackTitleVisible: false,
-        contentStyle: { backgroundColor: COLORS.white },
+        contentStyle: { backgroundColor: COLORS.background },
       }}
     >
       <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />

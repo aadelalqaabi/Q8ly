@@ -28,5 +28,6 @@ router.delete('/:id/delete', protect, deleteRoom);
 router.post('/:id/pin', protect, pinRoom);
 router.delete('/:id/pin', protect, unpinRoom);
 router.post('/:id/leave', protect, leaveRoom);
+router.post('/:id/close', protect, closeRoom);
 
 module.exports = router;

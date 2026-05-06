@@ -11,7 +11,6 @@ import { getSocket, joinHachiRoom, leaveHachiRoom, sendHachiMessage } from '../.
 import {
   BrutNav, BrutNavLink, BrutHero, BrutRule, useBrutColors, isAr, ls, shout,
 } from '../../components/Brut';
-import { useTheme } from '../../context/ThemeContext';
 import { PollCard, PollComposer } from '../../components/Poll';
 let Location = null;
 try { Location = require('expo-location'); } catch {}
@@ -23,7 +22,7 @@ const SW = Dimensions.get('window').width;
 const IMG_SIZE = Math.min(260, SW * 0.62);
 
 function MessageRow({ msg, isMine, ar, onImagePress }) {
-  const { TEXT, MUTED, SEPARATOR, FILL } = useBrutColors();
+  const { TEXT, MUTED, ACCENT, SEPARATOR, FILL, BG } = useBrutColors();
   const hasImage = !!msg.image;
   const hasText = !!msg.text;
   return (
@@ -43,8 +42,8 @@ function MessageRow({ msg, isMine, ar, onImagePress }) {
         </View>
       )}
       {hasText && (
-        <View style={[msgStyles.bubble, isMine ? { backgroundColor: TEXT } : { backgroundColor: FILL, borderWidth: StyleSheet.hairlineWidth, borderColor: SEPARATOR }, hasImage && { marginTop: 4 }]}>
-          <Text style={[msgStyles.text, { color: isMine ? '#fff' : TEXT }, { textAlign: ar ? 'right' : 'left' }]}>
+        <View style={[msgStyles.bubble, isMine ? { backgroundColor: ACCENT } : { backgroundColor: FILL, borderWidth: StyleSheet.hairlineWidth, borderColor: SEPARATOR }, hasImage && { marginTop: 4 }]}>
+          <Text style={[msgStyles.text, { color: isMine ? BG : TEXT }, { textAlign: ar ? 'right' : 'left' }]}>
             {msg.text}
           </Text>
         </View>
@@ -55,7 +54,7 @@ function MessageRow({ msg, isMine, ar, onImagePress }) {
 const msgStyles = StyleSheet.create({
   wrap: { paddingHorizontal: 4, paddingVertical: 5 },
   author: { fontSize: 10, fontWeight: '800', marginBottom: 4 },
-  bubble: { maxWidth: '78%', padding: 12 },
+  bubble: { maxWidth: '78%', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 18 },
   text: { fontSize: 15, lineHeight: 20, fontWeight: '500' },
   imageWrap: { borderWidth: 2, position: 'relative' },
   liveTag: { position: 'absolute', top: 8, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 8, paddingVertical: 4 },
@@ -302,12 +301,12 @@ export default function CircleScreen({ route, navigation }) {
       </Animated.View>
 
       {/* Composer */}
-      <View style={[styles.composer, { borderTopColor: TEXT, paddingBottom: insets.bottom + 12, flexDirection: ar ? 'row-reverse' : 'row' }]}>
+      <View style={[styles.composer, { backgroundColor: BG, borderTopColor: TEXT, paddingBottom: insets.bottom + 12, flexDirection: ar ? 'row-reverse' : 'row' }]}>
         <TouchableOpacity style={[styles.cameraBtn, { borderColor: TEXT }]} onPress={() => navigation.navigate('LiveCamera', { circleId })} activeOpacity={0.7}>
           <Text style={[styles.cameraGlyph, { color: TEXT }]}>◉</Text>
         </TouchableOpacity>
         <TextInput
-          style={[styles.input, { color: TEXT, borderBottomColor: TEXT, textAlign: ar ? 'right' : 'left' }]}
+          style={[styles.input, { color: TEXT, backgroundColor: BG, borderBottomColor: TEXT, textAlign: ar ? 'right' : 'left' }]}
           value={text}
           onChangeText={setText}
           placeholder={t('radar.composerPlaceholder')}

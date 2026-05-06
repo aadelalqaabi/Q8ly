@@ -22,7 +22,10 @@ export default function NotificationsScreen({ navigation }) {
   const filtered = notifications.filter((n) => ALLOWED_TYPES.includes(n.type));
 
   useEffect(() => {
-    dispatch(fetchNotifications()).then(() => dispatch(markAsRead([])));
+    dispatch(fetchNotifications()).then((action) => {
+      const ids = (action.payload || []).filter((n) => !n.read).map((n) => n._id);
+      if (ids.length > 0) dispatch(markAsRead(ids));
+    });
   }, []);
 
   const handlePress = (n) => {
