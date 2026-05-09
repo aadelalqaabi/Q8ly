@@ -384,7 +384,7 @@ export default function HomeScreen({ navigation }) {
 }
 
 const makeStyles = (C, isRTL) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: C.white },
+  container: { flex: 1, backgroundColor: C.background },
 
   header: {
     flexDirection: isRTL ? 'row-reverse' : 'row',
@@ -393,7 +393,7 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: C.separator,
-    backgroundColor: C.white,
+    backgroundColor: C.background,
     zIndex: 10,
   },
   wordmark: { flex: 1, fontSize: 28, fontWeight: '800', color: C.text, textAlign: isRTL ? 'right' : 'left' },
@@ -402,7 +402,7 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
   badge: {
     position: 'absolute', top: 0, end: 0,
     minWidth: 16, height: 16, borderRadius: 8,
-    backgroundColor: C.accent, borderWidth: 1.5, borderColor: C.white,
+    backgroundColor: C.accent, borderWidth: 1.5, borderColor: C.background,
     justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3,
   },
   badgeText: { color: '#fff', fontSize: 9, fontWeight: '800', lineHeight: 11 },
@@ -512,7 +512,7 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
 
   // Badge filter tabs
   filterTabsWrap: {
-    backgroundColor: C.white,
+    backgroundColor: C.background,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: C.separator,
   },

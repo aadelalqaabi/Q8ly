@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView,
+  View, Text, StyleSheet, TouchableOpacity, ScrollView,
   Image, ActivityIndicator, Alert, Share, Platform, Modal, RefreshControl, Dimensions,
 } from 'react-native';
 
@@ -70,12 +70,6 @@ function avatarBg(name) {
   let h = 0;
   for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
   return PALETTE[Math.abs(h) % PALETTE.length];
-}
-
-function fmt(n) {
-  if (!n) return '0';
-  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
-  return String(n);
 }
 
 // ── Artifact fullscreen modal ─────────────────────────────────────────────
@@ -147,8 +141,6 @@ export default function ProfileScreen({ navigation, route }) {
   const isOwnProfile = username === currentUser?.username;
   const isPushed = !!route.params?.username;
 
-  const flatListRef = useRef(null);
-  const tabScrollRef = useRef(null);
 
   const [profile, setProfile] = useState(isOwnProfile ? currentUser : null);
   const [circles, setCircles] = useState([]);
@@ -194,32 +186,6 @@ export default function ProfileScreen({ navigation, route }) {
     finally { setMessagesLoading(false); }
   }, [username]);
 
-  // Followers / Following modal
-  const [listModal, setListModal] = useState(null);
-  const [listData, setListData] = useState([]);
-  const [listLoading, setListLoading] = useState(false);
-
-  const openList = useCallback(async (type) => {
-    setListModal(type);
-    setListLoading(true);
-    setListData([]);
-    try {
-      const res = type === 'followers'
-        ? await usersAPI.getFollowers(profile?.username)
-        : await usersAPI.getFollowing(profile?.username);
-      setListData(res.users || []);
-    } catch { /* silent */ } finally {
-      setListLoading(false);
-    }
-  }, [profile?.username]);
-
-  const handleUnfollow = useCallback(async (userId) => {
-    try {
-      await usersAPI.toggleFollow(userId);
-      setListData(prev => prev.filter(u => u._id !== userId));
-      setProfile(prev => prev ? { ...prev, followingCount: Math.max(0, (prev.followingCount || 1) - 1) } : prev);
-    } catch { /* silent */ }
-  }, []);
 
   const loadProfile = useCallback(async () => {
     try {
@@ -271,13 +237,7 @@ export default function ProfileScreen({ navigation, route }) {
     }
   }, [profile?._id]);
 
-  useEffect(() => {
-    return navigation.addListener('tabPress', () => {
-      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
-    });
-  }, [navigation]);
 
-  const [activeTab, setActiveTab] = useState('circles');
   const [refreshing, setRefreshing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
 
@@ -374,40 +334,65 @@ export default function ProfileScreen({ navigation, route }) {
 
   // ── Header ──────────────────────────────────────────────────────────────────
   const renderHeader = () => (
-    <View style={styles.headerWrap}>
-      {/* Massive name — brutalist headline */}
-      <Text
-        style={[styles.brutName, { textAlign: isRTL ? 'right' : 'left' }]}
-        numberOfLines={2}
-        adjustsFontSizeToFit
-        minimumFontScale={0.5}
-      >
-        {isRTL ? (profile?.name || '') : (profile?.name || '').toUpperCase()}
-      </Text>
-      {profile?.verifiedBadge && profile.verifiedBadge !== 'none' && (
-        <Text style={[styles.brutVerifiedTag, { textAlign: isRTL ? 'right' : 'left' }]}>
-          ● {t('profile.kuwaiVerified')}
-        </Text>
-      )}
+    <View>
+      {/* Avatar */}
+      <View style={styles.avatarSection}>
+        {profile?.profilePic ? (
+          <Image source={{ uri: profile.profilePic }} style={styles.avatar} />
+        ) : (
+          <View style={[styles.avatar, { backgroundColor: avatarBg(profile?.name) }]}>
+            <Text style={styles.avatarInitial}>{profile?.name?.[0]?.toUpperCase() || '?'}</Text>
+          </View>
+        )}
+      </View>
 
-      {/* Actions — brutalist typographic buttons (only for own profile) */}
-      {isOwnProfile && (
-        <View style={[styles.brutActionRow, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
-          <TouchableOpacity onPress={() => navigation.navigate('EditProfile')} activeOpacity={0.6} style={{ paddingVertical: 6 }}>
-            <Text style={styles.brutAction}>
-              {isRTL ? `← ${t('profile.editProfile')}` : `${t('profile.editProfile').toUpperCase()} →`}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate('RequestLocation', {})} activeOpacity={0.6} style={{ paddingVertical: 6 }}>
-            <Text style={styles.brutAction}>
-              {isRTL ? `← ${t('radar.requestTitle')}` : `${t('radar.requestTitle').toUpperCase()} →`}
-            </Text>
-          </TouchableOpacity>
+      {/* Name + username + verified */}
+      <View style={styles.identity}>
+        <Text style={styles.name} numberOfLines={1}>{profile?.name || ''}</Text>
+        <Text style={[styles.username, { color: COLORS.textMuted }]}>@{profile?.username || ''}</Text>
+        {profile?.verifiedBadge && profile.verifiedBadge !== 'none' && (
+          <VerifiedBadge badge={profile.verifiedBadge} />
+        )}
+        {!!profile?.bio && (
+          <Text style={styles.bio} numberOfLines={3}>{profile.bio}</Text>
+        )}
+      </View>
+
+      {/* Vault stat — own profile only */}
+      {isOwnProfile && vault.totalCircles > 0 && (
+        <View style={styles.vaultStat}>
+          <Text style={[styles.vaultStatNum, { color: COLORS.text }]}>{vault.percentage}%</Text>
+          <Text style={[styles.vaultStatLabel, { color: COLORS.textMuted }]}>
+            {t('profile.gridUnlocked')} · {vault.visitedCount}/{vault.totalCircles}
+          </Text>
         </View>
       )}
 
-      {/* Hard rule */}
-      <View style={styles.brutRule} />
+      {/* Action */}
+      <View style={styles.actionRow}>
+        {isOwnProfile ? (
+          <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', gap: 8 }}>
+            <TouchableOpacity onPress={() => navigation.navigate('EditProfile')} activeOpacity={0.7} style={styles.editChip}>
+              <Text style={styles.editChipText}>{t('profile.editProfile')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('RequestLocation', {})} activeOpacity={0.7} style={styles.editChip}>
+              <Text style={styles.editChipText}>{t('radar.requestTitle')}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.followRow}>
+            <TouchableOpacity onPress={handleFollow} activeOpacity={0.75}
+              style={isFollowing ? styles.followingChip : styles.followChip}>
+              <Text style={isFollowing ? styles.followingChipText : styles.followChipText}>
+                {followLoading ? '...' : isFollowing ? t('profile.following') : t('profile.follow')}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleToggleNotify} style={styles.notifyBtn} activeOpacity={0.7}>
+              <Ionicons name={isNotifyEnabled ? 'notifications' : 'notifications-outline'} size={20} color={COLORS.textMuted} />
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
     </View>
   );
 
@@ -512,93 +497,87 @@ export default function ProfileScreen({ navigation, route }) {
     );
   }
 
-  const TABS = [
-    { key: 'circles',  label: t('profile.circles') },
-    { key: 'activity', label: t('profile.activity') },
-  ];
-
-  const goToTab = (index) => {
-    setActiveTab(TABS[index].key);
-    tabScrollRef.current?.scrollTo({ x: SW * index, animated: true });
+  const renderVaultGrid = () => {
+    const cellSize = (SW - 32 - 18) / 4;
+    const rows = [];
+    for (let i = 0; i < vault.items.length; i += 4) {
+      rows.push(vault.items.slice(i, i + 4));
+    }
+    return (
+      <View style={{ paddingHorizontal: 16 }}>
+        <Text style={[styles.vaultSectionTitle, { color: COLORS.textMuted, textAlign: isRTL ? 'right' : 'left' }]}>
+          {t('profile.theVault')}
+        </Text>
+        {vault.items.length === 0 ? (
+          <View style={styles.empty}>
+            <Text style={[styles.emptyText, { color: COLORS.textMuted }]}>{t('profile.noVaultYet')}</Text>
+          </View>
+        ) : (
+          rows.map((row, ri) => (
+            <View key={ri} style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}>
+              {row.map((item) => (
+                <TouchableOpacity
+                  key={item._id}
+                  style={styles.vaultCell}
+                  activeOpacity={0.75}
+                  onPress={() => setSelectedArtifact(item)}
+                >
+                  <Artifact id={item._id} title={item.title} mapSnapshot={item.mapSnapshot} size={cellSize} locked={!item.visited} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          ))
+        )}
+      </View>
+    );
   };
 
   return (
     <View style={styles.container}>
-      {/* Brutalist nav row — bare typographic links */}
-      <View style={[styles.brutNavRow, { paddingTop: insets.top + 14, backgroundColor: COLORS.white }]}>
+      {/* Nav */}
+      <View style={[styles.navRow, { paddingTop: insets.top + 12, backgroundColor: COLORS.background, borderBottomColor: COLORS.separator }]}>
         <TouchableOpacity onPress={() => (navigation.canGoBack() ? navigation.goBack() : null)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <Text style={styles.brutNavLink}>{isRTL ? `${t('common.back')} →` : `← ${t('common.back').toUpperCase()}`}</Text>
+          <Text style={[styles.navLink, { color: COLORS.text }]}>{isRTL ? `${t('common.back')} ›` : `‹ ${t('common.back')}`}</Text>
         </TouchableOpacity>
-        <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 18 }}>
+        <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 16 }}>
           {isOwnProfile && (
             <TouchableOpacity onPress={() => navigation.navigate('Notifications')} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-              <Text style={styles.brutNavLink}>
-                {isRTL ? t('profile.inbox') : t('profile.inbox').toUpperCase()}{unreadCount > 0 ? ` · ${unreadCount > 99 ? '99+' : unreadCount}` : ''}
+              <Text style={[styles.navLink, { color: COLORS.accent }]}>
+                {t('profile.inbox')}{unreadCount > 0 ? ` · ${unreadCount > 99 ? '99+' : unreadCount}` : ''}
               </Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity onPress={handleShare} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <Text style={styles.brutNavLink}>{isRTL ? t('common.share') : t('common.share').toUpperCase()}</Text>
+            <Text style={[styles.navLink, { color: COLORS.textMuted }]}>{t('common.share')}</Text>
           </TouchableOpacity>
           {isOwnProfile && (
             <TouchableOpacity onPress={() => navigation.navigate('Settings')} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-              <Text style={styles.brutNavLink}>{isRTL ? t('settings.title') : t('settings.title').toUpperCase()}</Text>
+              <Text style={[styles.navLink, { color: COLORS.textMuted }]}>{t('settings.title')}</Text>
             </TouchableOpacity>
           )}
           {isPushed && !isOwnProfile && (
             <TouchableOpacity onPress={handleBlock} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-              <Text style={styles.brutNavLink}>{isBlocked ? (isRTL ? t('profile.blocked') : t('profile.blocked').toUpperCase()) : '···'}</Text>
+              <Text style={[styles.navLink, { color: COLORS.error }]}>{isBlocked ? t('profile.blocked') : '···'}</Text>
             </TouchableOpacity>
           )}
         </View>
       </View>
 
-      {/* Non-own profile: just the header, no vault */}
+      {/* Non-own profile: header only */}
       {!isOwnProfile && (
         <ScrollView
-          contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
           showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
         >
           {renderHeader()}
         </ScrollView>
       )}
 
-      {/* Vault (header is rendered inside via ListHeaderComponent) */}
+      {/* Own profile: header + vault grid */}
       {isOwnProfile && (
-        <FlatList
-          data={vault.items}
-          keyExtractor={(item) => item._id}
-          numColumns={4}
-          columnWrapperStyle={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 40, paddingHorizontal: 16 }}
-          ListHeaderComponent={
-            <View>
-              {renderHeader()}
-              <View style={[styles.vaultHeader, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
-                <Text style={styles.vaultPercent}>{vault.percentage}%</Text>
-                <Text style={[styles.vaultLabel, { textAlign: isRTL ? 'right' : 'left' }]}>
-                  {isRTL ? t('profile.gridUnlocked') : t('profile.gridUnlocked').toUpperCase()}
-                </Text>
-                <Text style={[styles.vaultMeta, { textAlign: isRTL ? 'right' : 'left' }]}>
-                  {vault.visitedCount} / {vault.totalCircles} · {isRTL ? t('profile.theVault') : t('profile.theVault').toUpperCase()}
-                </Text>
-              </View>
-            </View>
-          }
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.vaultCell}
-              activeOpacity={0.75}
-              onPress={() => setSelectedArtifact(item)}
-            >
-              <Artifact id={item._id} title={item.title} size={(SW - 32 - 18) / 4} locked={!item.visited} />
-            </TouchableOpacity>
-          )}
-          ListEmptyComponent={
-            <View style={styles.empty}>
-              <Text style={styles.emptyText}>{t('profile.noVaultYet')}</Text>
-            </View>
-          }
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -607,8 +586,10 @@ export default function ProfileScreen({ navigation, route }) {
               colors={[COLORS.accent]}
             />
           }
-          showsVerticalScrollIndicator={false}
-        />
+        >
+          {renderHeader()}
+          {renderVaultGrid()}
+        </ScrollView>
       )}
 
       {/* Artifact detail — fullscreen brutalist expand */}
@@ -619,69 +600,6 @@ export default function ProfileScreen({ navigation, route }) {
         t={t}
       />
 
-      {/* Followers / Following modal */}
-      <Modal
-        visible={!!listModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setListModal(null)}
-      >
-        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setListModal(null)} />
-        <View style={[styles.modalSheet, { backgroundColor: COLORS.white }]}>
-          <View style={styles.modalHeader}>
-            <Text style={[styles.modalTitle, { color: COLORS.text }]}>
-              {listModal === 'followers' ? t('profile.followers') : t('profile.followingPl')}
-            </Text>
-            <TouchableOpacity onPress={() => setListModal(null)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name="close" size={22} color={COLORS.textMuted} />
-            </TouchableOpacity>
-          </View>
-
-          {listLoading ? (
-            <ActivityIndicator style={{ marginTop: 32 }} color={COLORS.accent} />
-          ) : (
-            <FlatList
-              data={listData}
-              keyExtractor={item => item._id}
-              renderItem={({ item }) => (
-                <View style={[styles.userRow, { borderBottomColor: COLORS.separator }]}>
-                  <TouchableOpacity
-                    style={styles.userRowLeft}
-                    onPress={() => { setListModal(null); navigation.navigate('ProfileDetail', { username: item.username }); }}
-                    activeOpacity={0.7}
-                  >
-                    {item.profilePic ? (
-                      <Image source={{ uri: item.profilePic }} style={styles.userRowAvatar} />
-                    ) : (
-                      <View style={[styles.userRowAvatar, { backgroundColor: avatarBg(item.name) }]}>
-                        <Text style={styles.userRowInitial}>{item.name?.[0]?.toUpperCase() || '?'}</Text>
-                      </View>
-                    )}
-                    <View>
-                      <Text style={[styles.userRowName, { color: COLORS.text }]} numberOfLines={1}>{item.name}</Text>
-                      <Text style={[styles.userRowUsername, { color: COLORS.textMuted }]}>@{item.username}</Text>
-                    </View>
-                  </TouchableOpacity>
-                  {listModal === 'following' && (
-                    <TouchableOpacity
-                      style={[styles.unfollowBtn, { borderColor: COLORS.separator }]}
-                      onPress={() => handleUnfollow(item._id)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.unfollowText, { color: COLORS.text }]}>{t('profile.following')}</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              )}
-              ListEmptyComponent={
-                <Text style={[styles.emptyText, { color: COLORS.textMuted, marginTop: 32 }]}>
-                  {listModal === 'followers' ? t('profile.noFollowers') : t('profile.noFollowing')}
-                </Text>
-              }
-            />
-          )}
-        </View>
-      </Modal>
 
       <ShareProfileCard
         visible={shareCardVisible}
@@ -693,10 +611,16 @@ export default function ProfileScreen({ navigation, route }) {
 }
 
 const makeStyles = (C, isRTL = false) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: C.white },
-  loader: { flex: 1, backgroundColor: C.white, justifyContent: 'center', alignItems: 'center' },
+  container: { flex: 1, backgroundColor: C.background },
+  loader: { flex: 1, backgroundColor: C.background, justifyContent: 'center', alignItems: 'center' },
 
-  navRow: { flexDirection: isRTL ? 'row-reverse' : 'row', justifyContent: 'space-between', paddingHorizontal: 12, paddingBottom: 4 },
+  navRow: {
+    flexDirection: isRTL ? 'row-reverse' : 'row',
+    justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 16, paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  navLink: { fontSize: 15, fontWeight: '600' },
   navBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
   notifBadge: { position: 'absolute', top: 4, end: 4, backgroundColor: '#FF3B30', borderRadius: 9, minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4 },
   notifBadgeText: { fontSize: 10, fontWeight: '700', color: '#fff' },
@@ -706,14 +630,13 @@ const makeStyles = (C, isRTL = false) => StyleSheet.create({
   avatarInitial: { fontSize: 38, fontWeight: '700', color: '#fff' },
 
   identity: { alignItems: 'center', paddingHorizontal: 32, paddingBottom: 20, gap: 4 },
-  name: { fontSize: 24, fontWeight: '800', color: C.text, textAlign: 'center' },
-  bio: { fontSize: 14, color: C.text, lineHeight: 20, textAlign: 'center', marginTop: 6 },
+  name: { fontSize: 22, fontWeight: '700', color: C.text, textAlign: 'center' },
+  username: { fontSize: 14, fontWeight: '400', textAlign: 'center' },
+  bio: { fontSize: 14, color: C.textMuted, lineHeight: 20, textAlign: 'center', marginTop: 4 },
 
-  statsRow: { flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', justifyContent: 'center', paddingBottom: 20, gap: 16 },
-  stat: { alignItems: 'center', gap: 2, minWidth: 60 },
-  statNum: { fontSize: 17, fontWeight: '700', color: C.text, textAlign: 'center' },
-  statLabel: { fontSize: 11, color: C.textMuted, fontWeight: '400', textAlign: 'center' },
-  statDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: C.separator, marginBottom: 10 },
+  vaultStat: { alignItems: 'center', paddingBottom: 20, gap: 2 },
+  vaultStatNum: { fontSize: 32, fontWeight: '700', letterSpacing: -0.5 },
+  vaultStatLabel: { fontSize: 12, fontWeight: '400' },
 
   actionRow: { alignItems: 'center', paddingBottom: 20 },
   editChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, borderColor: C.separator, backgroundColor: C.fill },
@@ -738,7 +661,7 @@ const makeStyles = (C, isRTL = false) => StyleSheet.create({
   tabLabelActive: { color: C.text },
   tabUnderline: {
     position: 'absolute', bottom: 0, left: '20%', right: '20%',
-    height: 2, borderRadius: 1, backgroundColor: C.text,
+    height: 2, borderRadius: 1, backgroundColor: C.accent,
   },
 
   // ── Circle rows ──────────────────────────────────────────────────────────
@@ -764,57 +687,11 @@ const makeStyles = (C, isRTL = false) => StyleSheet.create({
   empty: { paddingTop: 48, alignItems: 'center', paddingHorizontal: 40 },
 
   // Vault
-  vaultHeader: { paddingTop: 28, paddingBottom: 18, paddingHorizontal: 0, alignItems: 'flex-start' },
-  vaultPercent: {
-    fontSize: 96, fontWeight: '900', color: C.text,
-    lineHeight: 96, letterSpacing: -4,
-  },
-  vaultLabel: {
-    fontSize: 11, fontWeight: '800', color: C.textMuted,
-    letterSpacing: isRTL ? 0 : 2, marginTop: 2,
-  },
-  vaultMeta: {
-    fontSize: 11, fontWeight: '700', color: C.textMuted,
-    letterSpacing: isRTL ? 0 : 1.5, marginTop: 18,
-  },
+  vaultSectionTitle: { fontSize: 13, fontWeight: '500', paddingTop: 8, paddingBottom: 12 },
   vaultCell: {
     margin: 3,
   },
 
-  // ── Brutalist nav + header ─────────────────────────────────────────────────
-  brutNavRow: {
-    flexDirection: isRTL ? 'row-reverse' : 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16, paddingBottom: 8,
-  },
-  brutNavLink: {
-    fontSize: 11, fontWeight: '900',
-    color: C.text, letterSpacing: isRTL ? 0 : 1.5,
-  },
-
-  headerWrap: { paddingHorizontal: 4, paddingTop: 8 },
-  brutName: {
-    fontSize: 56, fontWeight: '900', color: C.text,
-    lineHeight: 64, letterSpacing: isRTL ? 0 : -2,
-  },
-  brutVerifiedTag: {
-    fontSize: 10, fontWeight: '900', color: C.accent,
-    letterSpacing: isRTL ? 0 : 2, marginTop: 8,
-  },
-  brutBio: {
-    fontSize: 14, fontWeight: '500', color: C.textMuted,
-    lineHeight: 20, marginTop: 14, maxWidth: '90%',
-  },
-  brutActionRow: { marginTop: 22 },
-  brutAction: {
-    fontSize: 13, fontWeight: '900', color: C.text,
-    letterSpacing: isRTL ? 0 : 2,
-  },
-  brutRule: {
-    height: 2, backgroundColor: C.text,
-    marginTop: 24, marginBottom: 0,
-  },
   emptyText: { fontSize: 15, color: C.textMuted, textAlign: 'center' },
 
   // ── Activity rows ──────────────────────────────────────────────────────
@@ -836,31 +713,4 @@ const makeStyles = (C, isRTL = false) => StyleSheet.create({
   activityRowSep: { fontSize: 12, color: C.textMuted },
   activityRowTime: { fontSize: 12, color: C.textMuted },
 
-  // ── Followers/Following modal ─────────────────────────────────────────────
-  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
-  modalSheet: {
-    borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    maxHeight: '75%', paddingBottom: 32,
-  },
-  modalHeader: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingVertical: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.separator,
-  },
-  modalTitle: { fontSize: 17, fontWeight: '700' },
-  userRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  userRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  userRowAvatar: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
-  userRowInitial: { fontSize: 17, fontWeight: '700', color: '#fff' },
-  userRowName: { fontSize: 15, fontWeight: '600' },
-  userRowUsername: { fontSize: 13, marginTop: 1 },
-  unfollowBtn: {
-    borderWidth: StyleSheet.hairlineWidth, borderRadius: 18,
-    paddingHorizontal: 14, paddingVertical: 7, marginLeft: 8,
-  },
-  unfollowText: { fontSize: 13, fontWeight: '600' },
 });

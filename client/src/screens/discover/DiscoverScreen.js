@@ -417,7 +417,7 @@ export default function DiscoverScreen({ navigation }) {
 }
 
 const makeStyles = (C, isRTL) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: C.white },
+  container: { flex: 1, backgroundColor: C.background },
   header: {
     paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.separator,
@@ -432,7 +432,7 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
     flexDirection: 'row',
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: C.separator,
-    backgroundColor: C.white,
+    backgroundColor: C.background,
   },
   tabItem: { flex: 1, alignItems: 'center', paddingTop: 10, paddingBottom: 8, gap: 6 },
   tabLabel: { fontSize: 13, fontWeight: '500', color: C.textMuted },
@@ -451,7 +451,7 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
     alignItems: 'center', gap: 12,
     paddingHorizontal: 16, paddingVertical: 16,
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.separator,
-    backgroundColor: C.white,
+    backgroundColor: C.background,
   },
   activeRowFirst: {},
   activeRowLast: { borderBottomWidth: 0 },
@@ -470,7 +470,7 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
   gridRow: { gap: GRID_GAP, marginBottom: GRID_GAP },
   catTile: {
     width: TILE_W, borderRadius: 14, padding: 16,
-    backgroundColor: C.white,
+    backgroundColor: C.background,
     borderWidth: 1,
   },
   catIconWrap: {

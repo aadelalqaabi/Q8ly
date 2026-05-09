@@ -469,7 +469,8 @@ const pollStyles = StyleSheet.create({
 // ── PostCard ──────────────────────────────────────────────────────────────────
 export default function PostCard({ post, navigation, isDetailView = false }) {
   const dispatch = useDispatch();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language === 'ar';
   const { user } = useSelector((s) => s.auth);
   const { colors: COLORS } = useTheme();
   const [liked, setLiked] = useState(post.isLiked);
@@ -480,7 +481,7 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
   const [deleteMenuVisible, setDeleteMenuVisible] = useState(false);
   const [reportMenuVisible, setReportMenuVisible] = useState(false);
 
-  const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
+  const styles = useMemo(() => makeStyles(COLORS, isRTL), [COLORS, isRTL]);
 
   const author = post.userId;
   const isOwnPost = user?._id === author?._id;
@@ -590,10 +591,10 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
       >
         {/* Repost banner */}
         {isRepost && (
-          <View style={styles.repostBanner}>
+          <View style={[styles.repostBanner, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
             <Ionicons name="repeat" size={13} color={COLORS.textMuted} />
             <Text style={styles.repostBannerText}>
-              {repostAuthor?.name || repostAuthor?.username} reposted
+              {repostAuthor?.name || repostAuthor?.username} {t('post.reposted')}
             </Text>
           </View>
         )}
@@ -639,7 +640,7 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
 
             {/* Text body */}
             {!!displayContent && (
-              <LinkedText style={styles.body} numberOfLines={isDetailView ? undefined : 5} linkColor={COLORS.accent} selectable={isDetailView}>
+              <LinkedText style={[styles.body, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={isDetailView ? undefined : 5} linkColor={COLORS.accent} selectable={isDetailView}>
                 {displayContent}
               </LinkedText>
             )}
@@ -729,23 +730,22 @@ export default function PostCard({ post, navigation, isDetailView = false }) {
   );
 }
 
-const makeStyles = (C) => StyleSheet.create({
+const makeStyles = (C, isRTL = false) => StyleSheet.create({
   container: {
-    backgroundColor: C.white,
+    backgroundColor: C.background,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: C.separator,
     paddingTop: 14,
     paddingHorizontal: 16,
   },
   repostBanner: {
-    flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
     paddingBottom: 6,
     paddingStart: 62,
   },
   repostBannerText: { fontSize: 14, color: C.textMuted, fontWeight: '500' },
-  row: { flexDirection: 'row', gap: 12 },
+  row: { flexDirection: isRTL ? 'row-reverse' : 'row', gap: 12 },
   avatarWrap: { width: 48, flexShrink: 0 },
   avatar: {
     width: 48, height: 48, borderRadius: 24,
@@ -753,13 +753,13 @@ const makeStyles = (C) => StyleSheet.create({
   },
   avatarInitial: { fontSize: 20, fontWeight: '700', color: '#fff' },
   content: { flex: 1, paddingBottom: 12 },
-  headerRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 3 },
+  headerRow: { flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'flex-start', marginBottom: 3 },
   authorBlock: { flex: 1 },
-  authorName: { fontSize: 16, fontWeight: '700', color: C.text, lineHeight: 21 },
-  moreBtn: { width: 32, height: 24, justifyContent: 'center', alignItems: 'flex-end', marginTop: -2 },
+  authorName: { fontSize: 16, fontWeight: '700', color: C.text, lineHeight: 21, textAlign: isRTL ? 'right' : 'left' },
+  moreBtn: { width: 32, height: 24, justifyContent: 'center', alignItems: isRTL ? 'flex-start' : 'flex-end', marginTop: -2 },
   body: { fontSize: 17, color: C.text, lineHeight: 25, marginBottom: 10 },
-  actionsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 2 },
-  actions: { flexDirection: 'row', gap: 24 },
+  actionsRow: { flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 2 },
+  actions: { flexDirection: isRTL ? 'row-reverse' : 'row', gap: 24 },
   action: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 38 },
   actionCount: { fontSize: 15, color: C.textMuted },
   actionCountLiked: { color: C.accent },

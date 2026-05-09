@@ -68,7 +68,8 @@
     "notifEnable": "تفعيل",
     "votes_one": "صوت واحد",
     "votes_other": "{{count}} صوت",
-    "pollEnded": "انتهى"
+    "pollEnded": "انتهى",
+    "reposted": "أعاد نشر"
   },
 
   "comment": {
@@ -84,7 +85,7 @@
     "gridUnlocked": "من الخريطة فُتح",
     "theVault": "الخزنة",
     "noVaultYet": "زر مكان لتفتح أول قطعة لك.",
-    "kuwaiVerified": "موثّق KUWAI",
+    "KUWAIVerified": "موثّق KUWAI",
     "inbox": "الإشعارات",
     "blocked": "محظور",
     "myProfile": "ملفي الشخصي",

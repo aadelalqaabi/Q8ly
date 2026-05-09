@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
 import * as Haptics from 'expo-haptics';
-import { useBrutColors, isAr, ls, shout } from '../../components/Brut';
+import { useBrutColors, isAr, ls } from '../../components/Brut';
 
 let Location = null;
 try { Location = require('expo-location'); } catch {}
@@ -85,12 +85,12 @@ export default function OnboardingScreen({ onDone }) {
         <Text style={[styles.number, { color: MUTED, letterSpacing: ls(2, ar) }]}>{item.number}</Text>
         <View style={[styles.numberRule, { backgroundColor: TEXT }]} />
         <Text
-          style={[styles.title, { color: TEXT, textAlign: ar ? 'right' : 'left', letterSpacing: ls(-2, ar) }]}
+          style={[styles.title, { color: TEXT, textAlign: ar ? 'right' : 'left' }]}
           numberOfLines={3}
           adjustsFontSizeToFit
           minimumFontScale={0.6}
         >
-          {shout(item.title, ar)}
+          {item.title}
         </Text>
         <Text style={[styles.body, { color: MUTED, textAlign: ar ? 'right' : 'left' }]}>{item.body}</Text>
       </View>
@@ -102,8 +102,8 @@ export default function OnboardingScreen({ onDone }) {
       >
         {busy && idx === 1 && item.key === 'location'
           ? <ActivityIndicator color={ACCENT} />
-          : <Text style={[styles.ctaText, { color: ACCENT, letterSpacing: ls(2, ar) }]}>
-              {ar ? `← ${item.cta}` : `${shout(item.cta, false)} →`}
+          : <Text style={[styles.ctaText, { color: ACCENT }]}>
+              {ar ? `${item.cta} ‹` : `${item.cta} →`}
             </Text>}
       </TouchableOpacity>
     </View>

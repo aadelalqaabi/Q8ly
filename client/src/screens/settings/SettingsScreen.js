@@ -138,7 +138,7 @@ export default function SettingsScreen({ navigation }) {
                     {!used && (
                       <TouchableOpacity onPress={() => handleShareInvite(invite.code)}>
                         <Text style={[styles.shareLink, { color: ACCENT }]}>
-                          {ar ? `‹ ${t('common.share')}` : `${t('common.share')} ›`}
+                          {t('common.share')}
                         </Text>
                       </TouchableOpacity>
                     )}

@@ -18,7 +18,7 @@ const TERMS_EN = {
     },
     {
       heading: '2. Eligibility',
-      body: `You must be at least 18 years old, or the age of majority in your jurisdiction, to use KUWAI. By using the App, you represent and warrant that you meet this requirement and that your use of the App does not violate any applicable laws.`,
+      body: `You must be at least 18 years old, or the age of majority in your jurisdiction, to use kuwai. By using the App, you represent and warrant that you meet this requirement and that your use of the App does not violate any applicable laws.`,
     },
     {
       heading: '3. User Accounts',
@@ -89,7 +89,7 @@ const TERMS_AR = {
     },
     {
       heading: '٢. أهلية الاستخدام',
-      body: `يجب أن يكون عمرك 18 عاماً على الأقل، أو بلوغ سن الرشد المعمول به في اختصاصك القضائي، لاستخدام KUWAI. باستخدامك للتطبيق، فأنت تقر وتضمن استيفاءك لهذا الشرط وأن استخدامك لا يخالف أي قانون نافذ.`,
+      body: `يجب أن يكون عمرك 18 عاماً على الأقل، أو بلوغ سن الرشد المعمول به في اختصاصك القضائي، لاستخدام kuwai. باستخدامك للتطبيق، فأنت تقر وتضمن استيفاءك لهذا الشرط وأن استخدامك لا يخالف أي قانون نافذ.`,
     },
     {
       heading: '٣. حسابات المستخدمين',

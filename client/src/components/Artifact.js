@@ -1,112 +1,119 @@
-/**
- * Brutalist monogram tile — derives a 1–3 character mark from the venue name.
- *
- *   "The Avenues"  → "TA"
- *   "home"         → "HM"
- *   "Caribou Coffee" → "CC"
- *   "مطعم الفنر" → "مف"
- *
- * Locked:   light tile, muted glyph (placeholder)
- * Unlocked: solid black tile, bright white glyph (a real stamp)
- *
- * Implemented as plain View + Text — react-native-svg's Text doesn't
- * center reliably across iOS/Android, so we keep it native.
- */
 import React, { memo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleSheet } from 'react-native';
 
-const ARTICLES = new Set(['the', 'a', 'an', 'al', 'ال']);
+const PALETTE = [
+  '#0033A0', '#007A3D', '#FF6B35', '#9C27B0',
+  '#00BCD4', '#E91E63', '#FF9800', '#3F51B5',
+  '#009688', '#795548', '#607D8B', '#F44336',
+];
 
-function hash(str) {
-  let h = 2166136261 >>> 0;
-  for (let i = 0; i < str.length; i++) {
-    h ^= str.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
+function hashColor(str) {
+  if (!str) return PALETTE[0];
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h);
+  return PALETTE[Math.abs(h) % PALETTE.length];
 }
 
-function isArabicChar(ch) {
-  if (!ch) return false;
-  const c = ch.charCodeAt(0);
-  return (c >= 0x0600 && c <= 0x06FF) || (c >= 0x0750 && c <= 0x077F);
+function monogram(title) {
+  if (!title) return '?';
+  const words = title.trim().split(/\s+/).filter(
+    (w) => !['the', 'a', 'an', 'al', 'ال'].includes(w.toLowerCase())
+  );
+  if (words.length === 0) return title.slice(0, 2).toUpperCase();
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[1][0]).toUpperCase();
 }
 
-function monogramFor(name) {
-  if (!name) return '?';
-  const cleaned = String(name).trim();
-  if (!cleaned) return '?';
-  const words = cleaned
-    .split(/\s+/)
-    .map((w) => w.replace(/[^\p{L}\p{N}]+/gu, ''))
-    .filter(Boolean)
-    .filter((w) => !ARTICLES.has(w.toLowerCase()));
-  if (words.length === 0) return cleaned.slice(0, 2);
-  if (words.length === 1) return words[0].slice(0, 2);
-  return `${words[0][0]}${words[1][0]}`;
-}
-
-function Artifact({ id, title, size = 64, locked = false }) {
-  const monogram = monogramFor(title);
-  const ar = isArabicChar(monogram[0]);
-
-  const bg = locked ? '#F2F2F7' : '#000000';
-  const fg = locked ? '#A1A1AA' : '#FFFFFF';
-  const accent = locked ? '#D8D8DD' : '#FFFFFF';
-
-  // Deterministic decorative bar in one of four corners
-  const variant = id ? hash(String(id)) % 4 : 0;
-  const barW = Math.round(size * 0.30);
-  const barH = Math.max(2, Math.round(size * 0.04));
-  const margin = Math.round(size * 0.10);
-  const barPos = (() => {
-    switch (variant) {
-      case 1: return { right: margin, top: margin };
-      case 2: return { left: margin, bottom: margin };
-      case 3: return { right: margin, bottom: margin };
-      default: return { left: margin, top: margin };
-    }
-  })();
-
-  // Sizing — bigger for single-letter or Arabic, smaller for 2-letter Latin
-  const len = monogram.length;
-  const sizeFactor = ar ? 0.50 : len >= 2 ? 0.42 : 0.58;
-  const fontSize = Math.round(size * sizeFactor);
-
-  const display = ar ? monogram : monogram.toUpperCase();
+function Artifact({ id, title = '', mapSnapshot = null, size = 64, locked = false }) {
+  const radius    = size / 2;
+  const color     = hashColor(id || title);
+  const dotSize   = Math.max(6, Math.round(size * 0.11));
+  const stemH     = Math.round(size * 0.09);
+  const labelSize = Math.max(8, Math.round(size * 0.115));
+  const label     = title.length > 16 ? title.slice(0, 15).trimEnd() + '…' : title;
 
   return (
-    <View style={[styles.tile, { width: size, height: size, backgroundColor: bg }]}>
-      <View
-        style={[
-          styles.bar,
-          { width: barW, height: barH, backgroundColor: accent, opacity: 0.7, ...barPos },
-        ]}
-      />
-      <Text
-        allowFontScaling={false}
-        style={{
-          fontSize,
-          fontWeight: '900',
-          color: fg,
-          letterSpacing: ar ? 0 : -1,
-          lineHeight: fontSize * 1.05,
-          includeFontPadding: false,
-        }}
-      >
-        {display}
-      </Text>
+    <View style={[styles.disc, { width: size, height: size, borderRadius: radius }]}>
+
+      {mapSnapshot ? (
+        // ── Map image ──────────────────────────────────────────────────────
+        <>
+          <Image
+            source={{ uri: mapSnapshot }}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+          />
+
+          {/* Pin */}
+          {!locked && (
+            <View style={styles.pinWrap} pointerEvents="none">
+              <View style={styles.labelBubble}>
+                <Text style={[styles.labelText, { fontSize: labelSize }]} numberOfLines={1}>
+                  {label}
+                </Text>
+              </View>
+              <View style={[styles.stem, { height: stemH }]} />
+              <View style={[styles.dot, { width: dotSize, height: dotSize, borderRadius: dotSize / 2 }]} />
+            </View>
+          )}
+
+          {/* Dim for unvisited */}
+          {locked && <View style={[StyleSheet.absoluteFill, styles.dim]} />}
+        </>
+      ) : (
+        // ── Fallback monogram ───────────────────────────────────────────────
+        <View style={[
+          StyleSheet.absoluteFill,
+          styles.fallback,
+          { backgroundColor: locked ? `${color}28` : `${color}E0` },
+        ]}>
+          <Text style={[
+            styles.mono,
+            { fontSize: Math.round(size * 0.30), color: locked ? color : '#fff', opacity: locked ? 0.6 : 1 },
+          ]}>
+            {monogram(title)}
+          </Text>
+        </View>
+      )}
+
+      {/* Border ring */}
+      <View style={[
+        StyleSheet.absoluteFill, styles.ring,
+        { borderRadius: radius, borderColor: locked ? 'rgba(0,0,0,0.07)' : 'rgba(0,0,0,0.18)' },
+      ]} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  tile: {
-    justifyContent: 'center',
+  disc: { overflow: 'hidden', backgroundColor: '#E8E8ED' },
+
+  pinWrap: {
+    position: 'absolute',
+    alignSelf: 'center',
+    bottom: '18%',
     alignItems: 'center',
-    overflow: 'hidden',
   },
-  bar: { position: 'absolute' },
+  labelBubble: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.28,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 4,
+  },
+  labelText: { fontWeight: '700', color: '#000' },
+  stem: { width: 2, backgroundColor: '#0033A0' },
+  dot: { backgroundColor: '#0033A0' },
+
+  dim: { backgroundColor: 'rgba(255,255,255,0.52)' },
+  ring: { borderWidth: 1.5 },
+
+  fallback: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  mono: { fontWeight: '800', letterSpacing: -0.5 },
 });
 
 export default memo(Artifact);

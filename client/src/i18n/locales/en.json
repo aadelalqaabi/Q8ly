@@ -34,7 +34,7 @@
   },
 
   "post": {
-    "placeholder": "What's happening in KUWAIt?",
+    "placeholder": "What's happening in Kuwait?",
     "publish": "Post",
     "replies_one": "1 Reply",
     "replies_other": "{{count}} Replies",
@@ -68,7 +68,8 @@
     "notifEnable": "Enable",
     "votes_one": "{{count}} vote",
     "votes_other": "{{count}} votes",
-    "pollEnded": "Ended"
+    "pollEnded": "Ended",
+    "reposted": "reposted"
   },
 
   "comment": {
@@ -84,7 +85,7 @@
     "gridUnlocked": "Grid Unlocked",
     "theVault": "The Vault",
     "noVaultYet": "Visit a place to claim your first artifact.",
-    "kuwaiVerified": "KUWAI Verified",
+    "KUWAIVerified": "KUWAI Verified",
     "inbox": "Inbox",
     "blocked": "Blocked",
     "myProfile": "My Profile",
@@ -360,7 +361,7 @@
   },
 
   "auth": {
-    "tagline": "KUWAIt speaks here",
+    "tagline": "Kuwait speaks here",
     "phoneTitle": "Your number, your identity",
     "phoneSub": "In Kuwait, your +965 number is who you are. No passwords. Just you, verified.",
     "phoneHint": "+965 Kuwait numbers only",

@@ -240,7 +240,7 @@ function LockedOverlay({ points, styles, C }) {
 
 // ── MomentCard (escaped pinned message) ────────────────────────────────────────
 
-function MomentCard({ moment, onPress, styles, C, t }) {
+function MomentCard({ moment, onPress, styles, C, t, ar }) {
   return (
     <TouchableOpacity style={styles.momentCard} onPress={onPress} activeOpacity={0.82}>
       <View style={styles.momentTop}>
@@ -258,7 +258,7 @@ function MomentCard({ moment, onPress, styles, C, t }) {
         <Text style={styles.momentAuthor}>{moment.message?.user?.name || ''}</Text>
         {moment.replyCount > 0 && (
           <Text style={styles.momentReplies}>
-            {moment.replyCount} {t('hachi.summaryMessages')} →
+            {moment.replyCount} {t('hachi.summaryMessages')} {ar ? '‹' : '›'}
           </Text>
         )}
       </View>

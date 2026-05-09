@@ -23,7 +23,7 @@ export default function OtpScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
   const ar = isAr(i18n);
-  const { TEXT, MUTED, ACCENT, BG } = useBrutColors();
+  const { TEXT, MUTED, ACCENT, BG, FILL } = useBrutColors();
   const { isLoading, error } = useSelector((s) => s.auth);
 
   const [digits, setDigits] = useState(Array(CODE_LENGTH).fill(''));
@@ -147,7 +147,10 @@ export default function OtpScreen({ navigation, route }) {
                 maxLength={1}
                 textContentType="oneTimeCode"
                 autoComplete="sms-otp"
-                style={[styles.box, { borderBottomColor: TEXT, color: TEXT }, !!digits[i] && { borderBottomColor: ACCENT }]}
+                style={[
+                  styles.box,
+                  { backgroundColor: FILL, color: TEXT, borderColor: digits[i] ? ACCENT : 'transparent' },
+                ]}
               />
             ))}
           </View>
@@ -155,13 +158,13 @@ export default function OtpScreen({ navigation, route }) {
 
         <View>
           {countdown > 0 ? (
-            <Text style={[styles.resendDim, { color: MUTED, letterSpacing: ls(1.5, ar), textAlign: 'center' }]}>
-              {shout(`${t('auth.resendIn')} ${countdown}s`, ar)}
+            <Text style={[styles.resendDim, { color: MUTED, textAlign: 'center' }]}>
+              {ar ? `إعادة الإرسال خلال ${countdown}s` : `Resend in ${countdown}s`}
             </Text>
           ) : (
             <TouchableOpacity onPress={handleResend} disabled={resending} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} style={{ alignItems: 'center' }}>
-              <Text style={[styles.resend, { color: ACCENT, letterSpacing: ls(2, ar) }]}>
-                {resending ? '...' : shout(t('auth.resendCode'), ar)}
+              <Text style={[styles.resend, { color: ACCENT }]}>
+                {resending ? '...' : t('auth.resend')}
               </Text>
             </TouchableOpacity>
           )}
@@ -178,8 +181,8 @@ const styles = StyleSheet.create({
   phoneHighlight: { fontWeight: '900', fontVariant: ['tabular-nums'] },
   testTag: { fontSize: 11, fontWeight: '900', marginBottom: 12 },
   error: { fontSize: 11, fontWeight: '800', color: '#D32F2F', marginBottom: 14 },
-  boxRow: { gap: 8, marginTop: 18 },
-  box: { flex: 1, height: 64, borderBottomWidth: 2, fontSize: 32, fontWeight: '900', textAlign: 'center', fontVariant: ['tabular-nums'] },
-  resend: { fontSize: 13, fontWeight: '900' },
-  resendDim: { fontSize: 11, fontWeight: '800' },
+  boxRow: { gap: 8, marginTop: 24 },
+  box: { flex: 1, height: 60, borderRadius: 12, borderWidth: 2, fontSize: 28, fontWeight: '600', textAlign: 'center', fontVariant: ['tabular-nums'] },
+  resend: { fontSize: 15, fontWeight: '600' },
+  resendDim: { fontSize: 13, fontWeight: '400' },
 });

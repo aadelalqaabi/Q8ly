@@ -33,7 +33,7 @@ export default function LanguageSelectScreen() {
       <View style={styles.top}>
         <Text style={[styles.wordmark, { color: TEXT }]}>KUWAI</Text>
         <Text style={[styles.taglineAr, { color: MUTED }]}>هنا تتكلم الكويت</Text>
-        <Text style={[styles.taglineEn, { color: MUTED }]}>KUWAIT SPEAKS HERE</Text>
+        <Text style={[styles.taglineEn, { color: MUTED }]}>Kuwait speaks here</Text>
       </View>
 
       {/* Language cards */}
@@ -50,7 +50,7 @@ export default function LanguageSelectScreen() {
           <Text style={[styles.langSub, { color: MUTED }]}>Arabic</Text>
           {selecting === 'ar'
             ? <ActivityIndicator color={ACCENT} style={styles.langIcon} />
-            : <Text style={[styles.langIcon, { color: ACCENT }]}>›</Text>}
+            : <Text style={[styles.langIcon, { color: ACCENT }]}>‹</Text>}
         </TouchableOpacity>
 
         <TouchableOpacity
