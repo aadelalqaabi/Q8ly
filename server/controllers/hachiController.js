@@ -659,14 +659,23 @@ exports.getVault = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select('visitedCircles').lean();
     const visitedSet = new Set((user.visitedCircles || []).map(String));
-    const allCircles = await Hachi.find({ isVenueCircle: true, isActive: true })
-      .select('_id venueName venueType')
+    const allCircles = await Hachi.find({
+      isVenueCircle: true,
+      isActive: true,
+      'venueCoords.lat': { $exists: true, $ne: null },
+      'venueCoords.lng': { $exists: true, $ne: null },
+    })
+      .select('_id venueName venueType category venueCoords mapSnapshot')
       .sort({ createdAt: 1 })
       .limit(500)
       .lean();
     const items = allCircles.map((c) => ({
       _id: String(c._id),
       title: c.venueName || '',
+      category: c.category || 'general',
+      lat: c.venueCoords?.lat ?? null,
+      lng: c.venueCoords?.lng ?? null,
+      mapSnapshot: c.mapSnapshot || null,
       visited: visitedSet.has(String(c._id)),
     }));
     const totalCircles = allCircles.length;

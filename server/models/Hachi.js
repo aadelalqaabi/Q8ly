@@ -72,6 +72,7 @@ const hachiSchema = new mongoose.Schema({
     lng: { type: Number },
   },
   venueRadius: { type: Number }, // meters — derived from venue type
+  mapSnapshot: { type: String }, // Cloudinary URL of the pre-generated map image
   vibeTheme: {
     primaryColor: { type: String },
     accentColor: { type: String },
