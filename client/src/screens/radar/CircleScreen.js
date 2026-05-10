@@ -22,6 +22,8 @@ function MessageRow({ msg, isMine, ar, onImagePress }) {
   const { TEXT, MUTED, ACCENT, SEPARATOR, CARD } = useBrutColors();
   const hasImage = !!msg.image;
   const hasText = !!msg.text;
+  const isAnon = !!msg.anonymous;
+  const displayName = isAnon ? (ar ? 'مجهول' : 'Anonymous') : (msg.user?.name || '');
 
   return (
     <View style={[
@@ -29,8 +31,8 @@ function MessageRow({ msg, isMine, ar, onImagePress }) {
       { alignItems: isMine ? (ar ? 'flex-start' : 'flex-end') : (ar ? 'flex-end' : 'flex-start') },
     ]}>
       {!isMine && (
-        <Text style={[msgStyles.author, { color: MUTED, textAlign: ar ? 'right' : 'left' }]}>
-          {msg.user?.name || ''}
+        <Text style={[msgStyles.author, { color: isAnon ? MUTED : MUTED, textAlign: ar ? 'right' : 'left', fontStyle: isAnon ? 'italic' : 'normal' }]}>
+          {isAnon ? '👤 ' + displayName : displayName}
         </Text>
       )}
 
@@ -96,6 +98,7 @@ export default function CircleScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [showCreatePoll, setShowCreatePoll] = useState(false);
   const [userLoc, setUserLoc] = useState(null);
+  const [isAnon, setIsAnon] = useState(false);
 
   const watchRef = useRef(null);
   const flatRef = useRef(null);
@@ -209,7 +212,7 @@ export default function CircleScreen({ route, navigation }) {
     const sock = getSocket();
     if (!sock?.connected) { sock?.connect?.(); return; }
     const locParam = userLoc ? { lat: userLoc.lat, lng: userLoc.lng, speed: userLoc.speed } : null;
-    sendHachiMessage(circleId, text.trim(), null, locParam);
+    sendHachiMessage(circleId, text.trim(), null, locParam, isAnon);
     setText('');
   };
 
@@ -320,7 +323,15 @@ export default function CircleScreen({ route, navigation }) {
             <Ionicons name="bar-chart-outline" size={20} color={ACCENT} />
           </TouchableOpacity>
 
-          <View style={[styles.inputCard, { backgroundColor: FILL, borderColor: SEPARATOR, flexDirection: ar ? 'row-reverse' : 'row' }]}>
+          <TouchableOpacity
+            style={[styles.cameraBtn, { backgroundColor: isAnon ? ACCENT : FILL }]}
+            onPress={() => setIsAnon((v) => !v)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="glasses-outline" size={20} color={isAnon ? '#fff' : MUTED} />
+          </TouchableOpacity>
+
+          <View style={[styles.inputCard, { backgroundColor: FILL, borderColor: isAnon ? ACCENT : SEPARATOR, flexDirection: ar ? 'row-reverse' : 'row' }]}>
             <TextInput
               style={[styles.input, { color: TEXT, textAlign: ar ? 'right' : 'left' }]}
               value={text}

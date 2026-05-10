@@ -14,6 +14,7 @@ const messageSchema = new mongoose.Schema({
   voiceUrl: { type: String },
   voiceDuration: { type: Number },
   isLive: { type: Boolean, default: false },
+  anonymous: { type: Boolean, default: false },
   reactions: [reactionSchema],
   replyTo: {
     messageId: { type: mongoose.Schema.Types.ObjectId },

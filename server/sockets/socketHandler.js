@@ -147,7 +147,7 @@ const initSocket = (server) => {
       io.to(`hachi:${roomId}`).emit('hachiMemberCount', { roomId, count: onlineCount });
     });
 
-    socket.on('hachiSend', async ({ roomId, text, replyTo, lat, lng, speed }) => {
+    socket.on('hachiSend', async ({ roomId, text, replyTo, lat, lng, speed, anonymous }) => {
       if (!socket.user || !text?.trim()) return;
       try {
         const { isBlocked } = checkContent(text.trim());
@@ -157,13 +157,14 @@ const initSocket = (server) => {
         }
 
         const Hachi = require('../models/Hachi');
-        const { computeConfidence, bypassesGeofence } = require('../utils/locationUtils');
+        const { computeConfidence } = require('../utils/locationUtils');
         const mongoose = require('mongoose');
         const uid = socket.user._id.toString();
         const now = new Date();
         const msgId = new mongoose.Types.ObjectId();
+        const isAnon = !!anonymous;
 
-        const msgData = { _id: msgId, user: socket.user._id, text: text.trim(), reactions: [], createdAt: now };
+        const msgData = { _id: msgId, user: socket.user._id, text: text.trim(), anonymous: isAnon, reactions: [], createdAt: now };
         if (replyTo?.messageId && replyTo?.userName) {
           msgData.replyTo = { messageId: replyTo.messageId, text: replyTo.text || '', userName: replyTo.userName };
         }
@@ -174,23 +175,16 @@ const initSocket = (server) => {
 
         const isNewMember = !(room.members || []).some((m) => m.toString() === uid);
 
-        // Compute presence confidence if location provided.
-        // Founders are always counted as "here now" without needing a location.
         const pushOps = { messages: { $each: [msgData], $slice: -500 } };
-        const isFounder = bypassesGeofence(socket.user);
         const isVenue = room.isVenueCircle && room.venueCoords?.lat;
-        if (isVenue && (isFounder || (lat != null && lng != null))) {
-          const confidence = isFounder
-            ? 1
-            : computeConfidence(
-                parseFloat(lat), parseFloat(lng), parseFloat(speed) || 0,
-                room.venueCoords, room.venueRadius || 250
-              );
+        if (isVenue && lat != null && lng != null) {
+          const confidence = computeConfidence(
+            parseFloat(lat), parseFloat(lng), parseFloat(speed) || 0,
+            room.venueCoords, room.venueRadius || 250
+          );
           if (confidence >= 0.3) {
             const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
             await Hachi.findByIdAndUpdate(roomId, { $pull: { hereNow: { userId: socket.user._id } } });
-            // Merge presence push INTO the same $push op — object spread can't
-            // be used here or the second $push key would overwrite messages
             pushOps.hereNow = { userId: socket.user._id, confidence, expiresAt };
           }
         }
@@ -210,10 +204,13 @@ const initSocket = (server) => {
         const populated = {
           _id: msgId,
           text: text.trim(),
+          anonymous: isAnon,
           reactions: [],
           createdAt: now,
           replyTo: msgData.replyTo || null,
-          user: { _id: socket.user._id, name: socket.user.name, username: socket.user.username, profilePic: socket.user.profilePic },
+          user: isAnon
+            ? { _id: socket.user._id }
+            : { _id: socket.user._id, name: socket.user.name, username: socket.user.username, profilePic: socket.user.profilePic },
         };
         io.to(`hachi:${roomId}`).emit('hachiMessage', { roomId, message: populated });
       } catch (err) {
