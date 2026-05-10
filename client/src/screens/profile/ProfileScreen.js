@@ -364,6 +364,19 @@ export default function ProfileScreen({ navigation, route }) {
           )}
         </View>
 
+        {/* Vault stat */}
+        {isOwnProfile && vault.totalCircles > 0 && (
+          <View style={[styles.vaultStat, { alignItems: 'center' }]}>
+            <Text style={[styles.vaultNum, { color: COLORS.text }]}>
+              {vault.visitedCount}
+              <Text style={[styles.vaultTotal, { color: COLORS.textMuted }]}>/{vault.totalCircles}</Text>
+            </Text>
+            <Text style={[styles.vaultLabel, { color: COLORS.textMuted }]}>
+              {isRTL ? 'مكان' : 'places'}
+            </Text>
+          </View>
+        )}
+
       </View>
 
       {/* ── Action buttons ── */}
@@ -646,6 +659,11 @@ const makeStyles = (C, isRTL = false) => StyleSheet.create({
   nameBlock: { flex: 1, gap: 4 },
   name: { fontSize: 18, fontWeight: '700', color: C.text },
   bio: { fontSize: 13, color: C.textMuted, lineHeight: 18 },
+
+  vaultStat: { gap: 2, flexShrink: 0 },
+  vaultNum: { fontSize: 32, fontWeight: '700', letterSpacing: -1, lineHeight: 36 },
+  vaultTotal: { fontSize: 20, fontWeight: '400', letterSpacing: 0 },
+  vaultLabel: { fontSize: 11, fontWeight: '400', textAlign: 'center' },
 
 
   actionRow: { flexDirection: 'row', gap: 8, paddingBottom: 20 },
