@@ -334,69 +334,68 @@ export default function ProfileScreen({ navigation, route }) {
 
   // ── Header ──────────────────────────────────────────────────────────────────
   const renderHeader = () => (
-    <View>
-      {/* ── Identity + vault row ── */}
-      <View style={[styles.headerRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+    <View style={styles.headerWrap}>
 
-        {/* Profile side */}
-        <View style={[styles.profileSide, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
-          {profile?.profilePic ? (
-            <Image source={{ uri: profile.profilePic }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, { backgroundColor: avatarBg(profile?.name) }]}>
-              <Text style={styles.avatarInitial}>{profile?.name?.[0]?.toUpperCase() || '?'}</Text>
-            </View>
-          )}
-          <Text style={[styles.name, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={1}>
-            {profile?.name || ''}
-          </Text>
-          {profile?.verifiedBadge && profile.verifiedBadge !== 'none' && (
-            <VerifiedBadge badge={profile.verifiedBadge} />
-          )}
+      {/* ── Top: avatar + name row ── */}
+      <View style={[styles.topRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+
+        {/* Avatar */}
+        {profile?.profilePic ? (
+          <Image source={{ uri: profile.profilePic }} style={styles.avatar} />
+        ) : (
+          <View style={[styles.avatar, { backgroundColor: avatarBg(profile?.name) }]}>
+            <Text style={styles.avatarInitial}>{profile?.name?.[0]?.toUpperCase() || '?'}</Text>
+          </View>
+        )}
+
+        {/* Name + bio */}
+        <View style={[styles.nameBlock, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
+          <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={styles.name} numberOfLines={1}>{profile?.name || ''}</Text>
+            {profile?.verifiedBadge && profile.verifiedBadge !== 'none' && (
+              <VerifiedBadge badge={profile.verifiedBadge} compact />
+            )}
+          </View>
           {!!profile?.bio && (
-            <Text style={[styles.bio, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={3}>
+            <Text style={[styles.bio, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={2}>
               {profile.bio}
             </Text>
           )}
         </View>
 
-        {/* Vault stat side — own profile only */}
+        {/* Vault stat — own profile, opposite side */}
         {isOwnProfile && vault.totalCircles > 0 && (
-          <View style={styles.vaultSide}>
-            <Text style={[styles.vaultStatNum, { color: COLORS.text }]}>{vault.percentage}%</Text>
-            <Text style={[styles.vaultStatCount, { color: COLORS.accent }]}>
-              {vault.visitedCount}/{vault.totalCircles}
-            </Text>
-            <Text style={[styles.vaultStatLabel, { color: COLORS.textMuted }]}>
-              {t('profile.gridUnlocked')}
-            </Text>
+          <View style={[styles.vaultBadge, { backgroundColor: COLORS.fill }]}>
+            <Text style={[styles.vaultPct, { color: COLORS.text }]}>{vault.percentage}<Text style={styles.vaultPctSign}>%</Text></Text>
+            <Text style={[styles.vaultFraction, { color: COLORS.accent }]}>{vault.visitedCount}/{vault.totalCircles}</Text>
+            <Text style={[styles.vaultLabel, { color: COLORS.textMuted }]}>{t('profile.gridUnlocked')}</Text>
           </View>
         )}
       </View>
 
-      {/* Action buttons */}
-      <View style={styles.actionRow}>
+      {/* ── Action buttons ── */}
+      <View style={[styles.actionRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
         {isOwnProfile ? (
-          <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', gap: 8 }}>
+          <>
             <TouchableOpacity onPress={() => navigation.navigate('EditProfile')} activeOpacity={0.7} style={styles.editChip}>
               <Text style={styles.editChipText}>{t('profile.editProfile')}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => navigation.navigate('RequestLocation', {})} activeOpacity={0.7} style={styles.editChip}>
               <Text style={styles.editChipText}>{t('radar.requestTitle')}</Text>
             </TouchableOpacity>
-          </View>
+          </>
         ) : (
-          <View style={styles.followRow}>
+          <>
             <TouchableOpacity onPress={handleFollow} activeOpacity={0.75}
-              style={isFollowing ? styles.followingChip : styles.followChip}>
-              <Text style={isFollowing ? styles.followingChipText : styles.followChipText}>
+              style={[styles.followChip, isFollowing && styles.followingChip]}>
+              <Text style={[styles.followChipText, isFollowing && styles.followingChipText]}>
                 {followLoading ? '...' : isFollowing ? t('profile.following') : t('profile.follow')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={handleToggleNotify} style={styles.notifyBtn} activeOpacity={0.7}>
               <Ionicons name={isNotifyEnabled ? 'notifications' : 'notifications-outline'} size={20} color={COLORS.textMuted} />
             </TouchableOpacity>
-          </View>
+          </>
         )}
       </View>
     </View>
@@ -631,22 +630,28 @@ const makeStyles = (C, isRTL = false) => StyleSheet.create({
   notifBadge: { position: 'absolute', top: 4, end: 4, backgroundColor: '#FF3B30', borderRadius: 9, minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4 },
   notifBadgeText: { fontSize: 10, fontWeight: '700', color: '#fff' },
 
-  headerRow: {
-    paddingHorizontal: 20, paddingTop: 20, paddingBottom: 4,
-    alignItems: 'center', gap: 16,
-  },
-  profileSide: { flex: 1, gap: 8 },
-  avatar: { width: 80, height: 80, borderRadius: 40, justifyContent: 'center', alignItems: 'center' },
-  avatarInitial: { fontSize: 28, fontWeight: '700', color: '#fff' },
-  name: { fontSize: 20, fontWeight: '700', color: C.text },
+  headerWrap: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 4 },
+
+  topRow: { alignItems: 'center', gap: 12, marginBottom: 16 },
+
+  avatar: { width: 72, height: 72, borderRadius: 36, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  avatarInitial: { fontSize: 26, fontWeight: '700', color: '#fff' },
+
+  nameBlock: { flex: 1, gap: 4 },
+  name: { fontSize: 18, fontWeight: '700', color: C.text },
   bio: { fontSize: 13, color: C.textMuted, lineHeight: 18 },
 
-  vaultSide: { alignItems: 'center', gap: 2, minWidth: 80 },
-  vaultStatNum: { fontSize: 38, fontWeight: '800', letterSpacing: -1, color: C.text },
-  vaultStatCount: { fontSize: 13, fontWeight: '600' },
-  vaultStatLabel: { fontSize: 11, fontWeight: '400' },
+  vaultBadge: {
+    alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 14, paddingVertical: 10,
+    borderRadius: 16, gap: 0, minWidth: 74, flexShrink: 0,
+  },
+  vaultPct: { fontSize: 28, fontWeight: '800', letterSpacing: -1, lineHeight: 32 },
+  vaultPctSign: { fontSize: 16, fontWeight: '700' },
+  vaultFraction: { fontSize: 12, fontWeight: '600', marginTop: 2 },
+  vaultLabel: { fontSize: 10, fontWeight: '400', marginTop: 1 },
 
-  actionRow: { alignItems: 'center', paddingTop: 16, paddingBottom: 20 },
+  actionRow: { flexDirection: 'row', gap: 8, paddingBottom: 20 },
   editChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, borderColor: C.separator, backgroundColor: C.fill },
   editChipText: { fontSize: 13, fontWeight: '500', color: C.textMuted },
   followRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
