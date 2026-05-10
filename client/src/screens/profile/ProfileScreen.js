@@ -4,6 +4,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   Image, ActivityIndicator, Alert, Share, Platform, Modal, RefreshControl, Dimensions,
 } from 'react-native';
+import Svg, { Circle as SvgCircle, Text as SvgText } from 'react-native-svg';
 
 const { width: SW } = Dimensions.get('window');
 import { formatDistanceToNow } from 'date-fns';
@@ -17,6 +18,43 @@ import ShareProfileCard from '../../components/ui/ShareProfileCard';
 import Artifact from '../../components/Artifact';
 import { useTheme } from '../../context/ThemeContext';
 import { useGuestGate } from '../../context/GuestGateContext';
+
+// ── Circular progress ring for vault stat ─────────────────────────────────────
+function VaultRing({ percentage = 0, visited = 0, total = 0, accent, text, muted }) {
+  const SIZE   = 80;
+  const STROKE = 6;
+  const R      = (SIZE - STROKE) / 2;
+  const CIRC   = 2 * Math.PI * R;
+  const offset = CIRC * (1 - Math.min(percentage, 100) / 100);
+
+  return (
+    <View style={{ alignItems: 'center', gap: 6 }}>
+      <Svg width={SIZE} height={SIZE}>
+        {/* Track */}
+        <SvgCircle cx={SIZE / 2} cy={SIZE / 2} r={R}
+          fill="none" stroke="#E5E5EA" strokeWidth={STROKE} />
+        {/* Progress arc */}
+        <SvgCircle cx={SIZE / 2} cy={SIZE / 2} r={R}
+          fill="none" stroke={accent} strokeWidth={STROKE}
+          strokeDasharray={`${CIRC}`} strokeDashoffset={offset}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}
+        />
+        {/* Centre label */}
+        <SvgText
+          x={SIZE / 2} y={SIZE / 2 - 6}
+          textAnchor="middle" fill={text}
+          fontSize="18" fontWeight="800"
+        >{percentage}%</SvgText>
+        <SvgText
+          x={SIZE / 2} y={SIZE / 2 + 11}
+          textAnchor="middle" fill={muted}
+          fontSize="10" fontWeight="500"
+        >{visited}/{total}</SvgText>
+      </Svg>
+    </View>
+  );
+}
 
 const CATEGORY_ICONS = {
   general:       'chatbubbles-outline',
@@ -363,13 +401,16 @@ export default function ProfileScreen({ navigation, route }) {
           )}
         </View>
 
-        {/* Vault stat — own profile, opposite side */}
+        {/* Vault ring — own profile, opposite side */}
         {isOwnProfile && vault.totalCircles > 0 && (
-          <View style={[styles.vaultBadge, { backgroundColor: COLORS.fill }]}>
-            <Text style={[styles.vaultPct, { color: COLORS.text }]}>{vault.percentage}<Text style={styles.vaultPctSign}>%</Text></Text>
-            <Text style={[styles.vaultFraction, { color: COLORS.accent }]}>{vault.visitedCount}/{vault.totalCircles}</Text>
-            <Text style={[styles.vaultLabel, { color: COLORS.textMuted }]}>{t('profile.gridUnlocked')}</Text>
-          </View>
+          <VaultRing
+            percentage={vault.percentage}
+            visited={vault.visitedCount}
+            total={vault.totalCircles}
+            accent={COLORS.accent}
+            text={COLORS.text}
+            muted={COLORS.textMuted}
+          />
         )}
       </View>
 
@@ -655,15 +696,6 @@ const makeStyles = (C, isRTL = false) => StyleSheet.create({
   name: { fontSize: 18, fontWeight: '700', color: C.text },
   bio: { fontSize: 13, color: C.textMuted, lineHeight: 18 },
 
-  vaultBadge: {
-    alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: 14, paddingVertical: 10,
-    borderRadius: 16, gap: 0, minWidth: 74, flexShrink: 0,
-  },
-  vaultPct: { fontSize: 28, fontWeight: '800', letterSpacing: -1, lineHeight: 32 },
-  vaultPctSign: { fontSize: 16, fontWeight: '700' },
-  vaultFraction: { fontSize: 12, fontWeight: '600', marginTop: 2 },
-  vaultLabel: { fontSize: 10, fontWeight: '400', marginTop: 1 },
 
   actionRow: { flexDirection: 'row', gap: 8, paddingBottom: 20 },
   editChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, borderColor: C.separator, backgroundColor: C.fill },
