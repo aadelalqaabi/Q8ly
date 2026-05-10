@@ -4,7 +4,6 @@ import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   Image, ActivityIndicator, Alert, Share, Platform, Modal, RefreshControl, Dimensions,
 } from 'react-native';
-import Svg, { Circle as SvgCircle, Text as SvgText } from 'react-native-svg';
 
 const { width: SW } = Dimensions.get('window');
 import { formatDistanceToNow } from 'date-fns';
@@ -19,42 +18,6 @@ import Artifact from '../../components/Artifact';
 import { useTheme } from '../../context/ThemeContext';
 import { useGuestGate } from '../../context/GuestGateContext';
 
-// ── Circular progress ring for vault stat ─────────────────────────────────────
-function VaultRing({ percentage = 0, visited = 0, total = 0, accent, text, muted }) {
-  const SIZE   = 80;
-  const STROKE = 6;
-  const R      = (SIZE - STROKE) / 2;
-  const CIRC   = 2 * Math.PI * R;
-  const offset = CIRC * (1 - Math.min(percentage, 100) / 100);
-
-  return (
-    <View style={{ alignItems: 'center', gap: 6 }}>
-      <Svg width={SIZE} height={SIZE}>
-        {/* Track */}
-        <SvgCircle cx={SIZE / 2} cy={SIZE / 2} r={R}
-          fill="none" stroke="#E5E5EA" strokeWidth={STROKE} />
-        {/* Progress arc */}
-        <SvgCircle cx={SIZE / 2} cy={SIZE / 2} r={R}
-          fill="none" stroke={accent} strokeWidth={STROKE}
-          strokeDasharray={`${CIRC}`} strokeDashoffset={offset}
-          strokeLinecap="round"
-          transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}
-        />
-        {/* Centre label */}
-        <SvgText
-          x={SIZE / 2} y={SIZE / 2 - 6}
-          textAnchor="middle" fill={text}
-          fontSize="18" fontWeight="800"
-        >{percentage}%</SvgText>
-        <SvgText
-          x={SIZE / 2} y={SIZE / 2 + 11}
-          textAnchor="middle" fill={muted}
-          fontSize="10" fontWeight="500"
-        >{visited}/{total}</SvgText>
-      </Svg>
-    </View>
-  );
-}
 
 const CATEGORY_ICONS = {
   general:       'chatbubbles-outline',
@@ -401,17 +364,6 @@ export default function ProfileScreen({ navigation, route }) {
           )}
         </View>
 
-        {/* Vault ring — own profile, opposite side */}
-        {isOwnProfile && vault.totalCircles > 0 && (
-          <VaultRing
-            percentage={vault.percentage}
-            visited={vault.visitedCount}
-            total={vault.totalCircles}
-            accent={COLORS.accent}
-            text={COLORS.text}
-            muted={COLORS.textMuted}
-          />
-        )}
       </View>
 
       {/* ── Action buttons ── */}
@@ -420,9 +372,6 @@ export default function ProfileScreen({ navigation, route }) {
           <>
             <TouchableOpacity onPress={() => navigation.navigate('EditProfile')} activeOpacity={0.7} style={styles.editChip}>
               <Text style={styles.editChipText}>{t('profile.editProfile')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => navigation.navigate('RequestLocation', {})} activeOpacity={0.7} style={styles.editChip}>
-              <Text style={styles.editChipText}>{t('radar.requestTitle')}</Text>
             </TouchableOpacity>
           </>
         ) : (
@@ -575,18 +524,20 @@ export default function ProfileScreen({ navigation, route }) {
           ))
         )}
 
-        {/* Request location button */}
+        {/* Add location — stamp-sized tile */}
         {isOwnProfile && (
-          <TouchableOpacity
-            style={[styles.requestBtn, { borderColor: COLORS.separator }]}
-            onPress={() => navigation.navigate('RequestLocation', {})}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.requestPlus, { backgroundColor: COLORS.fill }]}>
-              <Text style={[styles.requestPlusText, { color: COLORS.accent }]}>+</Text>
-            </View>
-            <Text style={[styles.requestLabel, { color: COLORS.textMuted }]}>اطلب مكان</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', marginTop: 2 }}>
+            <TouchableOpacity
+              style={styles.vaultCell}
+              onPress={() => navigation.navigate('RequestLocation', {})}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.addStamp, { width: cellSize, height: cellSize, borderColor: COLORS.separator }]}>
+                <Text style={[styles.addStampPlus, { color: COLORS.accent }]}>+</Text>
+                <Text style={[styles.addStampLabel, { color: COLORS.textMuted }]}>اطلب مكان</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
     );
@@ -749,17 +700,12 @@ const makeStyles = (C, isRTL = false) => StyleSheet.create({
   vaultSectionTitle: { fontSize: 13, fontWeight: '500', paddingTop: 8, paddingBottom: 12 },
   vaultCell: { margin: 3 },
 
-  requestBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    marginTop: 16, paddingVertical: 12, paddingHorizontal: 4,
-    borderTopWidth: StyleSheet.hairlineWidth,
+  addStamp: {
+    borderRadius: 999, borderWidth: 1.5, borderStyle: 'dashed',
+    justifyContent: 'center', alignItems: 'center', gap: 2,
   },
-  requestPlus: {
-    width: 36, height: 36, borderRadius: 18,
-    justifyContent: 'center', alignItems: 'center',
-  },
-  requestPlusText: { fontSize: 22, fontWeight: '300', lineHeight: 26 },
-  requestLabel: { fontSize: 15, fontWeight: '500' },
+  addStampPlus: { fontSize: 26, fontWeight: '300', lineHeight: 30 },
+  addStampLabel: { fontSize: 9, fontWeight: '500', textAlign: 'center', paddingHorizontal: 4 },
 
   emptyText: { fontSize: 15, color: C.textMuted, textAlign: 'center' },
 
