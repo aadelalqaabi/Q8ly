@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Image,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Dimensions, Animated,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Dimensions, Animated, Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -82,6 +82,61 @@ const msgStyles = StyleSheet.create({
   liveText: { color: '#fff', fontSize: 10, fontWeight: '600' },
 });
 
+// ── Stamp celebration modal ───────────────────────────────────────────────────
+function StampModal({ visible, stampUrl, venueName, onClose, ar }) {
+  const scaleAnim = useRef(new Animated.Value(0.6)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, damping: 14, stiffness: 180 }),
+        Animated.timing(opacityAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      ]).start();
+    } else {
+      scaleAnim.setValue(0.6);
+      opacityAnim.setValue(0);
+    }
+  }, [visible]);
+
+  return (
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+      <Animated.View style={[stampStyles.backdrop, { opacity: opacityAnim }]}>
+        <Animated.View style={[stampStyles.card, { transform: [{ scale: scaleAnim }] }]}>
+          <Text style={stampStyles.congrats}>{ar ? '🎉 جمعت الطابع!' : '🎉 Stamp Collected!'}</Text>
+          <Text style={stampStyles.venue}>{venueName}</Text>
+          {stampUrl && (
+            <Image source={{ uri: stampUrl }} style={stampStyles.stamp} resizeMode="contain" />
+          )}
+          <TouchableOpacity style={stampStyles.btn} onPress={onClose} activeOpacity={0.8}>
+            <Text style={stampStyles.btnText}>{ar ? 'رائع!' : 'Nice!'}</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </Animated.View>
+    </Modal>
+  );
+}
+
+const stampStyles = StyleSheet.create({
+  backdrop: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.75)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  card: {
+    width: 300, backgroundColor: '#fff', borderRadius: 28,
+    alignItems: 'center', paddingHorizontal: 24, paddingVertical: 32,
+    shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 24, shadowOffset: { width: 0, height: 8 },
+  },
+  congrats: { fontSize: 20, fontWeight: '800', color: '#000', marginBottom: 4, textAlign: 'center' },
+  venue: { fontSize: 14, color: '#6C6C70', marginBottom: 20, textAlign: 'center' },
+  stamp: { width: 220, height: 220, marginBottom: 24 },
+  btn: {
+    backgroundColor: '#0033A0', borderRadius: 22,
+    paddingHorizontal: 48, paddingVertical: 14,
+  },
+  btnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+});
+
 // ── Main screen ───────────────────────────────────────────────────────────────
 export default function CircleScreen({ route, navigation }) {
   const { circleId } = route.params;
@@ -99,6 +154,7 @@ export default function CircleScreen({ route, navigation }) {
   const [showCreatePoll, setShowCreatePoll] = useState(false);
   const [userLoc, setUserLoc] = useState(null);
   const [isAnon, setIsAnon] = useState(false);
+  const [stampToast, setStampToast] = useState(null); // { stampUrl, venueName }
 
   const watchRef = useRef(null);
   const flatRef = useRef(null);
@@ -120,7 +176,11 @@ export default function CircleScreen({ route, navigation }) {
       }
       setRoom(res.room);
       setMessages(res.room.messages || []);
-      if (hasLoc) hachiAPI.recordVisit(circleId, loc.lat, loc.lng, loc.speed || 0).catch(() => {});
+      if (hasLoc) {
+        hachiAPI.recordVisit(circleId, loc.lat, loc.lng, loc.speed || 0)
+          .then((r) => { if (r?.firstVisit && r?.stampUrl) setStampToast({ stampUrl: r.stampUrl, venueName: r.venueName || '' }); })
+          .catch(() => {});
+      }
       try {
         const pollRes = await hachiAPI.listPolls(circleId, loc?.lat, loc?.lng);
         setPolls(pollRes.polls || []);
@@ -360,6 +420,14 @@ export default function CircleScreen({ route, navigation }) {
         visible={showCreatePoll}
         onClose={() => setShowCreatePoll(false)}
         onSubmit={handleCreatePoll}
+      />
+
+      <StampModal
+        visible={!!stampToast}
+        stampUrl={stampToast?.stampUrl}
+        venueName={stampToast?.venueName}
+        onClose={() => setStampToast(null)}
+        ar={ar}
       />
     </KeyboardAvoidingView>
   );

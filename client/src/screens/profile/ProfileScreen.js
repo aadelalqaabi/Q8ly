@@ -522,7 +522,7 @@ export default function ProfileScreen({ navigation, route }) {
                   activeOpacity={0.75}
                   onPress={() => setSelectedArtifact(item)}
                 >
-                  <Artifact id={item._id} title={item.title} mapSnapshot={item.mapSnapshot} size={cellSize} locked={!item.visited} />
+                  <Artifact id={item._id} title={item.title} stampUrl={item.stampUrl} size={cellSize} locked={!item.visited} />
                 </TouchableOpacity>
               ))}
             </View>

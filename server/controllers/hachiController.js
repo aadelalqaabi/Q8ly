@@ -620,11 +620,14 @@ exports.recordVisit = async (req, res) => {
     if (confidence < 0.6) {
       return res.status(403).json({ success: false, message: 'Not inside the venue' });
     }
+    const user = await User.findById(req.user._id).select('visitedCircles').lean();
+    const alreadyVisited = (user.visitedCircles || []).map(String).includes(req.params.id);
     await User.updateOne(
       { _id: req.user._id },
       { $addToSet: { visitedCircles: req.params.id } }
     );
-    res.json({ success: true });
+    const circle = await Hachi.findById(req.params.id).select('stampUrl venueName').lean();
+    res.json({ success: true, firstVisit: !alreadyVisited, stampUrl: circle?.stampUrl || null, venueName: circle?.venueName || '' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -642,7 +645,7 @@ exports.getVault = async (req, res) => {
       'venueCoords.lat': { $exists: true, $ne: null },
       'venueCoords.lng': { $exists: true, $ne: null },
     })
-      .select('_id venueName venueType category venueCoords mapSnapshot')
+      .select('_id venueName venueType category venueCoords mapSnapshot stampUrl')
       .sort({ createdAt: 1 })
       .limit(500)
       .lean();
@@ -653,6 +656,7 @@ exports.getVault = async (req, res) => {
       lat: c.venueCoords?.lat ?? null,
       lng: c.venueCoords?.lng ?? null,
       mapSnapshot: c.mapSnapshot || null,
+      stampUrl: c.stampUrl || null,
       visited: visitedSet.has(String(c._id)),
     }));
     const totalCircles = allCircles.length;

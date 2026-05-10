@@ -24,95 +24,52 @@ function monogram(title) {
   return (words[0][0] + words[1][0]).toUpperCase();
 }
 
-function Artifact({ id, title = '', mapSnapshot = null, size = 64, locked = false }) {
-  const radius    = size / 2;
-  const color     = hashColor(id || title);
-  const dotSize   = Math.max(6, Math.round(size * 0.11));
-  const stemH     = Math.round(size * 0.09);
-  const labelSize = Math.max(8, Math.round(size * 0.115));
-  const label     = title.length > 16 ? title.slice(0, 15).trimEnd() + '…' : title;
+function Artifact({ id, title = '', stampUrl = null, size = 64, locked = false }) {
+  const color = hashColor(id || title);
 
   return (
-    <View style={[styles.disc, { width: size, height: size, borderRadius: radius }]}>
-
-      {mapSnapshot ? (
-        // ── Map image ──────────────────────────────────────────────────────
+    <View style={[styles.wrap, { width: size, height: size }]}>
+      {stampUrl ? (
         <>
           <Image
-            source={{ uri: mapSnapshot }}
-            style={StyleSheet.absoluteFill}
-            resizeMode="cover"
+            source={{ uri: stampUrl }}
+            style={[styles.stamp, locked && styles.stampLocked]}
+            resizeMode="contain"
           />
-
-          {/* Pin */}
-          {!locked && (
-            <View style={styles.pinWrap} pointerEvents="none">
-              <View style={styles.labelBubble}>
-                <Text style={[styles.labelText, { fontSize: labelSize }]} numberOfLines={1}>
-                  {label}
-                </Text>
-              </View>
-              <View style={[styles.stem, { height: stemH }]} />
-              <View style={[styles.dot, { width: dotSize, height: dotSize, borderRadius: dotSize / 2 }]} />
-            </View>
-          )}
-
-          {/* Dim for unvisited */}
-          {locked && <View style={[StyleSheet.absoluteFill, styles.dim]} />}
+          {locked && <View style={styles.dim} />}
         </>
       ) : (
-        // ── Fallback monogram ───────────────────────────────────────────────
-        <View style={[
-          StyleSheet.absoluteFill,
-          styles.fallback,
-          { backgroundColor: locked ? `${color}28` : `${color}E0` },
-        ]}>
-          <Text style={[
-            styles.mono,
-            { fontSize: Math.round(size * 0.30), color: locked ? color : '#fff', opacity: locked ? 0.6 : 1 },
-          ]}>
+        // Fallback monogram if no stamp yet
+        <View style={[styles.fallback, { backgroundColor: locked ? `${color}28` : `${color}E0` }]}>
+          <Text style={[styles.mono, { fontSize: Math.round(size * 0.30), color: locked ? color : '#fff', opacity: locked ? 0.5 : 1 }]}>
             {monogram(title)}
           </Text>
         </View>
       )}
-
-      {/* Border ring */}
-      <View style={[
-        StyleSheet.absoluteFill, styles.ring,
-        { borderRadius: radius, borderColor: locked ? 'rgba(0,0,0,0.07)' : 'rgba(0,0,0,0.18)' },
-      ]} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  disc: { overflow: 'hidden', backgroundColor: '#E8E8ED' },
+  wrap: { alignItems: 'center', justifyContent: 'center' },
 
-  pinWrap: {
-    position: 'absolute',
-    alignSelf: 'center',
-    bottom: '18%',
-    alignItems: 'center',
+  stamp: {
+    width: '100%',
+    height: '100%',
   },
-  labelBubble: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    shadowColor: '#000',
-    shadowOpacity: 0.28,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 4,
+  stampLocked: {
+    opacity: 0.18,
+    tintColor: '#888',
   },
-  labelText: { fontWeight: '700', color: '#000' },
-  stem: { width: 2, backgroundColor: '#0033A0' },
-  dot: { backgroundColor: '#0033A0' },
+  dim: {
+    ...StyleSheet.absoluteFillObject,
+  },
 
-  dim: { backgroundColor: 'rgba(255,255,255,0.52)' },
-  ring: { borderWidth: 1.5 },
-
-  fallback: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  fallback: {
+    width: '100%', height: '100%',
+    borderRadius: 99,
+    justifyContent: 'center', alignItems: 'center',
+  },
   mono: { fontWeight: '800', letterSpacing: -0.5 },
 });
 
