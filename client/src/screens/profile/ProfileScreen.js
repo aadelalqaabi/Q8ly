@@ -335,39 +335,46 @@ export default function ProfileScreen({ navigation, route }) {
   // ── Header ──────────────────────────────────────────────────────────────────
   const renderHeader = () => (
     <View>
-      {/* Avatar */}
-      <View style={styles.avatarSection}>
-        {profile?.profilePic ? (
-          <Image source={{ uri: profile.profilePic }} style={styles.avatar} />
-        ) : (
-          <View style={[styles.avatar, { backgroundColor: avatarBg(profile?.name) }]}>
-            <Text style={styles.avatarInitial}>{profile?.name?.[0]?.toUpperCase() || '?'}</Text>
+      {/* ── Identity + vault row ── */}
+      <View style={[styles.headerRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+
+        {/* Profile side */}
+        <View style={[styles.profileSide, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
+          {profile?.profilePic ? (
+            <Image source={{ uri: profile.profilePic }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatar, { backgroundColor: avatarBg(profile?.name) }]}>
+              <Text style={styles.avatarInitial}>{profile?.name?.[0]?.toUpperCase() || '?'}</Text>
+            </View>
+          )}
+          <Text style={[styles.name, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={1}>
+            {profile?.name || ''}
+          </Text>
+          {profile?.verifiedBadge && profile.verifiedBadge !== 'none' && (
+            <VerifiedBadge badge={profile.verifiedBadge} />
+          )}
+          {!!profile?.bio && (
+            <Text style={[styles.bio, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={3}>
+              {profile.bio}
+            </Text>
+          )}
+        </View>
+
+        {/* Vault stat side — own profile only */}
+        {isOwnProfile && vault.totalCircles > 0 && (
+          <View style={styles.vaultSide}>
+            <Text style={[styles.vaultStatNum, { color: COLORS.text }]}>{vault.percentage}%</Text>
+            <Text style={[styles.vaultStatCount, { color: COLORS.accent }]}>
+              {vault.visitedCount}/{vault.totalCircles}
+            </Text>
+            <Text style={[styles.vaultStatLabel, { color: COLORS.textMuted }]}>
+              {t('profile.gridUnlocked')}
+            </Text>
           </View>
         )}
       </View>
 
-      {/* Name + username + verified */}
-      <View style={styles.identity}>
-        <Text style={styles.name} numberOfLines={1}>{profile?.name || ''}</Text>
-        {profile?.verifiedBadge && profile.verifiedBadge !== 'none' && (
-          <VerifiedBadge badge={profile.verifiedBadge} />
-        )}
-        {!!profile?.bio && (
-          <Text style={styles.bio} numberOfLines={3}>{profile.bio}</Text>
-        )}
-      </View>
-
-      {/* Vault stat — own profile only */}
-      {isOwnProfile && vault.totalCircles > 0 && (
-        <View style={styles.vaultStat}>
-          <Text style={[styles.vaultStatNum, { color: COLORS.text }]}>{vault.percentage}%</Text>
-          <Text style={[styles.vaultStatLabel, { color: COLORS.textMuted }]}>
-            {t('profile.gridUnlocked')} · {vault.visitedCount}/{vault.totalCircles}
-          </Text>
-        </View>
-      )}
-
-      {/* Action */}
+      {/* Action buttons */}
       <View style={styles.actionRow}>
         {isOwnProfile ? (
           <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', gap: 8 }}>
@@ -624,20 +631,22 @@ const makeStyles = (C, isRTL = false) => StyleSheet.create({
   notifBadge: { position: 'absolute', top: 4, end: 4, backgroundColor: '#FF3B30', borderRadius: 9, minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4 },
   notifBadgeText: { fontSize: 10, fontWeight: '700', color: '#fff' },
 
-  avatarSection: { alignItems: 'center', paddingTop: 8, paddingBottom: 16 },
-  avatar: { width: 104, height: 104, borderRadius: 52, justifyContent: 'center', alignItems: 'center' },
-  avatarInitial: { fontSize: 38, fontWeight: '700', color: '#fff' },
+  headerRow: {
+    paddingHorizontal: 20, paddingTop: 20, paddingBottom: 4,
+    alignItems: 'center', gap: 16,
+  },
+  profileSide: { flex: 1, gap: 8 },
+  avatar: { width: 80, height: 80, borderRadius: 40, justifyContent: 'center', alignItems: 'center' },
+  avatarInitial: { fontSize: 28, fontWeight: '700', color: '#fff' },
+  name: { fontSize: 20, fontWeight: '700', color: C.text },
+  bio: { fontSize: 13, color: C.textMuted, lineHeight: 18 },
 
-  identity: { alignItems: 'center', paddingHorizontal: 32, paddingBottom: 20, gap: 4 },
-  name: { fontSize: 22, fontWeight: '700', color: C.text, textAlign: 'center' },
-  username: { fontSize: 14, fontWeight: '400', textAlign: 'center' },
-  bio: { fontSize: 14, color: C.textMuted, lineHeight: 20, textAlign: 'center', marginTop: 4 },
+  vaultSide: { alignItems: 'center', gap: 2, minWidth: 80 },
+  vaultStatNum: { fontSize: 38, fontWeight: '800', letterSpacing: -1, color: C.text },
+  vaultStatCount: { fontSize: 13, fontWeight: '600' },
+  vaultStatLabel: { fontSize: 11, fontWeight: '400' },
 
-  vaultStat: { alignItems: 'center', paddingBottom: 20, gap: 2 },
-  vaultStatNum: { fontSize: 32, fontWeight: '700', letterSpacing: -0.5 },
-  vaultStatLabel: { fontSize: 12, fontWeight: '400' },
-
-  actionRow: { alignItems: 'center', paddingBottom: 20 },
+  actionRow: { alignItems: 'center', paddingTop: 16, paddingBottom: 20 },
   editChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, borderColor: C.separator, backgroundColor: C.fill },
   editChipText: { fontSize: 13, fontWeight: '500', color: C.textMuted },
   followRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
