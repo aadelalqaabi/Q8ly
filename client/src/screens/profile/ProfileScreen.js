@@ -533,6 +533,20 @@ export default function ProfileScreen({ navigation, route }) {
             </View>
           ))
         )}
+
+        {/* Request location button */}
+        {isOwnProfile && (
+          <TouchableOpacity
+            style={[styles.requestBtn, { borderColor: COLORS.separator }]}
+            onPress={() => navigation.navigate('RequestLocation', {})}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.requestPlus, { backgroundColor: COLORS.fill }]}>
+              <Text style={[styles.requestPlusText, { color: COLORS.accent }]}>+</Text>
+            </View>
+            <Text style={[styles.requestLabel, { color: COLORS.textMuted }]}>اطلب مكان</Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
   };
@@ -701,9 +715,19 @@ const makeStyles = (C, isRTL = false) => StyleSheet.create({
 
   // Vault
   vaultSectionTitle: { fontSize: 13, fontWeight: '500', paddingTop: 8, paddingBottom: 12 },
-  vaultCell: {
-    margin: 3,
+  vaultCell: { margin: 3 },
+
+  requestBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    marginTop: 16, paddingVertical: 12, paddingHorizontal: 4,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
+  requestPlus: {
+    width: 36, height: 36, borderRadius: 18,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  requestPlusText: { fontSize: 22, fontWeight: '300', lineHeight: 26 },
+  requestLabel: { fontSize: 15, fontWeight: '500' },
 
   emptyText: { fontSize: 15, color: C.textMuted, textAlign: 'center' },
 
