@@ -1,8 +1,14 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Image,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Dimensions, Animated, Modal,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Dimensions, Animated, Modal, PixelRatio,
 } from 'react-native';
+
+function cdnUrl(url, px) {
+  if (!url || !url.includes('res.cloudinary.com')) return url;
+  const w = PixelRatio.getPixelSizeForLayoutSize(px);
+  return url.replace('/upload/', `/upload/w_${w},h_${w},c_fit,f_webp,q_auto:good/`);
+}
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useSelector } from 'react-redux';
@@ -106,7 +112,7 @@ function StampModal({ visible, stampUrl, venueName, onClose, ar }) {
           <Text style={stampStyles.congrats}>{ar ? '🎉 جمعت الطابع!' : '🎉 Stamp Collected!'}</Text>
           <Text style={stampStyles.venue}>{venueName}</Text>
           {stampUrl && (
-            <Image source={{ uri: stampUrl }} style={stampStyles.stamp} resizeMode="contain" />
+            <Image source={{ uri: cdnUrl(stampUrl, 440) }} style={stampStyles.stamp} resizeMode="contain" />
           )}
           <TouchableOpacity style={stampStyles.btn} onPress={onClose} activeOpacity={0.8}>
             <Text style={stampStyles.btnText}>{ar ? 'رائع!' : 'Nice!'}</Text>

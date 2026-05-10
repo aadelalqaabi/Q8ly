@@ -1,5 +1,13 @@
 import React, { memo } from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleSheet, PixelRatio } from 'react-native';
+
+// Insert Cloudinary resize+compress transforms into a Cloudinary upload URL.
+// Keeps non-Cloudinary URLs untouched.
+function cdnUrl(url, px) {
+  if (!url || !url.includes('res.cloudinary.com')) return url;
+  const w = PixelRatio.getPixelSizeForLayoutSize(px);
+  return url.replace('/upload/', `/upload/w_${w},h_${w},c_fit,f_webp,q_auto:good/`);
+}
 
 const PALETTE = [
   '#0033A0', '#007A3D', '#FF6B35', '#9C27B0',
@@ -32,7 +40,7 @@ function Artifact({ id, title = '', stampUrl = null, size = 64, locked = false }
       {stampUrl ? (
         <>
           <Image
-            source={{ uri: stampUrl }}
+            source={{ uri: cdnUrl(stampUrl, size) }}
             style={[styles.stamp, locked && styles.stampLocked]}
             resizeMode="contain"
           />
