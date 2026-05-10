@@ -349,7 +349,6 @@ export default function ProfileScreen({ navigation, route }) {
       {/* Name + username + verified */}
       <View style={styles.identity}>
         <Text style={styles.name} numberOfLines={1}>{profile?.name || ''}</Text>
-        <Text style={[styles.username, { color: COLORS.textMuted }]}>@{profile?.username || ''}</Text>
         {profile?.verifiedBadge && profile.verifiedBadge !== 'none' && (
           <VerifiedBadge badge={profile.verifiedBadge} />
         )}

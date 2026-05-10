@@ -42,9 +42,6 @@ export default function UserCard({ user, navigation, onFollowChange }) {
 
       <View style={styles.info}>
         <Text style={styles.name} numberOfLines={1}>{user.name}</Text>
-        {!!user.username && (
-          <Text style={styles.username} numberOfLines={1}>@{user.username}</Text>
-        )}
       </View>
 
       <TouchableOpacity

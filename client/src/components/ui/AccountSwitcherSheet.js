@@ -108,9 +108,6 @@ export default function AccountSwitcherSheet({ visible, onClose }) {
                   <Text style={styles.name} numberOfLines={1}>
                     {acc.user?.name || acc.user?.username || 'Unknown'}
                   </Text>
-                  <Text style={styles.handle2} numberOfLines={1}>
-                    @{acc.user?.username || '—'}
-                  </Text>
                 </View>
                 {isActive && (
                   <Ionicons name="checkmark-circle" size={22} color={C.accent} />

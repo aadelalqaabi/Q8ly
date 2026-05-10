@@ -151,9 +151,6 @@ export default function ShareProfileCard({ visible, onClose, profile }) {
                   </View>
                 )}
 
-                {!!profile?.username && (
-                  <Text style={s.username}>@{profile.username}</Text>
-                )}
               </View>
             </View>
 
