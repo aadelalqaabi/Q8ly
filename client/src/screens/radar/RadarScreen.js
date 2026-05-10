@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity,
   Animated, Easing, Alert, Dimensions, Image,
 } from 'react-native';
-import Svg, { Circle, Line, G } from 'react-native-svg';
+import Svg, { Circle, Line, Path } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -262,13 +262,22 @@ export default function RadarScreen() {
           {/* Animated sweep */}
           <Animated.View style={[StyleSheet.absoluteFill, { transform: [{ rotate: sweepRotate }] }]} pointerEvents="none">
             <Svg width={RADAR_SIZE} height={RADAR_SIZE}>
-              <G transform={`rotate(-30, ${RADAR_R}, ${RADAR_R})`}>
-                <Line x1={RADAR_R} y1={RADAR_R} x2={RADAR_R} y2={2} stroke="#4D80FF" strokeWidth={1} opacity={0.06} />
-              </G>
-              <G transform={`rotate(-15, ${RADAR_R}, ${RADAR_R})`}>
-                <Line x1={RADAR_R} y1={RADAR_R} x2={RADAR_R} y2={2} stroke="#4D80FF" strokeWidth={1} opacity={0.14} />
-              </G>
-              <Line x1={RADAR_R} y1={RADAR_R} x2={RADAR_R} y2={2} stroke="#4D80FF" strokeWidth={1.5} opacity={0.9} />
+              {/* Filled sector trail — overlapping paths from -70° to 0° (north) */}
+              {[[-70, 0.012], [-50, 0.025], [-35, 0.045], [-20, 0.07], [-10, 0.11]].map(([deg, opacity], i) => {
+                const r = RADAR_R - 4;
+                const rad = deg * Math.PI / 180;
+                const x1 = RADAR_R + r * Math.sin(rad);
+                const y1 = RADAR_R - r * Math.cos(rad);
+                return (
+                  <Path
+                    key={i}
+                    d={`M ${RADAR_R} ${RADAR_R} L ${x1} ${y1} A ${r} ${r} 0 0 1 ${RADAR_R} ${RADAR_R - r} Z`}
+                    fill={`rgba(77,128,255,${opacity})`}
+                  />
+                );
+              })}
+              {/* Main sweep line */}
+              <Line x1={RADAR_R} y1={RADAR_R} x2={RADAR_R} y2={2} stroke="#4D80FF" strokeWidth={2} opacity={1} />
             </Svg>
           </Animated.View>
 
