@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  Animated, Easing, Alert, Dimensions, Image,
+  Animated, Easing, Alert, Dimensions, Image, ScrollView,
 } from 'react-native';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
@@ -111,12 +111,10 @@ export default function RadarScreen() {
   const [pulses, setPulses]       = useState([]);
   const [userLoc, setUserLoc]     = useState(null);
   const [loading, setLoading]     = useState(true);
-  const [nearby, setNearby]       = useState(null);
   const [sweepAngle, setSweepAngle] = useState(0);
 
   const watchRef      = useRef(null);
   const radarPollRef  = useRef(null);
-  const nearbyPollRef = useRef(null);
   const sweepAnim     = useRef(new Animated.Value(0)).current;
 
   // ── Sweep animation ──────────────────────────────────────────────────────
@@ -181,30 +179,7 @@ export default function RadarScreen() {
     if (userLoc && pulses.length > 0) checkGeofence(userLoc);
   }, [userLoc, pulses, checkGeofence]);
 
-  // ── Nearby ───────────────────────────────────────────────────────────────
-  const fetchNearby = useCallback(async (loc) => {
-    try { const res = await hachiAPI.getNearby(loc?.lat, loc?.lng, 5000); setNearby(res.circle || null); }
-    catch {}
-  }, []);
-
-  useEffect(() => {
-    fetchNearby(userLoc);
-    clearInterval(nearbyPollRef.current);
-    nearbyPollRef.current = setInterval(() => fetchNearby(userLoc), 30000);
-    return () => clearInterval(nearbyPollRef.current);
-  }, [userLoc, fetchNearby]);
-
-  const handleNearbyTap = async () => {
-    if (!nearby) return;
-    if (nearby.status === 'here') { navigation.navigate('Circle', { circleId: nearby._id }); return; }
-    try {
-      const r = await hachiAPI.checkLocation(nearby._id, userLoc?.lat ?? 0, userLoc?.lng ?? 0, userLoc?.speed ?? 0);
-      if (r.status === 'here') { navigation.navigate('Circle', { circleId: nearby._id }); return; }
-    } catch {}
-    Alert.alert(t('radar.travelThere'), t('radar.travelThereMsg'));
-  };
-
-  const handleDotPress = async (pulse) => {
+  const handleCircleTap = async (pulse) => {
     try {
       const r = await hachiAPI.checkLocation(pulse._id, userLoc?.lat ?? 0, userLoc?.lng ?? 0, userLoc?.speed ?? 0);
       if (r.status === 'here') { navigation.navigate('Circle', { circleId: pulse._id }); return; }
@@ -212,19 +187,15 @@ export default function RadarScreen() {
     Alert.alert(t('radar.travelThere'), t('radar.travelThereMsg'));
   };
 
-  const nearbyStatusLabel = () => {
-    if (!nearby) return '';
-    if (nearby.status === 'here') return t('hachi.youreHere');
-    if (nearby.status === 'nearby') return t('hachi.nearby');
-    return t('hachi.nearby');
-  };
-
-  const nearbyStatusColor = () => {
-    if (!nearby) return COLORS.accent;
-    if (nearby.status === 'here') return '#34C759';
-    if (nearby.status === 'nearby') return '#FF9500';
-    return COLORS.accent;
-  };
+  // Sorted pulses by distance (closest first)
+  const sortedPulses = useMemo(() => {
+    if (!userLoc) return pulses;
+    return [...pulses].sort((a, b) => {
+      const da = (a.lat != null && a.lng != null) ? haversineMeters(userLoc.lat, userLoc.lng, a.lat, a.lng) : Infinity;
+      const db = (b.lat != null && b.lng != null) ? haversineMeters(userLoc.lat, userLoc.lng, b.lat, b.lng) : Infinity;
+      return da - db;
+    });
+  }, [pulses, userLoc]);
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
@@ -303,51 +274,54 @@ export default function RadarScreen() {
         </Text>
       </View>
 
-      {/* Nearby card */}
-      {nearby && (
-        <TouchableOpacity
-          style={[styles.nearbyCard, { bottom: insets.bottom + 20, backgroundColor: COLORS.surface }]}
-          onPress={handleNearbyTap}
-          activeOpacity={0.85}
-        >
-          <View style={[styles.nearbyInner, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-            {/* Left: status + name + distance */}
-            <View style={{ flex: 1 }}>
-              <View style={[styles.statusRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                <View style={[styles.statusDot, { backgroundColor: nearbyStatusColor() }]} />
-                <Text style={[styles.statusLabel, { color: nearbyStatusColor() }]}>
-                  {nearbyStatusLabel()}
-                </Text>
-              </View>
-              <Text style={[styles.nearbyName, { color: COLORS.text, textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={1}>
-                {nearby.title || nearby.venueName}
-              </Text>
-              {nearby.distance > 0 && (
-                <Text style={[styles.nearbyDist, { color: COLORS.textMuted, textAlign: isRTL ? 'right' : 'left' }]}>
-                  {formatDist(nearby.distance, isRTL)}
-                </Text>
-              )}
-            </View>
-
-            {/* Right: count + arrow */}
-            <View style={[styles.nearbyRight, { alignItems: isRTL ? 'flex-start' : 'flex-end' }]}>
-              {(nearby.activeHere || 0) > 0 && (
-                <View style={styles.hereNowPill}>
-                  <View style={styles.hereNowDot} />
-                  <Text style={styles.hereNowText}>
-                    {nearby.activeHere} {t('radar.hereNow')}
-                  </Text>
-                </View>
-              )}
-              <Ionicons
-                name={isRTL ? 'chevron-back' : 'chevron-forward'}
-                size={20}
-                color={COLORS.textMuted}
-                style={{ marginTop: 4 }}
-              />
-            </View>
-          </View>
-        </TouchableOpacity>
+      {/* Circle cards — horizontal scroll */}
+      {sortedPulses.length > 0 && (
+        <View style={[styles.cardsWrap, { bottom: insets.bottom + 16 }]}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}
+            snapToInterval={260}
+            decelerationRate="fast"
+          >
+            {sortedPulses.map((pulse) => {
+              const dist = (pulse.lat != null && pulse.lng != null && userLoc)
+                ? haversineMeters(userLoc.lat, userLoc.lng, pulse.lat, pulse.lng)
+                : null;
+              const isHere = dist != null && dist < 200;
+              const isNearby = dist != null && dist < 1000;
+              const statusColor = isHere ? '#34C759' : isNearby ? '#FF9500' : COLORS.accent;
+              const statusLabel = isHere ? t('hachi.youreHere') : isNearby ? t('hachi.nearby') : formatDist(dist, isRTL);
+              return (
+                <TouchableOpacity
+                  key={pulse._id}
+                  style={[styles.circleCard, { backgroundColor: COLORS.surface }]}
+                  onPress={() => handleCircleTap(pulse)}
+                  activeOpacity={0.85}
+                >
+                  <View style={[styles.nearbyInner, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                    <View style={{ flex: 1 }}>
+                      <View style={[styles.statusRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                        <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+                        <Text style={[styles.statusLabel, { color: statusColor }]}>{statusLabel}</Text>
+                      </View>
+                      <Text style={[styles.nearbyName, { color: COLORS.text, textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={1}>
+                        {pulse.title || pulse.venueName}
+                      </Text>
+                      {(pulse.activeHere || 0) > 0 && (
+                        <View style={[styles.hereNowPill, { alignSelf: isRTL ? 'flex-end' : 'flex-start', marginTop: 6 }]}>
+                          <View style={styles.hereNowDot} />
+                          <Text style={styles.hereNowText}>{pulse.activeHere} {t('radar.hereNow')}</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Ionicons name={isRTL ? 'chevron-back' : 'chevron-forward'} size={18} color={COLORS.textMuted} />
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
       )}
     </View>
   );
@@ -392,9 +366,10 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.25)',
   },
 
-  // Nearby card
-  nearbyCard: {
-    position: 'absolute', left: 16, right: 16,
+  // Circle cards strip
+  cardsWrap: { position: 'absolute', left: 0, right: 0 },
+  circleCard: {
+    width: 250,
     borderRadius: 20,
     paddingHorizontal: 18, paddingVertical: 16,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
