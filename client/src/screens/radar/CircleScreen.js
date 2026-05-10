@@ -88,7 +88,6 @@ export default function CircleScreen({ route, navigation }) {
   const ar = isAr(i18n);
   const { TEXT, MUTED, ACCENT, BG, FILL, SEPARATOR } = useBrutColors();
   const { user: currentUser } = useSelector((s) => s.auth);
-  const isFounder = currentUser?.phone === '+96599440289' || currentUser?.isFounder === true;
 
   const [room, setRoom] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -137,7 +136,6 @@ export default function CircleScreen({ route, navigation }) {
       loadRoom(loc);
     };
 
-    if (isFounder) { safeLoad(null); return () => { cancelled = true; }; }
     if (!Location) { safeLoad(null); return () => { cancelled = true; }; }
 
     const fallback = setTimeout(() => safeLoad(null), 4000);
@@ -171,7 +169,7 @@ export default function CircleScreen({ route, navigation }) {
       clearTimeout(fallback);
       if (watchRef.current) watchRef.current.remove();
     };
-  }, [circleId, navigation, loadRoom, isFounder]);
+  }, [circleId, navigation, loadRoom]);
 
   useEffect(() => {
     const socket = getSocket();
