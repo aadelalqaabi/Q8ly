@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, Animated, Easing,
-  Dimensions, Image, ActivityIndicator,
+  Dimensions, Image, ActivityIndicator, TouchableOpacity, ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
+import { useTranslation } from 'react-i18next';
 import { hachiAPI } from '../../services/api';
 
 let Location = null;
@@ -22,6 +23,14 @@ const BLUE  = '#1448FF';
 const BG    = '#04060F';
 const KUWAIT_LAT = 29.3;
 const KUWAIT_LNG = 47.65;
+
+const PALETTE = ['#0033A0','#007A3D','#FF6B35','#2196F3','#9C27B0','#00BCD4','#FF9800'];
+function avatarBg(name) {
+  if (!name) return PALETTE[0];
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+  return PALETTE[Math.abs(h) % PALETTE.length];
+}
 
 // ─── geo helpers ─────────────────────────────────────────────────────────────
 
@@ -51,6 +60,9 @@ function cdnUrl(url, px) {
 
 export default function RadarScreen({ navigation }) {
   const insets  = useSafeAreaInsets();
+  const { i18n } = useTranslation();
+  const isRTL = i18n.language === 'ar';
+  const user = useSelector(s => s.auth.user);
   const [venues, setVenues]   = useState([]);
   const [location, setLocation] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -234,11 +246,45 @@ export default function RadarScreen({ navigation }) {
       }]} />
       <View style={[s.userDot, { left: CX - 5, top: CY - 5 }]} />
 
-      {/* Header */}
-      <View style={[s.header, { paddingTop: insets.top + 10 }]}>
-        <Text style={s.title}>RADAR</Text>
-        <Text style={s.sub}>{visitedCount} / {venues.length} UNLOCKED</Text>
+      {/* Top bar: avatar + KUWAI wordmark */}
+      <View style={[s.topBar, { paddingTop: insets.top + 6, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+        <TouchableOpacity
+          style={s.avatarBtn}
+          onPress={() => navigation.navigate('Profile')}
+          activeOpacity={0.75}
+        >
+          {user?.profilePic ? (
+            <Image source={{ uri: cdnUrl(user.profilePic, 68) }} style={s.avatarImg} />
+          ) : (
+            <View style={[s.avatarImg, { backgroundColor: avatarBg(user?.name) }]}>
+              <Text style={s.avatarInitial}>{user?.name?.[0]?.toUpperCase() || '?'}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
+        <Text style={s.wordmark}>KUWAI</Text>
+
+        <View style={s.topBarRight}>
+          <Text style={s.sub}>{visitedCount}/{venues.length}</Text>
+        </View>
       </View>
+
+      {/* Collected stamps strip — sits below the top bar */}
+      {venues.filter(v => v.visited && v.stampUrl).length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          bounces={false}
+          style={[s.stampStrip, { top: insets.top + 58 }]}
+          contentContainerStyle={{ paddingHorizontal: 14, paddingVertical: 8, gap: 10 }}
+        >
+          {venues.filter(v => v.visited && v.stampUrl).map(v => (
+            <View key={v._id} style={s.stampThumb}>
+              <Image source={{ uri: cdnUrl(v.stampUrl, 46) }} style={{ width: 36, height: 36 }} resizeMode="contain" />
+            </View>
+          ))}
+        </ScrollView>
+      )}
 
       {/* Nearby hint */}
       {!!nearest && (
@@ -323,20 +369,32 @@ const s = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
   },
 
-  header: {
+  topBar: {
     position: 'absolute',
     top: 0, left: 0, right: 0,
     alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingBottom: 8,
+    zIndex: 10,
   },
-  title: {
-    fontSize: 10, fontWeight: '800',
-    color: BLUE, letterSpacing: 7,
+  avatarBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
+  avatarImg: { width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center' },
+  avatarInitial: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  wordmark: { flex: 1, textAlign: 'center', fontSize: 22, fontWeight: '800', color: '#fff', letterSpacing: 3 },
+  topBarRight: { width: 44, alignItems: 'center' },
+  sub: { fontSize: 11, color: 'rgba(255,255,255,0.35)', fontWeight: '600', letterSpacing: 1 },
+
+  stampStrip: {
+    position: 'absolute',
+    left: 0, right: 0,
+    zIndex: 9,
   },
-  sub: {
-    fontSize: 10,
-    color: 'rgba(20,72,255,0.45)',
-    letterSpacing: 2,
-    marginTop: 3,
+  stampThumb: {
+    width: 46, height: 46, borderRadius: 23,
+    borderWidth: 1, borderColor: 'rgba(20,72,255,0.3)',
+    backgroundColor: 'rgba(20,72,255,0.08)',
+    justifyContent: 'center', alignItems: 'center',
+    overflow: 'hidden',
   },
 
   nearbyBadge: {
