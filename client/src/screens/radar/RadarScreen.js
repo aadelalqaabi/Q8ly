@@ -6,6 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
+import { useNavigation } from '@react-navigation/native';
 import { hachiAPI } from '../../services/api';
 
 let Location = null;
@@ -58,7 +59,8 @@ function cdnUrl(url, px) {
 
 // ─── main component ───────────────────────────────────────────────────────────
 
-export default function RadarScreen({ navigation }) {
+export default function RadarScreen() {
+  const navigation = useNavigation();
   const insets  = useSafeAreaInsets();
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
