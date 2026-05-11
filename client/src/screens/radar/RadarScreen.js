@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
+import { useTheme } from '../../context/ThemeContext';
 import { hachiAPI } from '../../services/api';
 
 let Location = null;
@@ -20,8 +21,6 @@ const RING_COUNT = 4;
 const SWEEP_MS = 5000;
 const MAX_DIST_M = 20000; // 20 km = full radius
 
-const BLUE  = '#1448FF';
-const BG    = '#04060F';
 const KUWAIT_LAT = 29.3;
 const KUWAIT_LNG = 47.65;
 
@@ -65,6 +64,14 @@ export default function RadarScreen() {
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
   const user = useSelector(s => s.auth.user);
+  const { colors: C, isDark } = useTheme();
+
+  // Theme-aware radar colors
+  const BG   = isDark ? '#04060F' : C.background;
+  const BLUE = isDark ? '#1448FF' : C.accent;
+  const DOT_COLOR  = isDark ? '#fff' : C.accent;
+  const TEXT_COLOR = isDark ? '#fff' : C.text;
+  const SUB_COLOR  = isDark ? 'rgba(255,255,255,0.35)' : C.textMuted;
   const [venues, setVenues]   = useState([]);
   const [location, setLocation] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -183,7 +190,7 @@ export default function RadarScreen() {
 
   // ── render ─────────────────────────────────────────────────────────────────
   return (
-    <View style={s.root}>
+    <View style={[s.root, { backgroundColor: BG }]}>
 
       {/* Distance rings */}
       {Array.from({ length: RING_COUNT }).map((_, i) => {
@@ -192,25 +199,26 @@ export default function RadarScreen() {
           <View key={i} style={[s.ring, {
             width: r * 2, height: r * 2, borderRadius: r,
             left: CX - r, top: CY - r,
+            borderColor: BLUE,
             opacity: 0.07 + i * 0.04,
           }]} />
         );
       })}
 
       {/* Crosshairs */}
-      <View style={[s.lineH, { top: CY - 0.5, left: CX - RADAR_R, width: RADAR_R * 2 }]} />
-      <View style={[s.lineV, { left: CX - 0.5, top: CY - RADAR_R, height: RADAR_R * 2 }]} />
+      <View style={[s.lineH, { top: CY - 0.5, left: CX - RADAR_R, width: RADAR_R * 2, backgroundColor: BLUE }]} />
+      <View style={[s.lineV, { left: CX - 0.5, top: CY - RADAR_R, height: RADAR_R * 2, backgroundColor: BLUE }]} />
 
       {/* Sweep wake (trailing glow) */}
       {[{ rot: rot3, op: 0.05 }, { rot: rot2, op: 0.12 }, { rot: rot1, op: 0.28 }].map(({ rot, op }, i) => (
         <Animated.View key={i} style={[s.sweepWrap, { transform: [{ rotate: rot }] }]}>
-          <View style={[s.sweepLine, { opacity: op }]} />
+          <View style={[s.sweepLine, { opacity: op, backgroundColor: BLUE }]} />
         </Animated.View>
       ))}
 
       {/* Main sweep arm */}
       <Animated.View style={[s.sweepWrap, { transform: [{ rotate: rot0 }] }]}>
-        <View style={[s.sweepLine, { opacity: 0.95 }]} />
+        <View style={[s.sweepLine, { opacity: 0.95, backgroundColor: BLUE }]} />
       </Animated.View>
 
       {/* Venue markers */}
@@ -232,21 +240,22 @@ export default function RadarScreen() {
             {v.visited ? (
               v.stampUrl
                 ? <Image source={{ uri: cdnUrl(v.stampUrl, 46) }} style={s.stamp} resizeMode="contain" />
-                : <View style={[s.blip, { width: 10, height: 10, borderRadius: 5, backgroundColor: '#fff' }]} />
+                : <View style={[s.blip, { width: 10, height: 10, borderRadius: 5, backgroundColor: DOT_COLOR }]} />
             ) : (
-              <View style={s.blip} />
+              <View style={[s.blip, { backgroundColor: BLUE, shadowColor: BLUE }]} />
             )}
           </Animated.View>
         );
       })}
 
-      {/* User dot — pulsing white core */}
+      {/* User dot — pulsing core */}
       <Animated.View style={[s.pulseRing, {
         left: CX - 14, top: CY - 14,
+        borderColor: DOT_COLOR,
         transform: [{ scale: pulseScale }],
         opacity: pulseOpacity,
       }]} />
-      <View style={[s.userDot, { left: CX - 5, top: CY - 5 }]} />
+      <View style={[s.userDot, { left: CX - 5, top: CY - 5, backgroundColor: DOT_COLOR, shadowColor: DOT_COLOR }]} />
 
       {/* Top bar: avatar + KUWAI wordmark */}
       <View style={[s.topBar, { paddingTop: insets.top + 6, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
@@ -264,10 +273,10 @@ export default function RadarScreen() {
           )}
         </TouchableOpacity>
 
-        <Text style={s.wordmark}>KUWAI</Text>
+        <Text style={[s.wordmark, { color: TEXT_COLOR }]}>KUWAI</Text>
 
         <View style={s.topBarRight}>
-          <Text style={s.sub}>{visitedCount}/{venues.length}</Text>
+          <Text style={[s.sub, { color: SUB_COLOR }]}>{visitedCount}/{venues.length}</Text>
         </View>
       </View>
 
@@ -281,7 +290,10 @@ export default function RadarScreen() {
           contentContainerStyle={{ paddingHorizontal: 14, paddingVertical: 8, gap: 10 }}
         >
           {venues.filter(v => v.visited && v.stampUrl).map(v => (
-            <View key={v._id} style={s.stampThumb}>
+            <View key={v._id} style={[s.stampThumb, {
+              borderColor: isDark ? 'rgba(20,72,255,0.3)' : 'rgba(0,51,160,0.2)',
+              backgroundColor: isDark ? 'rgba(20,72,255,0.08)' : 'rgba(0,51,160,0.05)',
+            }]}>
               <Image source={{ uri: cdnUrl(v.stampUrl, 46) }} style={{ width: 36, height: 36 }} resizeMode="contain" />
             </View>
           ))}
@@ -290,9 +302,13 @@ export default function RadarScreen() {
 
       {/* Nearby hint */}
       {!!nearest && (
-        <View style={[s.nearbyBadge, { bottom: insets.bottom + 36 }]}>
-          <View style={s.nearbyDot} />
-          <Text style={s.nearbyText}>
+        <View style={[s.nearbyBadge, {
+          bottom: insets.bottom + 36,
+          backgroundColor: isDark ? 'rgba(20,72,255,0.1)' : 'rgba(0,51,160,0.06)',
+          borderColor: isDark ? 'rgba(20,72,255,0.35)' : 'rgba(0,51,160,0.2)',
+        }]}>
+          <View style={[s.nearbyDot, { backgroundColor: BLUE }]} />
+          <Text style={[s.nearbyText, { color: BLUE }]}>
             {nearest.venueName || nearest.title} · {Math.round(nearest.dist)}m
           </Text>
         </View>
@@ -306,52 +322,28 @@ export default function RadarScreen() {
 // ─── styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: BG },
+  root: { flex: 1 },
 
-  ring: {
-    position: 'absolute',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: BLUE,
-  },
-  lineH: {
-    position: 'absolute',
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: BLUE,
-    opacity: 0.18,
-  },
-  lineV: {
-    position: 'absolute',
-    width: StyleSheet.hairlineWidth,
-    backgroundColor: BLUE,
-    opacity: 0.18,
-  },
+  ring: { position: 'absolute', borderWidth: StyleSheet.hairlineWidth },
+  lineH: { position: 'absolute', height: StyleSheet.hairlineWidth, opacity: 0.18 },
+  lineV: { position: 'absolute', width: StyleSheet.hairlineWidth, opacity: 0.18 },
 
-  // Wrapper square centered on (CX, CY) — rotation pivots at wrapper center = user position
   sweepWrap: {
     position: 'absolute',
-    left: CX - RADAR_R,
-    top:  CY - RADAR_R,
-    width:  RADAR_R * 2,
-    height: RADAR_R * 2,
+    left: CX - RADAR_R, top: CY - RADAR_R,
+    width: RADAR_R * 2, height: RADAR_R * 2,
   },
-  // Arm starts at center of wrapper, extends right by RADAR_R
   sweepLine: {
     position: 'absolute',
-    left: RADAR_R,
-    top:  RADAR_R - 1,
-    width:  RADAR_R,
-    height: 2,
-    backgroundColor: BLUE,
+    left: RADAR_R, top: RADAR_R - 1,
+    width: RADAR_R, height: 2,
   },
 
   venueWrap: { position: 'absolute' },
   stamp: { width: 46, height: 46 },
   blip: {
     width: 9, height: 9, borderRadius: 4.5,
-    backgroundColor: BLUE,
-    shadowColor: BLUE,
-    shadowOpacity: 1,
-    shadowRadius: 8,
+    shadowOpacity: 1, shadowRadius: 8,
     shadowOffset: { width: 0, height: 0 },
   },
 
@@ -359,15 +351,11 @@ const s = StyleSheet.create({
     position: 'absolute',
     width: 28, height: 28, borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: '#fff',
   },
   userDot: {
     position: 'absolute',
     width: 10, height: 10, borderRadius: 5,
-    backgroundColor: '#fff',
-    shadowColor: '#fff',
-    shadowOpacity: 1,
-    shadowRadius: 10,
+    shadowOpacity: 1, shadowRadius: 10,
     shadowOffset: { width: 0, height: 0 },
   },
 
@@ -382,19 +370,14 @@ const s = StyleSheet.create({
   avatarBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   avatarImg: { width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center' },
   avatarInitial: { fontSize: 14, fontWeight: '700', color: '#fff' },
-  wordmark: { flex: 1, textAlign: 'center', fontSize: 22, fontWeight: '800', color: '#fff', letterSpacing: 3 },
+  wordmark: { flex: 1, textAlign: 'center', fontSize: 22, fontWeight: '800', letterSpacing: 3 },
   topBarRight: { width: 44, alignItems: 'center' },
-  sub: { fontSize: 11, color: 'rgba(255,255,255,0.35)', fontWeight: '600', letterSpacing: 1 },
+  sub: { fontSize: 11, fontWeight: '600', letterSpacing: 1 },
 
-  stampStrip: {
-    position: 'absolute',
-    left: 0, right: 0,
-    zIndex: 9,
-  },
+  stampStrip: { position: 'absolute', left: 0, right: 0, zIndex: 9 },
   stampThumb: {
     width: 46, height: 46, borderRadius: 23,
-    borderWidth: 1, borderColor: 'rgba(20,72,255,0.3)',
-    backgroundColor: 'rgba(20,72,255,0.08)',
+    borderWidth: 1,
     justifyContent: 'center', alignItems: 'center',
     overflow: 'hidden',
   },
@@ -405,15 +388,13 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: 'rgba(20,72,255,0.1)',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(20,72,255,0.35)',
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 9,
   },
-  nearbyDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: BLUE },
-  nearbyText: { fontSize: 12, color: BLUE, fontWeight: '600', letterSpacing: 0.5 },
+  nearbyDot: { width: 6, height: 6, borderRadius: 3 },
+  nearbyText: { fontSize: 12, fontWeight: '600', letterSpacing: 0.5 },
 
   loader: { position: 'absolute', bottom: 80, alignSelf: 'center' },
 });
