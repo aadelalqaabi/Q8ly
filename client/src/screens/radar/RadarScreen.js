@@ -366,7 +366,7 @@ const s = StyleSheet.create({
   avatarBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   avatarImg: { width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center' },
   avatarInitial: { fontSize: 14, fontWeight: '700', color: '#fff' },
-  wordmark: { fontSize: 24, fontWeight: '900', letterSpacing: 2 },
+  wordmark: { fontSize: 24, fontWeight: '900' },
 
   stampStrip: { position: 'absolute', left: 0, right: 0, zIndex: 9 },
   stampThumb: {
