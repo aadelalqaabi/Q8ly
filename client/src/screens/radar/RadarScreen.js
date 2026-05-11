@@ -86,7 +86,7 @@ export default function RadarScreen() {
       .then(data => {
         const v = (Array.isArray(data) ? data : data?.items || []).filter(x => x.lat && x.lng);
         v.forEach(venue => {
-          pingAnims.current[venue._id]   = new Animated.Value(venue.visited ? 1 : 0);
+          pingAnims.current[venue._id]   = new Animated.Value(venue.visited ? 0.25 : 0);
           activeAnims.current[venue._id] = new Animated.Value(0);
           lastTriggered.current[venue._id] = -999;
         });
@@ -138,7 +138,7 @@ export default function RadarScreen() {
     const id = setInterval(() => {
       const sweep = sweepDeg.current;
       plottedRef.current.forEach(v => {
-        if (v.visited || v.brg == null) return;
+        if (v.brg == null) return;
         const diff      = ((sweep - v.brg) + 360) % 360;
         const sinceLast = ((sweep - (lastTriggered.current[v._id] ?? -999)) + 360) % 360;
         if (diff < 5 && sinceLast > 60) {
@@ -147,8 +147,8 @@ export default function RadarScreen() {
           if (!anim) return;
           anim.stopAnimation();
           Animated.sequence([
-            Animated.timing(anim, { toValue: 1,    duration: 160,  useNativeDriver: true }),
-            Animated.timing(anim, { toValue: 0.06, duration: 1600, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+            Animated.timing(anim, { toValue: 1,               duration: 160,  useNativeDriver: true }),
+            Animated.timing(anim, { toValue: v.visited ? 0.25 : 0.06, duration: 1600, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
           ]).start();
         }
       });
