@@ -259,7 +259,7 @@ export default function RadarScreen() {
 
       {/* Top bar: KUWAI wordmark + avatar */}
       <View style={[s.topBar, { paddingTop: insets.top + 6, flexDirection: 'row' }]}>
-        <Text style={[s.wordmark, { color: TEXT_COLOR }]}>KUWAI</Text>
+        <Text style={[s.wordmark, { color: TEXT_COLOR, transform: [{ scaleX: 1.18 }] }]}>KUWAI</Text>
 
         <TouchableOpacity
           style={s.avatarBtn}
@@ -366,7 +366,7 @@ const s = StyleSheet.create({
   avatarBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   avatarImg: { width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center' },
   avatarInitial: { fontSize: 14, fontWeight: '700', color: '#fff' },
-  wordmark: { flex: 1, fontSize: 22, fontWeight: '800', letterSpacing: 3 },
+  wordmark: { fontSize: 24, fontWeight: '900', letterSpacing: 2 },
 
   stampStrip: { position: 'absolute', left: 0, right: 0, zIndex: 9 },
   stampThumb: {
