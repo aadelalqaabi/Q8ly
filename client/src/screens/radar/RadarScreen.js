@@ -244,7 +244,7 @@ export default function RadarScreen() {
         const activeAnim = activeAnims.current[v._id];
         if (!pingAnim) return null;
         const isInside  = insideVenue?._id === v._id;
-        const dotSize   = v.visited ? 46 : 9;
+        const dotSize   = v.visited ? 13 : 9;
 
         return (
           <TouchableOpacity
@@ -271,9 +271,7 @@ export default function RadarScreen() {
 
             <Animated.View style={{ opacity: pingAnim }}>
               {v.visited ? (
-                v.stampUrl
-                  ? <Image source={{ uri: cdnUrl(v.stampUrl, 46) }} style={s.stamp} resizeMode="contain" />
-                  : <View style={[s.blip, { width: 10, height: 10, borderRadius: 5, backgroundColor: DOT_COLOR }]} />
+                <View style={[s.visitedBlip, { backgroundColor: DOT_COLOR, shadowColor: DOT_COLOR }]} />
               ) : (
                 <View style={[s.blip, { backgroundColor: BLUE, shadowColor: BLUE }]} />
               )}
@@ -305,25 +303,6 @@ export default function RadarScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Collected stamps strip */}
-      {venues.filter(v => v.visited && v.stampUrl).length > 0 && (
-        <ScrollView
-          horizontal showsHorizontalScrollIndicator={false} bounces={false}
-          style={[s.stampStrip, { top: insets.top + 58 }]}
-          contentContainerStyle={{ paddingHorizontal: 14, paddingVertical: 8, gap: 10 }}
-        >
-          {venues.filter(v => v.visited && v.stampUrl).map(v => (
-            <TouchableOpacity key={v._id} onPress={() => enterCircle(v)} activeOpacity={0.8}>
-              <View style={[s.stampThumb, {
-                borderColor: isDark ? 'rgba(20,72,255,0.3)' : 'rgba(0,51,160,0.2)',
-                backgroundColor: isDark ? 'rgba(20,72,255,0.08)' : 'rgba(0,51,160,0.05)',
-              }]}>
-                <Image source={{ uri: cdnUrl(v.stampUrl, 46) }} style={{ width: 36, height: 36 }} resizeMode="contain" />
-              </View>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
 
       {/* Enter card — slides up when inside a geofence */}
       <Animated.View style={[s.enterCard, {
@@ -387,7 +366,11 @@ const s = StyleSheet.create({
   },
 
   venueWrap: { position: 'absolute' },
-  stamp: { width: 46, height: 46 },
+  visitedBlip: {
+    width: 13, height: 13, borderRadius: 6.5,
+    shadowOpacity: 1, shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+  },
   blip: {
     width: 9, height: 9, borderRadius: 4.5,
     shadowOpacity: 1, shadowRadius: 8,
@@ -422,14 +405,6 @@ const s = StyleSheet.create({
   avatarBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   avatarImg: { width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center' },
   avatarInitial: { fontSize: 14, fontWeight: '700', color: '#fff' },
-
-  stampStrip: { position: 'absolute', left: 0, right: 0, zIndex: 9 },
-  stampThumb: {
-    width: 46, height: 46, borderRadius: 23,
-    borderWidth: 1,
-    justifyContent: 'center', alignItems: 'center',
-    overflow: 'hidden',
-  },
 
   // Enter card
   enterCard: {
