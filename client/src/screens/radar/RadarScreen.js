@@ -16,11 +16,10 @@ try { Location = require('expo-location'); } catch {}
 const { width: W, height: H } = Dimensions.get('window');
 const CX = W / 2;
 const CY = H / 2;
-const RADAR_R = Math.min(W, H) * 0.41;
+const RADAR_R    = Math.min(W, H) * 0.41;
 const RING_COUNT = 4;
-const SWEEP_MS = 5000;
-const MAX_DIST_M = 20000; // 20 km = full radius
-
+const SWEEP_MS   = 5000;
+const MAX_DIST_M = 20000;
 const KUWAIT_LAT = 29.3;
 const KUWAIT_LNG = 47.65;
 
@@ -31,8 +30,6 @@ function avatarBg(name) {
   for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
   return PALETTE[Math.abs(h) % PALETTE.length];
 }
-
-// ─── geo helpers ─────────────────────────────────────────────────────────────
 
 function haversine(lat1, lng1, lat2, lng2) {
   const R = 6371000;
@@ -56,41 +53,41 @@ function cdnUrl(url, px) {
   return url.replace('/upload/', `/upload/w_${px},h_${px},c_fit,f_webp,q_auto:good/`);
 }
 
-// ─── main component ───────────────────────────────────────────────────────────
-
 export default function RadarScreen() {
-  const navigation = useNavigation();
-  const insets  = useSafeAreaInsets();
-  const { i18n } = useTranslation();
-  const isRTL = i18n.language === 'ar';
-  const user = useSelector(s => s.auth.user);
+  const navigation  = useNavigation();
+  const insets      = useSafeAreaInsets();
+  const { i18n }    = useTranslation();
+  const user        = useSelector(s => s.auth.user);
   const { colors: C, isDark } = useTheme();
 
-  // Theme-aware radar colors
-  const BG   = isDark ? '#04060F' : C.background;
-  const BLUE = isDark ? '#1448FF' : C.accent;
-  const DOT_COLOR  = isDark ? '#fff' : C.accent;
-  const TEXT_COLOR = isDark ? '#fff' : C.text;
-  const SUB_COLOR  = isDark ? 'rgba(255,255,255,0.35)' : C.textMuted;
-  const [venues, setVenues]   = useState([]);
+  const BG        = isDark ? '#04060F' : C.background;
+  const BLUE      = isDark ? '#1448FF' : C.accent;
+  const DOT_COLOR = isDark ? '#fff'    : C.accent;
+  const TEXT_COLOR = isDark ? '#fff'   : C.text;
+
+  const [venues,   setVenues]   = useState([]);
   const [location, setLocation] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading,  setLoading]  = useState(true);
+  const [insideVenue, setInsideVenue] = useState(null); // venue user is currently inside
 
-  // Animated values
-  const sweepAngle = useRef(new Animated.Value(0)).current;
-  const pulseScale = useRef(new Animated.Value(1)).current;
-  const pingAnims  = useRef({});
+  const sweepAngle   = useRef(new Animated.Value(0)).current;
+  const pulseScale   = useRef(new Animated.Value(1)).current;
+  const cardSlide    = useRef(new Animated.Value(200)).current; // enter card
+  const pingAnims    = useRef({});
+  const activeAnims  = useRef({}); // glowing rings for inside-geofence venues
   const lastTriggered = useRef({});
-  const sweepDeg   = useRef(0);
-  const plottedRef = useRef([]);
+  const sweepDeg     = useRef(0);
+  const plottedRef   = useRef([]);
+  const prevInsideId = useRef(null);
 
-  // ── load venues ────────────────────────────────────────────────────────────
+  // ── load venues ──────────────────────────────────────────────────────────────
   useEffect(() => {
     hachiAPI.getVault()
       .then(data => {
-        const v = (data || []).filter(x => x.lat && x.lng);
+        const v = (Array.isArray(data) ? data : data?.items || []).filter(x => x.lat && x.lng);
         v.forEach(venue => {
-          pingAnims.current[venue._id]    = new Animated.Value(venue.visited ? 1 : 0);
+          pingAnims.current[venue._id]   = new Animated.Value(venue.visited ? 1 : 0);
+          activeAnims.current[venue._id] = new Animated.Value(0);
           lastTriggered.current[venue._id] = -999;
         });
         setVenues(v);
@@ -99,7 +96,7 @@ export default function RadarScreen() {
       .finally(() => setLoading(false));
   }, []);
 
-  // ── location ───────────────────────────────────────────────────────────────
+  // ── location ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!Location) return;
     let sub;
@@ -109,29 +106,24 @@ export default function RadarScreen() {
       const cur = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       setLocation(cur.coords);
       sub = await Location.watchPositionAsync(
-        { accuracy: Location.Accuracy.Balanced, distanceInterval: 20 },
+        { accuracy: Location.Accuracy.Balanced, distanceInterval: 15 },
         loc => setLocation(loc.coords),
       );
     })();
     return () => sub?.remove();
   }, []);
 
-  // ── sweep arm animation ────────────────────────────────────────────────────
+  // ── sweep arm ────────────────────────────────────────────────────────────────
   useEffect(() => {
     const anim = Animated.loop(
-      Animated.timing(sweepAngle, {
-        toValue: 1,
-        duration: SWEEP_MS,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
+      Animated.timing(sweepAngle, { toValue: 1, duration: SWEEP_MS, easing: Easing.linear, useNativeDriver: true })
     );
     anim.start();
     const id = sweepAngle.addListener(({ value }) => { sweepDeg.current = value * 360; });
     return () => { anim.stop(); sweepAngle.removeListener(id); };
   }, []);
 
-  // ── user dot pulse ─────────────────────────────────────────────────────────
+  // ── user dot pulse ───────────────────────────────────────────────────────────
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
@@ -141,7 +133,7 @@ export default function RadarScreen() {
     ).start();
   }, []);
 
-  // ── ping detector ──────────────────────────────────────────────────────────
+  // ── ping detector ─────────────────────────────────────────────────────────────
   useEffect(() => {
     const id = setInterval(() => {
       const sweep = sweepDeg.current;
@@ -155,7 +147,7 @@ export default function RadarScreen() {
           if (!anim) return;
           anim.stopAnimation();
           Animated.sequence([
-            Animated.timing(anim, { toValue: 1,    duration: 160, useNativeDriver: true }),
+            Animated.timing(anim, { toValue: 1,    duration: 160,  useNativeDriver: true }),
             Animated.timing(anim, { toValue: 0.06, duration: 1600, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
           ]).start();
         }
@@ -164,7 +156,35 @@ export default function RadarScreen() {
     return () => clearInterval(id);
   }, []);
 
-  // ── compute screen positions ───────────────────────────────────────────────
+  // ── geofence detection ────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!location || !venues.length) return;
+    const inside = plottedRef.current.find(v => v.dist <= (v.radius || 650)) ?? null;
+
+    if (inside?._id !== prevInsideId.current) {
+      prevInsideId.current = inside?._id ?? null;
+
+      // Animate enter card in/out
+      Animated.spring(cardSlide, {
+        toValue: inside ? 0 : 200,
+        damping: 18, stiffness: 220,
+        useNativeDriver: true,
+      }).start();
+
+      // Animate active ring on venue marker
+      Object.keys(activeAnims.current).forEach(id => {
+        Animated.timing(activeAnims.current[id], {
+          toValue: id === inside?._id ? 1 : 0,
+          duration: 300,
+          useNativeDriver: true,
+        }).start();
+      });
+
+      setInsideVenue(inside ?? null);
+    }
+  }, [location, venues]);
+
+  // ── positions ─────────────────────────────────────────────────────────────────
   const refLat = location?.latitude  ?? KUWAIT_LAT;
   const refLng = location?.longitude ?? KUWAIT_LNG;
 
@@ -177,18 +197,16 @@ export default function RadarScreen() {
   });
   plottedRef.current = plotted;
 
-  const visitedCount = venues.filter(v => v.visited).length;
-  const nearest = plotted.filter(v => !v.visited && v.dist < 500).sort((a, b) => a.dist - b.dist)[0] ?? null;
-
-  // ── sweep interpolations (main arm + 3 wake lines) ─────────────────────────
+  // ── sweep interpolations ──────────────────────────────────────────────────────
   const rot0 = sweepAngle.interpolate({ inputRange: [0, 1], outputRange: ['0deg',   '360deg'] });
   const rot1 = sweepAngle.interpolate({ inputRange: [0, 1], outputRange: ['-14deg', '346deg'] });
   const rot2 = sweepAngle.interpolate({ inputRange: [0, 1], outputRange: ['-28deg', '332deg'] });
   const rot3 = sweepAngle.interpolate({ inputRange: [0, 1], outputRange: ['-44deg', '316deg'] });
-
   const pulseOpacity = pulseScale.interpolate({ inputRange: [1, 2.2], outputRange: [0.35, 0] });
 
-  // ── render ─────────────────────────────────────────────────────────────────
+  const enterCircle = (venue) => navigation.navigate('Circle', { circleId: venue._id });
+
+  // ── render ────────────────────────────────────────────────────────────────────
   return (
     <View style={[s.root, { backgroundColor: BG }]}>
 
@@ -199,8 +217,7 @@ export default function RadarScreen() {
           <View key={i} style={[s.ring, {
             width: r * 2, height: r * 2, borderRadius: r,
             left: CX - r, top: CY - r,
-            borderColor: BLUE,
-            opacity: 0.07 + i * 0.04,
+            borderColor: BLUE, opacity: 0.07 + i * 0.04,
           }]} />
         );
       })}
@@ -209,7 +226,7 @@ export default function RadarScreen() {
       <View style={[s.lineH, { top: CY - 0.5, left: CX - RADAR_R, width: RADAR_R * 2, backgroundColor: BLUE }]} />
       <View style={[s.lineV, { left: CX - 0.5, top: CY - RADAR_R, height: RADAR_R * 2, backgroundColor: BLUE }]} />
 
-      {/* Sweep wake (trailing glow) */}
+      {/* Sweep wake */}
       {[{ rot: rot3, op: 0.05 }, { rot: rot2, op: 0.12 }, { rot: rot1, op: 0.28 }].map(({ rot, op }, i) => (
         <Animated.View key={i} style={[s.sweepWrap, { transform: [{ rotate: rot }] }]}>
           <View style={[s.sweepLine, { opacity: op, backgroundColor: BLUE }]} />
@@ -223,32 +240,49 @@ export default function RadarScreen() {
 
       {/* Venue markers */}
       {plotted.map(v => {
-        const anim = pingAnims.current[v._id];
-        if (!anim) return null;
-        const dotSize = v.visited ? 46 : 9;
+        const pingAnim   = pingAnims.current[v._id];
+        const activeAnim = activeAnims.current[v._id];
+        if (!pingAnim) return null;
+        const isInside  = insideVenue?._id === v._id;
+        const dotSize   = v.visited ? 46 : 9;
+
         return (
-          <Animated.View
+          <TouchableOpacity
             key={v._id}
+            activeOpacity={0.8}
+            onPress={() => enterCircle(v)}
             style={[s.venueWrap, {
-              left: v.x - dotSize / 2,
-              top:  v.y - dotSize / 2,
-              width: dotSize,
-              height: dotSize,
-              opacity: anim,
+              left: v.x - dotSize / 2 - (isInside ? 8 : 0),
+              top:  v.y - dotSize / 2 - (isInside ? 8 : 0),
+              width:  dotSize + (isInside ? 16 : 0),
+              height: dotSize + (isInside ? 16 : 0),
+              justifyContent: 'center', alignItems: 'center',
             }]}
           >
-            {v.visited ? (
-              v.stampUrl
-                ? <Image source={{ uri: cdnUrl(v.stampUrl, 46) }} style={s.stamp} resizeMode="contain" />
-                : <View style={[s.blip, { width: 10, height: 10, borderRadius: 5, backgroundColor: DOT_COLOR }]} />
-            ) : (
-              <View style={[s.blip, { backgroundColor: BLUE, shadowColor: BLUE }]} />
+            {/* Glowing active ring when inside geofence */}
+            {activeAnim && (
+              <Animated.View style={[s.activeRing, {
+                width: dotSize + 20, height: dotSize + 20,
+                borderRadius: (dotSize + 20) / 2,
+                borderColor: BLUE,
+                opacity: activeAnim,
+              }]} />
             )}
-          </Animated.View>
+
+            <Animated.View style={{ opacity: pingAnim }}>
+              {v.visited ? (
+                v.stampUrl
+                  ? <Image source={{ uri: cdnUrl(v.stampUrl, 46) }} style={s.stamp} resizeMode="contain" />
+                  : <View style={[s.blip, { width: 10, height: 10, borderRadius: 5, backgroundColor: DOT_COLOR }]} />
+              ) : (
+                <View style={[s.blip, { backgroundColor: BLUE, shadowColor: BLUE }]} />
+              )}
+            </Animated.View>
+          </TouchableOpacity>
         );
       })}
 
-      {/* User dot — pulsing core */}
+      {/* User dot */}
       <Animated.View style={[s.pulseRing, {
         left: CX - 14, top: CY - 14,
         borderColor: DOT_COLOR,
@@ -257,15 +291,10 @@ export default function RadarScreen() {
       }]} />
       <View style={[s.userDot, { left: CX - 5, top: CY - 5, backgroundColor: DOT_COLOR, shadowColor: DOT_COLOR }]} />
 
-      {/* Top bar: KUWAI wordmark + avatar */}
-      <View style={[s.topBar, { paddingTop: insets.top + 6, flexDirection: 'row' }]}>
+      {/* Top bar */}
+      <View style={[s.topBar, { paddingTop: insets.top + 6 }]}>
         <Text style={[s.wordmark, { color: TEXT_COLOR }]}>KUWAI</Text>
-
-        <TouchableOpacity
-          style={s.avatarBtn}
-          onPress={() => navigation.navigate('Profile')}
-          activeOpacity={0.75}
-        >
+        <TouchableOpacity style={s.avatarBtn} onPress={() => navigation.navigate('Profile')} activeOpacity={0.75}>
           {user?.profilePic ? (
             <Image source={{ uri: cdnUrl(user.profilePic, 68) }} style={s.avatarImg} />
           ) : (
@@ -276,53 +305,75 @@ export default function RadarScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Collected stamps strip — sits below the top bar */}
+      {/* Collected stamps strip */}
       {venues.filter(v => v.visited && v.stampUrl).length > 0 && (
         <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          bounces={false}
+          horizontal showsHorizontalScrollIndicator={false} bounces={false}
           style={[s.stampStrip, { top: insets.top + 58 }]}
           contentContainerStyle={{ paddingHorizontal: 14, paddingVertical: 8, gap: 10 }}
         >
           {venues.filter(v => v.visited && v.stampUrl).map(v => (
-            <View key={v._id} style={[s.stampThumb, {
-              borderColor: isDark ? 'rgba(20,72,255,0.3)' : 'rgba(0,51,160,0.2)',
-              backgroundColor: isDark ? 'rgba(20,72,255,0.08)' : 'rgba(0,51,160,0.05)',
-            }]}>
-              <Image source={{ uri: cdnUrl(v.stampUrl, 46) }} style={{ width: 36, height: 36 }} resizeMode="contain" />
-            </View>
+            <TouchableOpacity key={v._id} onPress={() => enterCircle(v)} activeOpacity={0.8}>
+              <View style={[s.stampThumb, {
+                borderColor: isDark ? 'rgba(20,72,255,0.3)' : 'rgba(0,51,160,0.2)',
+                backgroundColor: isDark ? 'rgba(20,72,255,0.08)' : 'rgba(0,51,160,0.05)',
+              }]}>
+                <Image source={{ uri: cdnUrl(v.stampUrl, 46) }} style={{ width: 36, height: 36 }} resizeMode="contain" />
+              </View>
+            </TouchableOpacity>
           ))}
         </ScrollView>
       )}
 
-      {/* Nearby hint */}
-      {!!nearest && (
-        <View style={[s.nearbyBadge, {
-          bottom: insets.bottom + 36,
-          backgroundColor: isDark ? 'rgba(20,72,255,0.1)' : 'rgba(0,51,160,0.06)',
-          borderColor: isDark ? 'rgba(20,72,255,0.35)' : 'rgba(0,51,160,0.2)',
-        }]}>
-          <View style={[s.nearbyDot, { backgroundColor: BLUE }]} />
-          <Text style={[s.nearbyText, { color: BLUE }]}>
-            {nearest.venueName || nearest.title} · {Math.round(nearest.dist)}m
-          </Text>
-        </View>
-      )}
+      {/* Enter card — slides up when inside a geofence */}
+      <Animated.View style={[s.enterCard, {
+        bottom: insets.bottom + 24,
+        backgroundColor: isDark ? 'rgba(10,10,20,0.95)' : 'rgba(255,255,255,0.97)',
+        borderColor: BLUE,
+        transform: [{ translateY: cardSlide }],
+      }]}>
+        {insideVenue && (
+          <>
+            <View style={s.enterCardLeft}>
+              {insideVenue.stampUrl ? (
+                <Image source={{ uri: cdnUrl(insideVenue.stampUrl, 56) }} style={s.enterStamp} resizeMode="contain" />
+              ) : (
+                <View style={[s.enterStampFallback, { backgroundColor: BLUE }]}>
+                  <Text style={s.enterStampInitial}>{insideVenue.title?.[0] || '?'}</Text>
+                </View>
+              )}
+              <View>
+                <Text style={[s.enterVenueName, { color: TEXT_COLOR }]} numberOfLines={1}>
+                  {insideVenue.title || insideVenue.venueName}
+                </Text>
+                <Text style={[s.enterSub, { color: isDark ? 'rgba(255,255,255,0.45)' : C.textMuted }]}>
+                  {insideVenue.visited ? "You've been here" : "You're here — tap to unlock"}
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={[s.enterBtn, { backgroundColor: BLUE }]}
+              onPress={() => enterCircle(insideVenue)}
+              activeOpacity={0.85}
+            >
+              <Text style={s.enterBtnText}>Enter</Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </Animated.View>
 
       {loading && <ActivityIndicator color={BLUE} style={s.loader} />}
     </View>
   );
 }
 
-// ─── styles ───────────────────────────────────────────────────────────────────
-
 const s = StyleSheet.create({
   root: { flex: 1 },
 
-  ring: { position: 'absolute', borderWidth: StyleSheet.hairlineWidth },
+  ring:  { position: 'absolute', borderWidth: StyleSheet.hairlineWidth },
   lineH: { position: 'absolute', height: StyleSheet.hairlineWidth, opacity: 0.18 },
-  lineV: { position: 'absolute', width: StyleSheet.hairlineWidth, opacity: 0.18 },
+  lineV: { position: 'absolute', width:  StyleSheet.hairlineWidth, opacity: 0.18 },
 
   sweepWrap: {
     position: 'absolute',
@@ -342,11 +393,14 @@ const s = StyleSheet.create({
     shadowOpacity: 1, shadowRadius: 8,
     shadowOffset: { width: 0, height: 0 },
   },
+  activeRing: {
+    position: 'absolute',
+    borderWidth: 1.5,
+  },
 
   pulseRing: {
     position: 'absolute',
-    width: 28, height: 28, borderRadius: 14,
-    borderWidth: 1.5,
+    width: 28, height: 28, borderRadius: 14, borderWidth: 1.5,
   },
   userDot: {
     position: 'absolute',
@@ -358,15 +412,16 @@ const s = StyleSheet.create({
   topBar: {
     position: 'absolute',
     top: 0, left: 0, right: 0,
+    flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingBottom: 8,
     zIndex: 10,
   },
+  wordmark: { flex: 1, fontSize: 24, fontWeight: '900' },
   avatarBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   avatarImg: { width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center' },
   avatarInitial: { fontSize: 14, fontWeight: '700', color: '#fff' },
-  wordmark: { flex: 1, fontSize: 24, fontWeight: '900' },
 
   stampStrip: { position: 'absolute', left: 0, right: 0, zIndex: 9 },
   stampThumb: {
@@ -376,19 +431,34 @@ const s = StyleSheet.create({
     overflow: 'hidden',
   },
 
-  nearbyBadge: {
+  // Enter card
+  enterCard: {
     position: 'absolute',
-    alignSelf: 'center',
+    left: 20, right: 20,
+    borderRadius: 20,
+    borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 20,
     paddingHorizontal: 16,
-    paddingVertical: 9,
+    paddingVertical: 14,
+    gap: 12,
+    zIndex: 20,
   },
-  nearbyDot: { width: 6, height: 6, borderRadius: 3 },
-  nearbyText: { fontSize: 12, fontWeight: '600', letterSpacing: 0.5 },
+  enterCardLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  enterStamp: { width: 48, height: 48 },
+  enterStampFallback: {
+    width: 48, height: 48, borderRadius: 24,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  enterStampInitial: { fontSize: 20, fontWeight: '800', color: '#fff' },
+  enterVenueName: { fontSize: 15, fontWeight: '700', maxWidth: W * 0.42 },
+  enterSub: { fontSize: 12, marginTop: 2 },
+  enterBtn: {
+    borderRadius: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+  },
+  enterBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
 
   loader: { position: 'absolute', bottom: 80, alignSelf: 'center' },
 });

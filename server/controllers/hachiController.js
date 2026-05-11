@@ -645,7 +645,7 @@ exports.getVault = async (req, res) => {
       'venueCoords.lat': { $exists: true, $ne: null },
       'venueCoords.lng': { $exists: true, $ne: null },
     })
-      .select('_id venueName venueType category venueCoords mapSnapshot stampUrl')
+      .select('_id venueName venueType category venueCoords venueRadius mapSnapshot stampUrl')
       .sort({ createdAt: 1 })
       .limit(500)
       .lean();
@@ -655,6 +655,7 @@ exports.getVault = async (req, res) => {
       category: c.category || 'general',
       lat: c.venueCoords?.lat ?? null,
       lng: c.venueCoords?.lng ?? null,
+      radius: c.venueRadius ?? 650,
       mapSnapshot: c.mapSnapshot || null,
       stampUrl: c.stampUrl || null,
       visited: visitedSet.has(String(c._id)),
