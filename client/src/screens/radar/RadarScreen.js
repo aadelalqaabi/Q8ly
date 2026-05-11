@@ -86,7 +86,7 @@ export default function RadarScreen() {
       .then(data => {
         const v = (Array.isArray(data) ? data : data?.items || []).filter(x => x.lat && x.lng);
         v.forEach(venue => {
-          pingAnims.current[venue._id]   = new Animated.Value(venue.visited ? 0.25 : 0);
+          pingAnims.current[venue._id]   = new Animated.Value(0);
           activeAnims.current[venue._id] = new Animated.Value(0);
           lastTriggered.current[venue._id] = -999;
         });
@@ -133,28 +133,6 @@ export default function RadarScreen() {
     ).start();
   }, []);
 
-  // ── ping detector ─────────────────────────────────────────────────────────────
-  useEffect(() => {
-    const id = setInterval(() => {
-      const sweep = sweepDeg.current;
-      plottedRef.current.forEach(v => {
-        if (v.brg == null) return;
-        const diff      = ((sweep - v.brg) + 360) % 360;
-        const sinceLast = ((sweep - (lastTriggered.current[v._id] ?? -999)) + 360) % 360;
-        if (diff < 5 && sinceLast > 60) {
-          lastTriggered.current[v._id] = sweep;
-          const anim = pingAnims.current[v._id];
-          if (!anim) return;
-          anim.stopAnimation();
-          Animated.sequence([
-            Animated.timing(anim, { toValue: 1,               duration: 160,  useNativeDriver: true }),
-            Animated.timing(anim, { toValue: v.visited ? 0.25 : 0.06, duration: 1600, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-          ]).start();
-        }
-      });
-    }, 40);
-    return () => clearInterval(id);
-  }, []);
 
   // ── geofence detection ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -171,13 +149,11 @@ export default function RadarScreen() {
         useNativeDriver: true,
       }).start();
 
-      // Animate active ring on venue marker
+      // Animate dot + ring on venue marker
       Object.keys(activeAnims.current).forEach(id => {
-        Animated.timing(activeAnims.current[id], {
-          toValue: id === inside?._id ? 1 : 0,
-          duration: 300,
-          useNativeDriver: true,
-        }).start();
+        const isThis = id === inside?._id;
+        Animated.timing(activeAnims.current[id], { toValue: isThis ? 1 : 0, duration: 300, useNativeDriver: true }).start();
+        Animated.timing(pingAnims.current[id],   { toValue: isThis ? 1 : 0, duration: 300, useNativeDriver: true }).start();
       });
 
       setInsideVenue(inside ?? null);
