@@ -13,7 +13,52 @@ import AdCard from '../../components/ui/AdCard';
 import { SHADOWS } from '../../constants';
 import { useTheme } from '../../context/ThemeContext';
 import { useGuestGate } from '../../context/GuestGateContext';
-import { adsAPI } from '../../services/api';
+import { adsAPI, hachiAPI } from '../../services/api';
+
+// ── Avatar helpers ─────────────────────────────────────────────────────────────
+const PALETTE = ['#0033A0', '#007A3D', '#FF6B35', '#2196F3', '#9C27B0', '#00BCD4', '#FF9800'];
+function avatarBg(name) {
+  if (!name) return PALETTE[0];
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+  return PALETTE[Math.abs(h) % PALETTE.length];
+}
+function cdnUrl(url, px) {
+  if (!url) return null;
+  return url.replace('/upload/', `/upload/w_${px},h_${px},c_fit,f_webp,q_auto:good/`);
+}
+
+// ── Vault stamp strip ──────────────────────────────────────────────────────────
+function VaultStrip({ stamps, onPress }) {
+  const { colors: C } = useTheme();
+  if (!stamps.length) return null;
+  return (
+    <TouchableOpacity activeOpacity={0.85} onPress={onPress}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        bounces={false}
+        contentContainerStyle={{ paddingHorizontal: 14, paddingVertical: 10, gap: 10 }}
+        style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.separator }}
+      >
+        {stamps.map(v => (
+          <View key={v._id} style={{
+            width: 46, height: 46, borderRadius: 23,
+            borderWidth: 1.5, borderColor: C.separator,
+            overflow: 'hidden', backgroundColor: C.fill,
+            justifyContent: 'center', alignItems: 'center',
+          }}>
+            <Image
+              source={{ uri: cdnUrl(v.stampUrl, 46) }}
+              style={{ width: 40, height: 40 }}
+              resizeMode="contain"
+            />
+          </View>
+        ))}
+      </ScrollView>
+    </TouchableOpacity>
+  );
+}
 
 // ── Deterministic-random helper ────────────────────────────────────────────────
 // Given a seed, returns a pseudo-random sequence so injection positions
@@ -103,11 +148,14 @@ export default function HomeScreen({ navigation }) {
     { key: 'business',    label: t('home.filterBusiness')   },
   ], [t]);
 
+  const user = useSelector(s => s.auth.user);
+
   // Seed changes on every refresh → injection positions shift → slot machine
   const [seed, setSeed] = useState(() => Date.now());
   const [newPostCount, setNewPostCount] = useState(0);
   const [selectedBadge, setSelectedBadge] = useState(null);
   const [feedAds, setFeedAds] = useState([]);
+  const [collectedStamps, setCollectedStamps] = useState([]);
   const flatRef = useRef(null);
   const filterScrollRef = useRef(null);
   const SW = Dimensions.get('window').width;
@@ -181,6 +229,9 @@ export default function HomeScreen({ navigation }) {
   useEffect(() => {
     loadFeed(1);
     adsAPI.getFeedAds().then((res) => setFeedAds(res.ads || [])).catch(() => {});
+    hachiAPI.getVault()
+      .then(data => setCollectedStamps((data || []).filter(v => v.visited && v.stampUrl)))
+      .catch(() => {});
   }, []);
 
   // Tap the active Home tab → scroll to top + refresh
@@ -286,7 +337,26 @@ export default function HomeScreen({ navigation }) {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
+        {/* Profile avatar — left (or right in RTL) */}
+        <TouchableOpacity
+          style={styles.avatarBtn}
+          onPress={() => navigation.navigate('Profile')}
+          activeOpacity={0.75}
+          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+        >
+          {user?.profilePic ? (
+            <Image source={{ uri: cdnUrl(user.profilePic, 68) }} style={styles.avatarImg} />
+          ) : (
+            <View style={[styles.avatarImg, { backgroundColor: avatarBg(user?.name) }]}>
+              <Text style={styles.avatarInitial}>{user?.name?.[0]?.toUpperCase() || '?'}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
+        {/* Wordmark — center */}
         <Text style={styles.wordmark}>KUWAI</Text>
+
+        {/* Notifications bell — right (or left in RTL) */}
         <View style={styles.headerRight}>
           <TouchableOpacity
             onPress={() => navigation.navigate('Notifications')}
@@ -302,6 +372,12 @@ export default function HomeScreen({ navigation }) {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Collected stamps strip */}
+      <VaultStrip
+        stamps={collectedStamps}
+        onPress={() => navigation.navigate('Profile')}
+      />
 
       {/* Badge filter tabs */}
       <View style={styles.filterTabsWrap}>
@@ -389,14 +465,23 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
   header: {
     flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: C.separator,
     backgroundColor: C.background,
     zIndex: 10,
   },
-  wordmark: { flex: 1, fontSize: 28, fontWeight: '800', color: C.text, textAlign: isRTL ? 'right' : 'left' },
+  avatarBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
+  avatarImg: {
+    width: 34, height: 34, borderRadius: 17,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  avatarInitial: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  wordmark: {
+    flex: 1, fontSize: 26, fontWeight: '800',
+    color: C.text, textAlign: 'center',
+  },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   headerBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   badge: {
