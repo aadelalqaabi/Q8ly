@@ -257,8 +257,10 @@ export default function RadarScreen() {
       }]} />
       <View style={[s.userDot, { left: CX - 5, top: CY - 5, backgroundColor: DOT_COLOR, shadowColor: DOT_COLOR }]} />
 
-      {/* Top bar: avatar + KUWAI wordmark */}
+      {/* Top bar: KUWAI wordmark + avatar */}
       <View style={[s.topBar, { paddingTop: insets.top + 6, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+        <Text style={[s.wordmark, { color: TEXT_COLOR }]}>KUWAI</Text>
+
         <TouchableOpacity
           style={s.avatarBtn}
           onPress={() => navigation.navigate('Profile')}
@@ -272,14 +274,6 @@ export default function RadarScreen() {
             </View>
           )}
         </TouchableOpacity>
-
-        <Text style={[s.wordmark, { color: TEXT_COLOR }]}>KUWAI</Text>
-
-        <View style={s.topBarRight}>
-          {venues.length > 0 && (
-            <Text style={[s.sub, { color: SUB_COLOR }]}>{visitedCount}/{venues.length}</Text>
-          )}
-        </View>
       </View>
 
       {/* Collected stamps strip — sits below the top bar */}
@@ -372,9 +366,7 @@ const s = StyleSheet.create({
   avatarBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   avatarImg: { width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center' },
   avatarInitial: { fontSize: 14, fontWeight: '700', color: '#fff' },
-  wordmark: { flex: 1, textAlign: 'center', fontSize: 22, fontWeight: '800', letterSpacing: 3 },
-  topBarRight: { width: 44, alignItems: 'center' },
-  sub: { fontSize: 11, fontWeight: '600', letterSpacing: 1 },
+  wordmark: { flex: 1, fontSize: 22, fontWeight: '800', letterSpacing: 3 },
 
   stampStrip: { position: 'absolute', left: 0, right: 0, zIndex: 9 },
   stampThumb: {
