@@ -1,7 +1,7 @@
 const Hachi = require('../models/Hachi');
 const User = require('../models/User');
 const { invalidateUserCache } = require('../middleware/auth');
-const { computeConfidence, bypassesGeofence } = require('../utils/locationUtils');
+const { computeConfidence } = require('../utils/locationUtils');
 
 // ── Velocity score ─────────────────────────────────────────────────────────────
 // Computes a real-time "hotness" score for ranking the Most Active list.

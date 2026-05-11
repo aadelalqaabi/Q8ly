@@ -252,7 +252,7 @@ const initSocket = (server) => {
       if (!socket.user || !imageUrl) return;
       try {
         const Hachi = require('../models/Hachi');
-        const { computeConfidence, bypassesGeofence } = require('../utils/locationUtils');
+        const { computeConfidence } = require('../utils/locationUtils');
         const mongoose = require('mongoose');
         const now = new Date();
         const msgId = new mongoose.Types.ObjectId();
@@ -266,12 +266,9 @@ const initSocket = (server) => {
 
         // Presence update (same logic as text send) — must merge into one $push op
         const pushOps = { messages: { $each: [msgData], $slice: -500 } };
-        const isFounder = bypassesGeofence(socket.user);
         const isVenue = roomCheck.isVenueCircle && roomCheck.venueCoords?.lat;
-        if (isVenue && (isFounder || (lat != null && lng != null))) {
-          const confidence = isFounder
-            ? 1
-            : computeConfidence(parseFloat(lat), parseFloat(lng), parseFloat(speed) || 0, roomCheck.venueCoords, roomCheck.venueRadius || 250);
+        if (isVenue && lat != null && lng != null) {
+          const confidence = computeConfidence(parseFloat(lat), parseFloat(lng), parseFloat(speed) || 0, roomCheck.venueCoords, roomCheck.venueRadius || 250);
           if (confidence >= 0.3) {
             const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
             await Hachi.findByIdAndUpdate(roomId, { $pull: { hereNow: { userId: socket.user._id } } });
