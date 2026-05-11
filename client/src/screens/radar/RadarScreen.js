@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  Animated, Easing, Alert, Dimensions, Image,
+  Alert, Dimensions, Image, PixelRatio,
 } from 'react-native';
-import Svg, { Circle, Line, Path } from 'react-native-svg';
+import MapView, { UrlTile, Polygon, Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -15,28 +15,37 @@ import { useTheme } from '../../context/ThemeContext';
 let Location = null;
 try { Location = require('expo-location'); } catch {}
 
-const { width: SW } = Dimensions.get('window');
-const RADAR_SIZE = Math.min(SW * 0.86, 360);
-const RADAR_R    = RADAR_SIZE / 2;
-const MAX_DIST   = 5000;
-const SWEEP_MS   = 3000;
-const DOT        = 9;
+const { width: SW, height: SH } = Dimensions.get('window');
 
-const PALETTE = ['#0033A0', '#007A3D', '#FF6B35', '#2196F3', '#9C27B0', '#00BCD4'];
-function avatarBg(name) {
-  if (!name) return PALETTE[0];
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
-  return PALETTE[Math.abs(h) % PALETTE.length];
-}
+// Kuwait — center + tight bounds
+const KUWAIT_REGION = {
+  latitude:      29.3,
+  longitude:     47.65,
+  latitudeDelta: 1.85,
+  longitudeDelta: 1.85,
+};
 
-function bearingTo(lat1, lng1, lat2, lng2) {
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const φ1 = lat1 * Math.PI / 180;
-  const φ2 = lat2 * Math.PI / 180;
-  const y = Math.sin(dLng) * Math.cos(φ2);
-  const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(dLng);
-  return ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
+// Big bounding box for the fog polygon (well outside Kuwait)
+const FOG_BOX = [
+  { latitude: 24, longitude: 43 },
+  { latitude: 24, longitude: 52 },
+  { latitude: 33, longitude: 52 },
+  { latitude: 33, longitude: 43 },
+];
+
+const REVEAL_RADIUS_M = 650; // metres revealed around each visited venue
+
+// Generate a circle polygon (array of LatLng) around a point
+function circlePolygon(lat, lng, radiusM, steps = 36) {
+  const R = 6371000;
+  const pts = [];
+  for (let i = 0; i < steps; i++) {
+    const angle = (i / steps) * 2 * Math.PI;
+    const dLat = (radiusM * Math.cos(angle)) / R * (180 / Math.PI);
+    const dLng = (radiusM * Math.sin(angle)) / (R * Math.cos(lat * Math.PI / 180)) * (180 / Math.PI);
+    pts.push({ latitude: lat + dLat, longitude: lng + dLng });
+  }
+  return pts;
 }
 
 function haversineMeters(lat1, lng1, lat2, lng2) {
@@ -47,91 +56,52 @@ function haversineMeters(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function formatDist(meters, ar) {
-  if (meters == null) return '';
-  if (meters < 1000) return ar ? `${Math.round(meters)} م` : `${Math.round(meters)} m`;
-  return ar ? `${(meters / 1000).toFixed(1)} كم` : `${(meters / 1000).toFixed(1)} km`;
+function formatDist(m, ar) {
+  if (m == null) return '';
+  if (m < 1000) return ar ? `${Math.round(m)} م` : `${Math.round(m)} m`;
+  return ar ? `${(m / 1000).toFixed(1)} كم` : `${(m / 1000).toFixed(1)} km`;
 }
 
-// ── Venue dot ─────────────────────────────────────────────────────────────────
-function VenueDot({ pulse, userLoc, sweepAngle, onPress }) {
-  if (!userLoc || pulse.lat == null || pulse.lng == null) return null;
-
-  const dist = haversineMeters(userLoc.lat, userLoc.lng, pulse.lat, pulse.lng);
-  if (dist > MAX_DIST) return null;
-
-  const bearing = bearingTo(userLoc.lat, userLoc.lng, pulse.lat, pulse.lng);
-  const r       = (dist / MAX_DIST) * (RADAR_R - 28);
-  const angle   = bearing * Math.PI / 180;
-  const cx      = RADAR_R + r * Math.sin(angle);
-  const cy      = RADAR_R - r * Math.cos(angle);
-
-  const diff = ((sweepAngle - bearing + 540) % 360) - 180;
-  const lit  = Math.abs(diff) < 25;
-
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.7}
-      hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
-      style={{ position: 'absolute', left: cx - DOT / 2 - 36, top: cy - DOT / 2, alignItems: 'center', width: DOT + 72 }}
-    >
-      <View style={[
-        dotStyles.dot,
-        lit ? dotStyles.dotLit : (pulse.activeHere > 0 ? dotStyles.dotActive : dotStyles.dotDim),
-      ]} />
-      <Text style={[dotStyles.label, { color: lit ? '#fff' : 'rgba(255,255,255,0.35)' }]} numberOfLines={1}>
-        {pulse.title || pulse.venueName || ''}
-      </Text>
-    </TouchableOpacity>
-  );
+function cdnUrl(url, px) {
+  if (!url || !url.includes('res.cloudinary.com')) return url;
+  const w = PixelRatio.getPixelSizeForLayoutSize(px);
+  return url.replace('/upload/', `/upload/w_${w},h_${w},c_fit,f_webp,q_auto:good/`);
 }
 
-const dotStyles = StyleSheet.create({
-  dot: { width: DOT, height: DOT, borderRadius: DOT / 2 },
-  dotDim: { backgroundColor: 'rgba(255,255,255,0.15)' },
-  dotLit: {
-    backgroundColor: '#fff',
-    shadowColor: '#fff', shadowOpacity: 0.9, shadowRadius: 8,
-    shadowOffset: { width: 0, height: 0 }, elevation: 6,
-  },
-  dotActive: { backgroundColor: '#4D80FF' },
-  label: { fontSize: 8, fontWeight: '500', marginTop: 5, textAlign: 'center' },
-});
+const PALETTE = ['#0033A0', '#007A3D', '#FF6B35', '#2196F3', '#9C27B0', '#00BCD4'];
+function avatarBg(name) {
+  if (!name) return PALETTE[0];
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+  return PALETTE[Math.abs(h) % PALETTE.length];
+}
 
-// ── Screen ────────────────────────────────────────────────────────────────────
 export default function RadarScreen() {
-  const insets = useSafeAreaInsets();
+  const insets       = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
-  const isRTL = i18n.language === 'ar';
-  const navigation = useNavigation();
+  const isRTL        = i18n.language === 'ar';
+  const navigation   = useNavigation();
   const { colors: COLORS } = useTheme();
   const { user: currentUser } = useSelector((s) => s.auth);
 
-  const [pulses, setPulses]       = useState([]);
-  const [userLoc, setUserLoc]     = useState(null);
-  const [loading, setLoading]     = useState(true);
-  const [nearby, setNearby]       = useState(null);
-  const [sweepAngle, setSweepAngle] = useState(0);
+  const [venues, setVenues]   = useState([]);   // from vault — has visited + stampUrl + lat/lng
+  const [userLoc, setUserLoc] = useState(null);
+  const [nearby, setNearby]   = useState(null);
 
   const watchRef      = useRef(null);
-  const radarPollRef  = useRef(null);
   const nearbyPollRef = useRef(null);
-  const sweepAnim     = useRef(new Animated.Value(0)).current;
 
-  // ── Sweep animation ──────────────────────────────────────────────────────
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.timing(sweepAnim, { toValue: 1, duration: SWEEP_MS, easing: Easing.linear, useNativeDriver: true })
-    );
-    const id = sweepAnim.addListener(({ value }) => setSweepAngle(value * 360));
-    loop.start();
-    return () => { loop.stop(); sweepAnim.removeListener(id); };
-  }, [sweepAnim]);
+  // ── Load venues from vault ────────────────────────────────────────────────
+  const loadVenues = useCallback(async () => {
+    try {
+      const res = await hachiAPI.getVault();
+      setVenues((res.items || []).filter(v => v.lat != null && v.lng != null));
+    } catch {}
+  }, []);
 
-  const sweepRotate = sweepAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  useEffect(() => { loadVenues(); }, [loadVenues]);
 
-  // ── Location ─────────────────────────────────────────────────────────────
+  // ── Location ──────────────────────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -141,8 +111,7 @@ export default function RadarScreen() {
         if (status !== 'granted') return;
         const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
         if (cancelled) return;
-        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude, speed: pos.coords.speed };
-        setUserLoc(loc);
+        setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude, speed: pos.coords.speed });
         watchRef.current = await Location.watchPositionAsync(
           { accuracy: Location.Accuracy.Balanced, distanceInterval: 30, timeInterval: 8000 },
           (p) => { if (!cancelled) setUserLoc({ lat: p.coords.latitude, lng: p.coords.longitude, speed: p.coords.speed }); }
@@ -152,36 +121,7 @@ export default function RadarScreen() {
     return () => { cancelled = true; if (watchRef.current) watchRef.current.remove(); };
   }, []);
 
-  // ── Geofence auto-enter ──────────────────────────────────────────────────
-  const checkGeofence = useCallback(async (loc) => {
-    if (!loc) return;
-    for (const p of pulses) {
-      if (haversineMeters(loc.lat, loc.lng, p.lat, p.lng) < 200) {
-        try {
-          const r = await hachiAPI.checkLocation(p._id, loc.lat, loc.lng, loc.speed || 0);
-          if (r.status === 'here') { navigation.navigate('Circle', { circleId: p._id }); return; }
-        } catch {}
-      }
-    }
-  }, [pulses, navigation]);
-
-  // ── Pulses ───────────────────────────────────────────────────────────────
-  const fetchPulses = useCallback(async () => {
-    try { const res = await hachiAPI.getRadar(); setPulses(res.pulses || []); }
-    catch {} finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => {
-    fetchPulses();
-    radarPollRef.current = setInterval(fetchPulses, 30000);
-    return () => clearInterval(radarPollRef.current);
-  }, [fetchPulses]);
-
-  useEffect(() => {
-    if (userLoc && pulses.length > 0) checkGeofence(userLoc);
-  }, [userLoc, pulses, checkGeofence]);
-
-  // ── Nearby ───────────────────────────────────────────────────────────────
+  // ── Nearby card ───────────────────────────────────────────────────────────
   const fetchNearby = useCallback(async (loc) => {
     if (!loc) return;
     try { const res = await hachiAPI.getNearby(loc.lat, loc.lng, 5000); setNearby(res.circle || null); }
@@ -195,6 +135,36 @@ export default function RadarScreen() {
     return () => clearInterval(nearbyPollRef.current);
   }, [userLoc, fetchNearby]);
 
+  // ── Auto-enter geofence ───────────────────────────────────────────────────
+  useEffect(() => {
+    if (!userLoc || venues.length === 0) return;
+    (async () => {
+      for (const v of venues) {
+        if (haversineMeters(userLoc.lat, userLoc.lng, v.lat, v.lng) < 250) {
+          try {
+            const r = await hachiAPI.checkLocation(v._id, userLoc.lat, userLoc.lng, userLoc.speed || 0);
+            if (r.status === 'here') { navigation.navigate('Circle', { circleId: v._id }); return; }
+          } catch {}
+        }
+      }
+    })();
+  }, [userLoc, venues, navigation]);
+
+  const handleVenueTap = async (venue) => {
+    if (!venue.visited) {
+      Alert.alert(
+        venue.title,
+        isRTL ? 'توجه إلى هذا المكان لتفتحه' : 'Visit this place to unlock it',
+      );
+      return;
+    }
+    try {
+      const r = await hachiAPI.checkLocation(venue._id, userLoc?.lat ?? 0, userLoc?.lng ?? 0, userLoc?.speed ?? 0);
+      if (r.status === 'here') { navigation.navigate('Circle', { circleId: venue._id }); return; }
+    } catch {}
+    navigation.navigate('Circle', { circleId: venue._id });
+  };
+
   const handleNearbyTap = async () => {
     if (!nearby) return;
     if (nearby.status === 'here') { navigation.navigate('Circle', { circleId: nearby._id }); return; }
@@ -205,19 +175,10 @@ export default function RadarScreen() {
     Alert.alert(t('radar.travelThere'), t('radar.travelThereMsg'));
   };
 
-  const handleDotPress = async (pulse) => {
-    try {
-      const r = await hachiAPI.checkLocation(pulse._id, userLoc?.lat ?? 0, userLoc?.lng ?? 0, userLoc?.speed ?? 0);
-      if (r.status === 'here') { navigation.navigate('Circle', { circleId: pulse._id }); return; }
-    } catch {}
-    Alert.alert(t('radar.travelThere'), t('radar.travelThereMsg'));
-  };
-
-  const nearbyStatusLabel = () => {
-    if (!nearby) return '';
-    if (nearby.status === 'here') return t('hachi.youreHere');
-    return t('hachi.nearby');
-  };
+  // Holes in the fog = one circle polygon per visited venue
+  const fogHoles = venues
+    .filter(v => v.visited && v.lat != null && v.lng != null)
+    .map(v => circlePolygon(v.lat, v.lng, REVEAL_RADIUS_M));
 
   const nearbyStatusColor = () => {
     if (!nearby) return COLORS.accent;
@@ -226,11 +187,92 @@ export default function RadarScreen() {
     return COLORS.accent;
   };
 
-  // ── Render ───────────────────────────────────────────────────────────────
+  const nearbyStatusLabel = () => {
+    if (!nearby) return '';
+    if (nearby.status === 'here') return t('hachi.youreHere');
+    return t('hachi.nearby');
+  };
+
   return (
     <View style={styles.container}>
 
-      {/* Header */}
+      {/* ── Full-screen Map ── */}
+      <MapView
+        style={StyleSheet.absoluteFill}
+        provider={PROVIDER_DEFAULT}
+        initialRegion={KUWAIT_REGION}
+        region={KUWAIT_REGION}
+        scrollEnabled={false}
+        zoomEnabled={false}
+        rotateEnabled={false}
+        pitchEnabled={false}
+        showsCompass={false}
+        showsScale={false}
+        showsTraffic={false}
+        showsBuildings={false}
+        showsPointsOfInterest={false}
+        showsIndoors={false}
+        mapType="mutedStandard"
+      >
+        {/* CartoDB Dark Matter tiles */}
+        <UrlTile
+          urlTemplate="https://a.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png"
+          maximumZ={14}
+          flipY={false}
+          tileSize={256}
+        />
+
+        {/* Fog of war — dark overlay with holes at visited venues */}
+        {fogHoles.length >= 0 && (
+          <Polygon
+            coordinates={FOG_BOX}
+            holes={fogHoles}
+            fillColor="rgba(6,8,14,0.88)"
+            strokeWidth={0}
+          />
+        )}
+
+        {/* Venue markers */}
+        {venues.map((v) => (
+          v.visited ? (
+            // Visited — stamp image marker
+            <Marker
+              key={v._id}
+              coordinate={{ latitude: v.lat, longitude: v.lng }}
+              anchor={{ x: 0.5, y: 0.5 }}
+              tracksViewChanges={false}
+              onPress={() => handleVenueTap(v)}
+            >
+              <View style={styles.stampMarker}>
+                {v.stampUrl ? (
+                  <Image
+                    source={{ uri: cdnUrl(v.stampUrl, 44) }}
+                    style={styles.stampImg}
+                    resizeMode="contain"
+                  />
+                ) : (
+                  <View style={[styles.stampFallback, { backgroundColor: COLORS.accent }]}>
+                    <Text style={styles.stampFallbackText}>{v.title?.[0] || '?'}</Text>
+                  </View>
+                )}
+              </View>
+            </Marker>
+          ) : (
+            // Unvisited — faint dot
+            <Marker
+              key={v._id}
+              coordinate={{ latitude: v.lat, longitude: v.lng }}
+              anchor={{ x: 0.5, y: 0.5 }}
+              tracksViewChanges={false}
+              onPress={() => handleVenueTap(v)}
+            >
+              <View style={styles.dimDot} />
+            </Marker>
+          )
+        ))}
+      </MapView>
+
+      {/* ── Header ── */}
       <View style={[styles.header, { paddingTop: insets.top + 12, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
         <Text style={styles.wordmark}>KUWAI</Text>
         <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={styles.profileBtn} activeOpacity={0.7}>
@@ -243,67 +285,7 @@ export default function RadarScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Radar canvas */}
-      <View style={styles.radarWrap}>
-        <View style={{ width: RADAR_SIZE, height: RADAR_SIZE }}>
-
-          {/* Static rings */}
-          <Svg width={RADAR_SIZE} height={RADAR_SIZE} style={StyleSheet.absoluteFill} pointerEvents="none">
-            <Line x1={0} y1={RADAR_R} x2={RADAR_SIZE} y2={RADAR_R} stroke="#fff" strokeWidth={0.4} opacity={0.04} />
-            <Line x1={RADAR_R} y1={0} x2={RADAR_R} y2={RADAR_SIZE} stroke="#fff" strokeWidth={0.4} opacity={0.04} />
-            {[0.25, 0.5, 0.75, 1].map((f, i) => (
-              <Circle key={i} cx={RADAR_R} cy={RADAR_R} r={RADAR_R * f - 1}
-                fill="none" stroke="#fff" strokeWidth={i === 3 ? 1 : 0.5}
-                opacity={i === 3 ? 0.15 : 0.06}
-              />
-            ))}
-          </Svg>
-
-          {/* Animated sweep */}
-          <Animated.View style={[StyleSheet.absoluteFill, { transform: [{ rotate: sweepRotate }] }]} pointerEvents="none">
-            <Svg width={RADAR_SIZE} height={RADAR_SIZE}>
-              {/* Filled sector trail — overlapping paths from -70° to 0° (north) */}
-              {[[-70, 0.012], [-50, 0.025], [-35, 0.045], [-20, 0.07], [-10, 0.11]].map(([deg, opacity], i) => {
-                const r = RADAR_R - 4;
-                const rad = deg * Math.PI / 180;
-                const x1 = RADAR_R + r * Math.sin(rad);
-                const y1 = RADAR_R - r * Math.cos(rad);
-                return (
-                  <Path
-                    key={i}
-                    d={`M ${RADAR_R} ${RADAR_R} L ${x1} ${y1} A ${r} ${r} 0 0 1 ${RADAR_R} ${RADAR_R - r} Z`}
-                    fill={`rgba(77,128,255,${opacity})`}
-                  />
-                );
-              })}
-              {/* Main sweep line */}
-              <Line x1={RADAR_R} y1={RADAR_R} x2={RADAR_R} y2={2} stroke="#4D80FF" strokeWidth={2} opacity={1} />
-            </Svg>
-          </Animated.View>
-
-          {/* Venue dots */}
-          {pulses.map((pulse) => (
-            <VenueDot
-              key={pulse._id}
-              pulse={pulse}
-              userLoc={userLoc}
-              sweepAngle={sweepAngle}
-              onPress={() => handleDotPress(pulse)}
-            />
-          ))}
-
-          {/* Center */}
-          <View style={styles.centerRing} pointerEvents="none" />
-          <View style={styles.centerDot} pointerEvents="none" />
-        </View>
-
-        {/* Status */}
-        <Text style={styles.statusLine}>
-          {loading ? '· · ·' : isRTL ? `${pulses.length} دوائر نشطة` : `${pulses.length} active circles`}
-        </Text>
-      </View>
-
-      {/* Nearby card */}
+      {/* ── Nearby card ── */}
       {nearby && (
         <TouchableOpacity
           style={[styles.nearbyCard, { bottom: insets.bottom + 20, backgroundColor: COLORS.surface }]}
@@ -342,8 +324,9 @@ export default function RadarScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#080C14', alignItems: 'center' },
+  container: { flex: 1, backgroundColor: '#06080E' },
 
+  // Header
   header: {
     position: 'absolute', top: 0, left: 0, right: 0,
     paddingHorizontal: 20, paddingBottom: 10, zIndex: 20,
@@ -355,37 +338,39 @@ const styles = StyleSheet.create({
   profileFallback: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   profileInitial: { fontSize: 15, fontWeight: '700', color: '#fff' },
 
-  radarWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-
-  centerDot: {
-    position: 'absolute',
-    width: 10, height: 10, borderRadius: 5,
-    backgroundColor: '#4D80FF',
-    top: RADAR_R - 5, left: RADAR_R - 5,
-    zIndex: 10,
-    shadowColor: '#4D80FF', shadowOpacity: 0.8, shadowRadius: 6,
+  // Stamp marker
+  stampMarker: {
+    width: 46, height: 46,
+    borderRadius: 23,
+    overflow: 'hidden',
+    borderWidth: 2.5,
+    borderColor: '#fff',
+    backgroundColor: '#111',
+    shadowColor: '#fff',
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
     shadowOffset: { width: 0, height: 0 },
+    elevation: 6,
   },
-  centerRing: {
-    position: 'absolute',
-    width: 26, height: 26, borderRadius: 13,
-    borderWidth: 1, borderColor: 'rgba(77,128,255,0.4)',
-    top: RADAR_R - 13, left: RADAR_R - 13,
-    zIndex: 9,
+  stampImg: { width: '100%', height: '100%' },
+  stampFallback: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  stampFallbackText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+
+  // Unvisited dim dot
+  dimDot: {
+    width: 7, height: 7, borderRadius: 3.5,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
   },
 
-  statusLine: {
-    marginTop: 20,
-    fontSize: 12, fontWeight: '500',
-    color: 'rgba(255,255,255,0.25)',
-  },
-
+  // Nearby card
   nearbyCard: {
     position: 'absolute', left: 16, right: 16,
     borderRadius: 20,
     paddingHorizontal: 18, paddingVertical: 16,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18, shadowRadius: 16, elevation: 8,
+    shadowOpacity: 0.22, shadowRadius: 20, elevation: 10,
   },
   nearbyInner: { alignItems: 'center', gap: 12 },
   statusRow: { alignItems: 'center', gap: 6, marginBottom: 4 },
@@ -397,8 +382,7 @@ const styles = StyleSheet.create({
   hereNowPill: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     backgroundColor: 'rgba(52,199,89,0.12)',
-    paddingHorizontal: 10, paddingVertical: 5,
-    borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
   },
   hereNowDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#34C759' },
   hereNowText: { fontSize: 12, fontWeight: '600', color: '#34C759' },
