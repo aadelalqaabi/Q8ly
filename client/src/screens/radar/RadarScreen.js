@@ -276,7 +276,9 @@ export default function RadarScreen() {
         <Text style={[s.wordmark, { color: TEXT_COLOR }]}>KUWAI</Text>
 
         <View style={s.topBarRight}>
-          <Text style={[s.sub, { color: SUB_COLOR }]}>{visitedCount}/{venues.length}</Text>
+          {venues.length > 0 && (
+            <Text style={[s.sub, { color: SUB_COLOR }]}>{visitedCount}/{venues.length}</Text>
+          )}
         </View>
       </View>
 
