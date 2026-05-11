@@ -259,7 +259,7 @@ export default function RadarScreen() {
 
       {/* Top bar: KUWAI wordmark + avatar */}
       <View style={[s.topBar, { paddingTop: insets.top + 6, flexDirection: 'row' }]}>
-        <Text style={[s.wordmark, { color: TEXT_COLOR, transform: [{ scaleX: 1.18 }] }]}>KUWAI</Text>
+        <Text style={[s.wordmark, { color: TEXT_COLOR }]}>KUWAI</Text>
 
         <TouchableOpacity
           style={s.avatarBtn}
