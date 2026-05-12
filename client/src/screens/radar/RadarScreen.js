@@ -302,7 +302,9 @@ export default function RadarScreen() {
                   {insideVenue.title || insideVenue.venueName}
                 </Text>
                 <Text style={[s.enterSub, { color: isDark ? 'rgba(255,255,255,0.45)' : C.textMuted }]}>
-                  {insideVenue.visited ? "You've been here" : "You're here — tap to unlock"}
+                  {insideVenue.visited
+                    ? (i18n.language === 'ar' ? 'زرت هذا المكان' : "You've been here")
+                    : (i18n.language === 'ar' ? 'أنت هنا — اضغط للدخول' : "You're here — tap to unlock")}
                 </Text>
               </View>
             </View>
@@ -312,7 +314,7 @@ export default function RadarScreen() {
               onPress={() => enterCircle(insideVenue)}
               activeOpacity={0.85}
             >
-              <Text style={s.enterBtnText}>Enter</Text>
+              <Text style={s.enterBtnText}>{i18n.language === 'ar' ? 'ادخل' : 'Enter'}</Text>
             </TouchableOpacity>
           </>
         )}
