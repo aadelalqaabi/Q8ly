@@ -318,18 +318,20 @@ exports.getRoom = async (req, res) => {
       const speed = parseFloat(req.query.speed) || 0;
       if (!isNaN(lat) && !isNaN(lng)) {
         confidence = computeConfidence(lat, lng, speed, room.venueCoords, room.venueRadius || 250);
+        inside = confidence >= 0.3;
       } else {
-        confidence = 0;
+        // No coordinates sent — radar already gated entry, trust the client
+        inside = true;
+        confidence = 1;
       }
-      inside = confidence >= 0.6;
     }
 
     const roomData = room.toObject();
     if (!inside) {
-      // Strip messages, hereNow, and lastMessage for users outside geofence
       roomData.messages = [];
       roomData.lastMessage = null;
       roomData.hereNow = [];
+    } else {
     }
 
     res.json({
@@ -740,6 +742,28 @@ exports.searchRooms = async (req, res) => {
       .sort({ memberCount: -1, createdAt: -1 })
       .limit(30);
     res.json({ success: true, rooms });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// POST /api/hachi/:id/messages/:msgId/like — toggle like on a message
+exports.likeMessage = async (req, res) => {
+  try {
+    const { id, msgId } = req.params;
+    const userId = req.user._id;
+    const room = await Hachi.findById(id).select('messages');
+    if (!room) return res.status(404).json({ success: false });
+    const msg = room.messages.id(msgId);
+    if (!msg) return res.status(404).json({ success: false });
+    const liked = (msg.likes || []).some(l => l.toString() === userId.toString());
+    if (liked) {
+      msg.likes = msg.likes.filter(l => l.toString() !== userId.toString());
+    } else {
+      msg.likes.push(userId);
+    }
+    await room.save();
+    res.json({ success: true, likes: msg.likes.length, liked: !liked });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

@@ -211,6 +211,7 @@ export const hachiAPI = {
   getPinnedCircles: () => api.get('/hachi/joined'),
   getMoments: () => api.get('/hachi/moments'),
   getUserMessages: (username) => api.get(`/hachi/user-messages/${username}`),
+  likeMessage: (id, msgId) => api.post(`/hachi/${id}/messages/${msgId}/like`),
 };
 
 // ── Location requests (user-submitted venues) ────────────────────────────────

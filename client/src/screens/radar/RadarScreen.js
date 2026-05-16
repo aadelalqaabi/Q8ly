@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, Animated, Easing,
-  Dimensions, Image, ActivityIndicator, TouchableOpacity, ScrollView,
+  Dimensions, Image, ActivityIndicator, TouchableOpacity, ScrollView, AppState,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
@@ -65,10 +65,12 @@ export default function RadarScreen() {
   const DOT_COLOR = isDark ? '#fff'    : C.accent;
   const TEXT_COLOR = isDark ? '#fff'   : C.text;
 
-  const [venues,   setVenues]   = useState([]);
-  const [location, setLocation] = useState(null);
-  const [loading,  setLoading]  = useState(true);
-  const [insideVenue, setInsideVenue] = useState(null); // venue user is currently inside
+  const [venues,      setVenues]      = useState([]);
+  const [location,    setLocation]    = useState(null);
+  const [loading,     setLoading]     = useState(true);
+  const [searching,   setSearching]   = useState(false);
+  const [insideVenue, setInsideVenue] = useState(null);
+  const locationRef = useRef(null);
 
   const sweepAngle   = useRef(new Animated.Value(0)).current;
   const pulseScale   = useRef(new Animated.Value(1)).current;
@@ -81,20 +83,39 @@ export default function RadarScreen() {
   const prevInsideId = useRef(null);
 
   // ── load venues ──────────────────────────────────────────────────────────────
-  useEffect(() => {
+  const fetchVenues = useCallback(() => {
     hachiAPI.getVault()
       .then(data => {
         const v = (Array.isArray(data) ? data : data?.items || []).filter(x => x.lat && x.lng);
         v.forEach(venue => {
-          pingAnims.current[venue._id]   = new Animated.Value(0);
-          activeAnims.current[venue._id] = new Animated.Value(0);
-          lastTriggered.current[venue._id] = -999;
+          if (!pingAnims.current[venue._id]) {
+            pingAnims.current[venue._id]     = new Animated.Value(0);
+            activeAnims.current[venue._id]   = new Animated.Value(0);
+            lastTriggered.current[venue._id] = -999;
+          }
         });
         setVenues(v);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  // Initial load
+  useEffect(() => { fetchVenues(); }, [fetchVenues]);
+
+  // Poll every 15s to pick up new circles
+  useEffect(() => {
+    const id = setInterval(fetchVenues, 15_000);
+    return () => clearInterval(id);
+  }, [fetchVenues]);
+
+  // Refresh when app comes back to foreground
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', state => {
+      if (state === 'active') fetchVenues();
+    });
+    return () => sub.remove();
+  }, [fetchVenues]);
 
   // ── location ─────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -105,13 +126,45 @@ export default function RadarScreen() {
       if (status !== 'granted') return;
       const cur = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       setLocation(cur.coords);
+      locationRef.current = cur.coords;
       sub = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.Balanced, distanceInterval: 15 },
-        loc => setLocation(loc.coords),
+        loc => { setLocation(loc.coords); locationRef.current = loc.coords; },
       );
     })();
     return () => sub?.remove();
   }, []);
+
+  // ── force search ─────────────────────────────────────────────────────────────
+  const handleFind = useCallback(async () => {
+    if (searching) return;
+    setSearching(true);
+    try {
+      if (Location) {
+        const cur = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+        setLocation(cur.coords);
+        locationRef.current = cur.coords;
+      }
+      await new Promise((res) => {
+        hachiAPI.getVault()
+          .then(data => {
+            const v = (Array.isArray(data) ? data : data?.items || []).filter(x => x.lat && x.lng);
+            v.forEach(venue => {
+              if (!pingAnims.current[venue._id]) {
+                pingAnims.current[venue._id]     = new Animated.Value(0);
+                activeAnims.current[venue._id]   = new Animated.Value(0);
+                lastTriggered.current[venue._id] = -999;
+              }
+            });
+            setVenues(v);
+          })
+          .catch(() => {})
+          .finally(res);
+      });
+    } finally {
+      setSearching(false);
+    }
+  }, [searching]);
 
   // ── sweep arm ────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -268,6 +321,7 @@ export default function RadarScreen() {
       {/* Top bar */}
       <View style={[s.topBar, { paddingTop: insets.top + 6 }]}>
         <Text style={[s.wordmark, { color: TEXT_COLOR }]}>KUWAI</Text>
+
         <TouchableOpacity style={s.avatarBtn} onPress={() => navigation.navigate('Profile')} activeOpacity={0.75}>
           {user?.profilePic ? (
             <Image source={{ uri: cdnUrl(user.profilePic, 68) }} style={s.avatarImg} />
@@ -319,6 +373,23 @@ export default function RadarScreen() {
           </>
         )}
       </Animated.View>
+
+      {/* Find button — shown when not inside any geofence */}
+      {!insideVenue && (
+        <TouchableOpacity
+          style={[s.findBtn, { bottom: insets.bottom + 24, backgroundColor: BLUE }]}
+          onPress={handleFind}
+          activeOpacity={0.85}
+          disabled={searching}
+        >
+          {searching
+            ? <ActivityIndicator size="small" color="#fff" />
+            : <Text style={s.findBtnText}>
+                {i18n.language === 'ar' ? 'ابحث عن دائرة' : 'FIND CIRCLE'}
+              </Text>
+          }
+        </TouchableOpacity>
+      )}
 
       {loading && <ActivityIndicator color={BLUE} style={s.loader} />}
     </View>
@@ -380,6 +451,15 @@ const s = StyleSheet.create({
     zIndex: 10,
   },
   wordmark: { flex: 1, fontSize: 24, fontWeight: '900' },
+  findBtn: {
+    position: 'absolute',
+    left: 20, right: 20,
+    borderRadius: 20,
+    paddingVertical: 16,
+    alignItems: 'center', justifyContent: 'center',
+    zIndex: 20,
+  },
+  findBtnText: { fontSize: 14, fontWeight: '800', letterSpacing: 0, color: '#fff' },
   avatarBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   avatarImg: { width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center' },
   avatarInitial: { fontSize: 14, fontWeight: '700', color: '#fff' },

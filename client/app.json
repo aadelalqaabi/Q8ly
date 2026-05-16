@@ -3,7 +3,7 @@
     "name": "KUWAI",
     "slug": "kuwait-now",
     "scheme": "kuwai",
-    "version": "1.1.3",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./src/assets/Logo.png",
     "userInterfaceStyle": "automatic",
@@ -31,7 +31,7 @@
         "backgroundColor": "#0033A0"
       },
       "package": "app.kuwaitnow",
-      "versionCode": 4,
+      "versionCode": 5,
       "permissions": [
         "CAMERA",
         "ACCESS_FINE_LOCATION",
@@ -55,7 +55,7 @@
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 0
     },
-    "runtimeVersion": "1.1.2",
+    "runtimeVersion": "2.0.0",
     "plugins": [
       "expo-updates",
       "expo-splash-screen",

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { protect, optionalAuth } = require('../middleware/auth');
-const { getRooms, getArchivedRooms, createRoom, getRoom, closeRoom, reactRoom, searchRooms, getMyRooms, getJoinedRooms, deleteRoom, pinRoom, unpinRoom, leaveRoom, getPinnedMoments, getUserMessages, getSubjects, checkLocation, getRadar, recordVisit, getVault, getNearby } = require('../controllers/hachiController');
+const { getRooms, getArchivedRooms, createRoom, getRoom, closeRoom, reactRoom, searchRooms, getMyRooms, getJoinedRooms, deleteRoom, pinRoom, unpinRoom, leaveRoom, getPinnedMoments, getUserMessages, getSubjects, checkLocation, getRadar, recordVisit, getVault, getNearby, likeMessage } = require('../controllers/hachiController');
 const flashPoll = require('../controllers/flashPollController');
 
 router.get('/', optionalAuth, getRooms);
@@ -9,6 +9,7 @@ router.get('/radar', optionalAuth, getRadar);
 router.get('/nearby', optionalAuth, getNearby);
 router.get('/vault', protect, getVault);
 router.post('/:id/visit', protect, recordVisit);
+router.post('/:id/messages/:msgId/like', protect, likeMessage);
 router.post('/polls/:pollId/vote', protect, flashPoll.votePoll);
 router.delete('/polls/:pollId', protect, flashPoll.deletePoll);
 router.get('/search', searchRooms);

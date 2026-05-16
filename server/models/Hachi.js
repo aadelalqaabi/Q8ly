@@ -15,6 +15,8 @@ const messageSchema = new mongoose.Schema({
   voiceDuration: { type: Number },
   isLive: { type: Boolean, default: false },
   anonymous: { type: Boolean, default: false },
+  likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  expiresAt: { type: Date },
   reactions: [reactionSchema],
   replyTo: {
     messageId: { type: mongoose.Schema.Types.ObjectId },

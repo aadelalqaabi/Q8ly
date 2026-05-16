@@ -1,14 +1,9 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Image,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Dimensions, Animated, Modal, PixelRatio,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Dimensions, Animated,
+  Modal, PixelRatio,
 } from 'react-native';
-
-function cdnUrl(url, px) {
-  if (!url || !url.includes('res.cloudinary.com')) return url;
-  const w = PixelRatio.getPixelSizeForLayoutSize(px);
-  return url.replace('/upload/', `/upload/w_${w},h_${w},c_fit,f_webp,q_auto:good/`);
-}
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useSelector } from 'react-redux';
@@ -17,78 +12,200 @@ import { getSocket, joinHachiRoom, leaveHachiRoom, sendHachiMessage } from '../.
 import { Ionicons } from '@expo/vector-icons';
 import { useBrutColors, isAr } from '../../components/Brut';
 import { PollCard, PollComposer } from '../../components/Poll';
+
 let Location = null;
 try { Location = require('expo-location'); } catch {}
 
 const SW = Dimensions.get('window').width;
-const IMG_SIZE = Math.min(240, SW * 0.58);
+const CARD_IMAGE_HEIGHT = SW * 0.72;
 
-// ── Message row ───────────────────────────────────────────────────────────────
-function MessageRow({ msg, isMine, ar, onImagePress }) {
-  const { TEXT, MUTED, ACCENT, SEPARATOR, CARD } = useBrutColors();
-  const hasImage = !!msg.image;
-  const hasText = !!msg.text;
-  const isAnon = !!msg.anonymous;
-  const displayName = isAnon ? (ar ? 'مجهول' : 'Anonymous') : (msg.user?.name || '');
+function cdnUrl(url, px) {
+  if (!url || !url.includes('res.cloudinary.com')) return url;
+  const w = PixelRatio.getPixelSizeForLayoutSize(px);
+  return url.replace('/upload/', `/upload/w_${w},f_webp,q_auto:good/`);
+}
+
+function timeAgo(date, ar) {
+  const diff = (Date.now() - new Date(date).getTime()) / 1000;
+  if (diff < 60) return ar ? 'الآن' : 'now';
+  if (diff < 3600) return ar ? `${Math.floor(diff / 60)}د` : `${Math.floor(diff / 60)}m`;
+  if (diff < 86400) return ar ? `${Math.floor(diff / 3600)}س` : `${Math.floor(diff / 3600)}h`;
+  return ar ? `${Math.floor(diff / 86400)}ي` : `${Math.floor(diff / 86400)}d`;
+}
+
+
+// ── Comment row (reply shown inside the post) ─────────────────────────────────
+function CommentRow({ msg, currentUserId, ar, onLikeToggle }) {
+  const { TEXT, MUTED, ACCENT, FILL, SEPARATOR } = useBrutColors();
+  const liked = (msg.likes || []).some(
+    (l) => (typeof l === 'string' ? l : l?.toString()) === currentUserId?.toString()
+  );
+  const likeCount = (msg.likes || []).length;
 
   return (
-    <View style={[
-      msgStyles.wrap,
-      { alignItems: isMine ? (ar ? 'flex-start' : 'flex-end') : (ar ? 'flex-end' : 'flex-start') },
-    ]}>
-      {!isMine && (
-        <Text style={[msgStyles.author, { color: isAnon ? MUTED : MUTED, textAlign: ar ? 'right' : 'left', fontStyle: isAnon ? 'italic' : 'normal' }]}>
-          {isAnon ? '👤 ' + displayName : displayName}
+    <View style={[cmtStyles.row, { borderTopColor: SEPARATOR }]}>
+      <View style={[cmtStyles.dot, { backgroundColor: ACCENT + '18' }]}>
+        <Text style={{ fontSize: 10 }}>👤</Text>
+      </View>
+      <View style={{ flex: 1 }}>
+        <View style={[cmtStyles.header, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
+          <Text style={[cmtStyles.author, { color: MUTED }]}>
+            {ar ? 'شخص هنا' : 'Someone here'}
+          </Text>
+          <Text style={[cmtStyles.ts, { color: MUTED }]}>{timeAgo(msg.createdAt, ar)}</Text>
+        </View>
+        {!!msg.text && (
+          <Text style={[cmtStyles.text, { color: TEXT, textAlign: ar ? 'right' : 'left' }]}>
+            {msg.text}
+          </Text>
+        )}
+        {!!msg.image && (
+          <View style={[cmtStyles.imgWrap, { backgroundColor: FILL }]}>
+            <Image
+              source={{ uri: cdnUrl(msg.image, 160) }}
+              style={cmtStyles.img}
+              resizeMode="cover"
+            />
+          </View>
+        )}
+      </View>
+      <TouchableOpacity
+        style={cmtStyles.likeBtn}
+        onPress={() => onLikeToggle(msg._id)}
+        activeOpacity={0.7}
+      >
+        <Ionicons name={liked ? 'heart' : 'heart-outline'} size={14} color={liked ? '#FF3B30' : MUTED} />
+        {likeCount > 0 && (
+          <Text style={[cmtStyles.likeCount, { color: liked ? '#FF3B30' : MUTED }]}>{likeCount}</Text>
+        )}
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const cmtStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row', alignItems: 'flex-start',
+    gap: 8, paddingHorizontal: 14, paddingVertical: 9,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  dot: { width: 24, height: 24, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginTop: 1 },
+  header: { alignItems: 'center', gap: 6, marginBottom: 2 },
+  author: { fontSize: 12, fontWeight: '500' },
+  ts: { fontSize: 11 },
+  text: { fontSize: 14, lineHeight: 19 },
+  imgWrap: { marginTop: 6, borderRadius: 8, overflow: 'hidden', alignSelf: 'flex-start' },
+  img: { width: 120, height: 120 },
+  likeBtn: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingTop: 2 },
+  likeCount: { fontSize: 11, fontWeight: '500' },
+});
+
+// ── Post card ─────────────────────────────────────────────────────────────────
+function PostCard({ msg, comments, currentUserId, ar, onImagePress, onLikeToggle, onReply }) {
+  const { TEXT, MUTED, ACCENT, BG, FILL, SEPARATOR } = useBrutColors();
+  const [showComments, setShowComments] = useState(false);
+  const liked = (msg.likes || []).some(
+    (l) => (typeof l === 'string' ? l : l?.toString()) === currentUserId?.toString()
+  );
+  const likeCount = (msg.likes || []).length;
+  const hasImage = !!msg.image;
+  const hasText = !!msg.text;
+  const ts = timeAgo(msg.createdAt, ar);
+
+  return (
+    <View style={[cardStyles.card, { backgroundColor: BG, borderBottomColor: SEPARATOR }]}>
+      {/* Meta */}
+      <View style={[cardStyles.meta, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
+        <View style={[cardStyles.anonDot, { backgroundColor: ACCENT + '22' }]}>
+          <Text style={cardStyles.anonIcon}>👤</Text>
+        </View>
+        <Text style={[cardStyles.author, { color: TEXT }]}>
+          {ar ? 'شخص هنا' : 'Someone here'}
+        </Text>
+        {!hasImage && <Text style={[cardStyles.ts, { color: MUTED }]}>{ts}</Text>}
+      </View>
+
+      {/* Image with timestamp overlay */}
+      {hasImage && (
+        <TouchableOpacity activeOpacity={0.92} onPress={() => onImagePress(msg.image)}>
+          <Image
+            source={{ uri: cdnUrl(msg.image, SW) }}
+            style={{ width: SW, height: CARD_IMAGE_HEIGHT }}
+            resizeMode="cover"
+          />
+          <View style={cardStyles.imgTs}>
+            <Text style={cardStyles.imgTsText}>{ts}</Text>
+          </View>
+        </TouchableOpacity>
+      )}
+
+      {/* Text */}
+      {hasText && (
+        <Text style={[cardStyles.text, { color: TEXT, textAlign: ar ? 'right' : 'left' }]}>
+          {msg.text}
         </Text>
       )}
 
-      {hasImage && (
-        <View style={msgStyles.imageWrap}>
-          <TouchableOpacity activeOpacity={0.85} onPress={() => onImagePress?.(msg.image)}>
-            <Image source={{ uri: msg.image }} style={{ width: IMG_SIZE, height: IMG_SIZE, borderRadius: 14 }} resizeMode="cover" />
-          </TouchableOpacity>
-          {msg.isLive && (
-            <View style={[msgStyles.liveTag, { [ar ? 'right' : 'left']: 8 }]}>
-              <View style={msgStyles.liveDot} />
-              <Text style={msgStyles.liveText}>LIVE</Text>
-            </View>
+      {/* Actions */}
+      <View style={[cardStyles.actions, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
+        <TouchableOpacity
+          style={cardStyles.actionBtn}
+          onPress={() => { setShowComments((v) => !v); onReply(msg); }}
+          activeOpacity={0.7}
+        >
+          <Ionicons name={showComments ? 'chatbubble' : 'chatbubble-outline'} size={16} color={showComments ? ACCENT : MUTED} />
+          {comments.length > 0 && (
+            <Text style={[cardStyles.actionLabel, { color: showComments ? ACCENT : MUTED }]}>{comments.length}</Text>
           )}
-        </View>
-      )}
+        </TouchableOpacity>
 
-      {hasText && (
-        <View style={[
-          msgStyles.bubble,
-          isMine
-            ? { backgroundColor: ACCENT }
-            : { backgroundColor: CARD, borderWidth: 1, borderColor: SEPARATOR },
-          hasImage && { marginTop: 6 },
-        ]}>
-          <Text style={[msgStyles.text, { color: isMine ? '#fff' : TEXT, textAlign: ar ? 'right' : 'left' }]}>
-            {msg.text}
-          </Text>
+        <TouchableOpacity style={cardStyles.actionBtn} onPress={() => onLikeToggle(msg._id)} activeOpacity={0.7}>
+          <Ionicons name={liked ? 'heart' : 'heart-outline'} size={16} color={liked ? '#FF3B30' : MUTED} />
+          {likeCount > 0 && (
+            <Text style={[cardStyles.actionLabel, { color: liked ? '#FF3B30' : MUTED }]}>{likeCount}</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* Inline comments — collapsed by default */}
+      {showComments && comments.length > 0 && (
+        <View style={[cardStyles.commentSection, { borderTopColor: FILL }]}>
+          {comments.map((c) => (
+            <CommentRow
+              key={String(c._id)}
+              msg={c}
+              currentUserId={currentUserId}
+              ar={ar}
+              onLikeToggle={onLikeToggle}
+            />
+          ))}
         </View>
       )}
     </View>
   );
 }
 
-const msgStyles = StyleSheet.create({
-  wrap: { paddingHorizontal: 16, paddingVertical: 3 },
-  author: { fontSize: 12, fontWeight: '500', marginBottom: 3, marginHorizontal: 4 },
-  bubble: { maxWidth: '78%', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 20 },
-  text: { fontSize: 15, lineHeight: 21, fontWeight: '400' },
-  imageWrap: { position: 'relative' },
-  liveTag: {
-    position: 'absolute', top: 8, flexDirection: 'row', alignItems: 'center',
-    gap: 5, paddingHorizontal: 8, paddingVertical: 4,
-    backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 20,
+const cardStyles = StyleSheet.create({
+  card: { borderBottomWidth: StyleSheet.hairlineWidth },
+  meta: { alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8 },
+  anonDot: { width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center' },
+  anonIcon: { fontSize: 13 },
+  author: { flex: 1, fontSize: 14, fontWeight: '600' },
+  ts: { fontSize: 12 },
+  imgTs: {
+    position: 'absolute', bottom: 8, left: 10,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6,
   },
-  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#FF3B30' },
-  liveText: { color: '#fff', fontSize: 10, fontWeight: '600' },
+  imgTsText: { color: '#fff', fontSize: 10, fontWeight: '500' },
+  text: { fontSize: 16, lineHeight: 23, paddingHorizontal: 14, paddingTop: 4, paddingBottom: 4 },
+  actions: { paddingHorizontal: 14, paddingVertical: 10, alignItems: 'center', gap: 20 },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  actionLabel: { fontSize: 13, fontWeight: '500' },
+  commentSection: { borderTopWidth: 2 },
 });
 
-// ── Stamp celebration modal ───────────────────────────────────────────────────
+// ── Stamp modal ───────────────────────────────────────────────────────────────
 function StampModal({ visible, stampUrl, venueName, onClose, ar }) {
   const scaleAnim = useRef(new Animated.Value(0.6)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -124,10 +241,7 @@ function StampModal({ visible, stampUrl, venueName, onClose, ar }) {
 }
 
 const stampStyles = StyleSheet.create({
-  backdrop: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.75)',
-    justifyContent: 'center', alignItems: 'center',
-  },
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', alignItems: 'center' },
   card: {
     width: 300, backgroundColor: '#fff', borderRadius: 28,
     alignItems: 'center', paddingHorizontal: 24, paddingVertical: 32,
@@ -136,10 +250,7 @@ const stampStyles = StyleSheet.create({
   congrats: { fontSize: 20, fontWeight: '800', color: '#000', marginBottom: 4, textAlign: 'center' },
   venue: { fontSize: 14, color: '#6C6C70', marginBottom: 20, textAlign: 'center' },
   stamp: { width: 220, height: 220, marginBottom: 24 },
-  btn: {
-    backgroundColor: '#0033A0', borderRadius: 22,
-    paddingHorizontal: 48, paddingVertical: 14,
-  },
+  btn: { backgroundColor: '#0033A0', borderRadius: 22, paddingHorizontal: 48, paddingVertical: 14 },
   btnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });
 
@@ -160,13 +271,38 @@ export default function CircleScreen({ route, navigation }) {
   const [showCreatePoll, setShowCreatePoll] = useState(false);
   const [userLoc, setUserLoc] = useState(null);
   const [isAnon, setIsAnon] = useState(false);
-  const [stampToast, setStampToast] = useState(null); // { stampUrl, venueName }
+  const [replyTo, setReplyTo] = useState(null); // { messageId, text, userName }
+  const [stampToast, setStampToast] = useState(null);
 
   const watchRef = useRef(null);
   const flatRef = useRef(null);
   const exitedRef = useRef(false);
   const expectedVoteRef = useRef({});
   const slideAnim = useRef(new Animated.Value(60)).current;
+
+  // Derive feed: top-level posts + replies map
+  const { topLevel, repliesMap } = useMemo(() => {
+    const replies = {};
+    const top = [];
+    for (const m of messages) {
+      const parentId = m.replyTo?.messageId ? String(m.replyTo.messageId) : null;
+      if (parentId) {
+        if (!replies[parentId]) replies[parentId] = [];
+        replies[parentId].push(m);
+      } else {
+        top.push(m);
+      }
+    }
+    return { topLevel: top, repliesMap: replies };
+  }, [messages]);
+
+  const prevTopCount = useRef(0);
+  useEffect(() => {
+    if (topLevel.length > prevTopCount.current) {
+      flatRef.current?.scrollToEnd?.({ animated: true });
+    }
+    prevTopCount.current = topLevel.length;
+  }, [topLevel.length]);
 
   useEffect(() => {
     Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, damping: 22, stiffness: 220 }).start();
@@ -244,7 +380,10 @@ export default function CircleScreen({ route, navigation }) {
     const socket = getSocket();
     if (!socket) return;
     joinHachiRoom(circleId);
-    const onMsg = ({ roomId, message }) => { if (roomId !== circleId) return; setMessages((m) => [...m, message]); };
+    const onMsg = ({ roomId, message }) => {
+      if (roomId !== circleId) return;
+      setMessages((m) => [...m, { ...message, likes: message.likes || [] }]);
+    };
     const onPollCreated = ({ poll }) => setPolls((p) => [poll, ...p.filter((x) => x._id !== poll._id)]);
     const onPollUpdate = ({ poll }) => setPolls((p) => p.map((x) => {
       if (x._id !== poll._id) return x;
@@ -273,13 +412,39 @@ export default function CircleScreen({ route, navigation }) {
     return () => clearInterval(id);
   }, [polls.length]);
 
+
+  const handleLikeToggle = useCallback(async (msgId) => {
+    setMessages((prev) => prev.map((m) => {
+      if (String(m._id) !== String(msgId)) return m;
+      const uid = currentUser?._id?.toString();
+      const likes = m.likes || [];
+      const already = likes.some((l) => (typeof l === 'string' ? l : l?.toString()) === uid);
+      return {
+        ...m,
+        likes: already
+          ? likes.filter((l) => (typeof l === 'string' ? l : l?.toString()) !== uid)
+          : [...likes, uid],
+      };
+    }));
+    try { await hachiAPI.likeMessage(circleId, msgId); } catch {}
+  }, [circleId, currentUser]);
+
+  const handleReply = useCallback((msg) => {
+    setReplyTo({
+      messageId: msg._id,
+      text: msg.text || (ar ? '📷 صورة' : '📷 Photo'),
+      userName: ar ? 'شخص هنا' : 'Someone here',
+    });
+  }, [ar]);
+
   const handleSend = () => {
     if (!text.trim()) return;
     const sock = getSocket();
     if (!sock?.connected) { sock?.connect?.(); return; }
     const locParam = userLoc ? { lat: userLoc.lat, lng: userLoc.lng, speed: userLoc.speed } : null;
-    sendHachiMessage(circleId, text.trim(), null, locParam, isAnon);
+    sendHachiMessage(circleId, text.trim(), replyTo || null, locParam, isAnon);
     setText('');
+    setReplyTo(null);
   };
 
   const handleVote = (pollId, optionId) => {
@@ -315,13 +480,31 @@ export default function CircleScreen({ route, navigation }) {
 
   const activeHere = (room.hereNow || []).filter((p) => new Date(p.expiresAt) > new Date()).length;
 
-  return (
-    <KeyboardAvoidingView style={[styles.container, { backgroundColor: BG }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+  const listHeader = polls.length > 0 ? (
+    <View style={{ paddingHorizontal: 16, paddingTop: 10 }}>
+      {polls.map((poll) => (
+        <PollCard
+          key={poll._id}
+          poll={poll}
+          onVote={handleVote}
+          onDelete={handleDeletePoll}
+          currentUserId={currentUser?._id}
+          ar={ar}
+        />
+      ))}
+    </View>
+  ) : null;
 
+  return (
+    <View style={[styles.container, { backgroundColor: BG }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 10, backgroundColor: BG, borderBottomColor: SEPARATOR, flexDirection: ar ? 'row-reverse' : 'row' }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} style={styles.headerSide}>
-          <Text style={[styles.backBtn, { color: TEXT }]}>{ar ? '›' : '‹'}</Text>
+      <View style={[styles.header, { paddingTop: insets.top + 10, backgroundColor: BG, borderBottomColor: SEPARATOR }]}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          style={styles.headerSide}
+        >
+          <Text style={[styles.backBtn, { color: TEXT }]}>‹</Text>
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={[styles.roomTitle, { color: TEXT }]} numberOfLines={1}>{room.title}</Text>
@@ -334,93 +517,101 @@ export default function CircleScreen({ route, navigation }) {
         <View style={styles.headerSide} />
       </View>
 
+      {/* Feed */}
       <Animated.View style={[{ flex: 1 }, { transform: [{ translateY: slideAnim }] }]}>
-        {/* Polls */}
-        {polls.length > 0 && (
-          <View style={{ paddingHorizontal: 16, paddingTop: 10 }}>
-            {polls.map((poll) => (
-              <PollCard
-                key={poll._id}
-                poll={poll}
-                onVote={handleVote}
-                onDelete={handleDeletePoll}
-                currentUserId={currentUser?._id}
-                ar={ar}
-              />
-            ))}
-          </View>
-        )}
-
-        {/* Messages */}
         <FlatList
           ref={flatRef}
-          data={[...messages].reverse()}
-          inverted
+          data={topLevel}
           keyExtractor={(m) => String(m._id)}
+          ListHeaderComponent={listHeader}
           renderItem={({ item }) => (
-            <MessageRow
+            <PostCard
               msg={item}
-              isMine={item.user?._id === currentUser?._id}
+              comments={repliesMap[String(item._id)] || []}
+              currentUserId={currentUser?._id}
               ar={ar}
               onImagePress={(uri) => navigation.navigate('MediaViewer', { media: [{ uri, type: 'image' }], initialIndex: 0 })}
+              onLikeToggle={handleLikeToggle}
+              onReply={handleReply}
             />
           )}
-          contentContainerStyle={{ paddingVertical: 12 }}
+          contentContainerStyle={{ paddingBottom: 12 }}
           showsVerticalScrollIndicator={false}
         />
       </Animated.View>
 
       {/* Composer */}
-      <View style={[styles.composerWrap, { backgroundColor: BG, borderTopColor: SEPARATOR, paddingBottom: insets.bottom + 8 }]}>
-        <View style={[styles.composerRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
-          <TouchableOpacity
-            style={[styles.cameraBtn, { backgroundColor: FILL }]}
-            onPress={() => navigation.navigate('LiveCamera', { circleId })}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.cameraGlyph, { color: MUTED }]}>◉</Text>
-          </TouchableOpacity>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={0}
+      >
+        {replyTo && (
+          <View style={[styles.replyBanner, { backgroundColor: FILL, borderTopColor: SEPARATOR }]}>
+            <Ionicons name="chatbubble-outline" size={13} color={ACCENT} />
+            <Text style={[styles.replyBannerText, { color: MUTED }]} numberOfLines={1}>
+              {replyTo.text}
+            </Text>
+            <TouchableOpacity onPress={() => setReplyTo(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="close" size={16} color={MUTED} />
+            </TouchableOpacity>
+          </View>
+        )}
 
-          <TouchableOpacity
-            style={[styles.cameraBtn, { backgroundColor: FILL }]}
-            onPress={() => setShowCreatePoll(true)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="bar-chart-outline" size={20} color={ACCENT} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.cameraBtn, { backgroundColor: isAnon ? ACCENT : FILL }]}
-            onPress={() => setIsAnon((v) => !v)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="glasses-outline" size={20} color={isAnon ? '#fff' : MUTED} />
-          </TouchableOpacity>
-
-          <View style={[styles.inputCard, { backgroundColor: FILL, borderColor: isAnon ? ACCENT : SEPARATOR, flexDirection: ar ? 'row-reverse' : 'row' }]}>
-            <TextInput
-              style={[styles.input, { color: TEXT, textAlign: ar ? 'right' : 'left' }]}
-              value={text}
-              onChangeText={setText}
-              placeholder={t('radar.composerPlaceholder')}
-              placeholderTextColor={MUTED}
-              multiline
-              maxLength={500}
-            />
+        <View style={[styles.composerWrap, { backgroundColor: BG, borderTopColor: SEPARATOR, paddingBottom: insets.bottom + 10 }]}>
+          {/* Input row */}
+          <View style={[styles.inputRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
+            <View style={[styles.inputCard, { backgroundColor: FILL, borderColor: replyTo ? ACCENT : 'transparent' }]}>
+              <TextInput
+                style={[styles.input, { color: TEXT, textAlign: ar ? 'right' : 'left' }]}
+                value={text}
+                onChangeText={setText}
+                placeholder={replyTo ? (ar ? 'اكتب تعليقاً…' : 'Write a comment…') : t('radar.composerPlaceholder')}
+                placeholderTextColor={MUTED}
+                multiline
+                maxLength={500}
+              />
+            </View>
+            <TouchableOpacity
+              onPress={handleSend}
+              disabled={!text.trim()}
+              style={[styles.sendBtn, { backgroundColor: text.trim() ? ACCENT : FILL }]}
+              activeOpacity={0.75}
+            >
+              <Ionicons name={ar ? 'arrow-back' : 'arrow-forward'} size={18} color={text.trim() ? '#fff' : MUTED} />
+            </TouchableOpacity>
           </View>
 
-          <TouchableOpacity
-            onPress={handleSend}
-            disabled={!text.trim()}
-            style={[styles.sendBtn, { backgroundColor: text.trim() ? ACCENT : FILL }]}
-            activeOpacity={0.75}
-          >
-            <Text style={[styles.sendIcon, { color: text.trim() ? '#fff' : MUTED }]}>
-              {ar ? '‹' : '›'}
-            </Text>
-          </TouchableOpacity>
+          {/* Actions row */}
+          <View style={[styles.actionsRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
+            <TouchableOpacity
+              style={[styles.actionChip, { backgroundColor: FILL }]}
+              onPress={() => navigation.navigate('LiveCamera', { circleId })}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="camera-outline" size={18} color={MUTED} />
+              <Text style={[styles.actionChipText, { color: MUTED }]}>{ar ? 'لايف' : 'Live'}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionChip, { backgroundColor: FILL }]}
+              onPress={() => setShowCreatePoll(true)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="bar-chart-outline" size={18} color={MUTED} />
+              <Text style={[styles.actionChipText, { color: MUTED }]}>{ar ? 'تصويت' : 'Poll'}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionChip, { backgroundColor: isAnon ? ACCENT : FILL }]}
+              onPress={() => setIsAnon((v) => !v)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="glasses-outline" size={18} color={isAnon ? '#fff' : MUTED} />
+              <Text style={[styles.actionChipText, { color: isAnon ? '#fff' : MUTED }]}>{ar ? 'مجهول' : 'Anon'}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
 
       <PollComposer
         visible={showCreatePoll}
@@ -435,48 +626,41 @@ export default function CircleScreen({ route, navigation }) {
         onClose={() => setStampToast(null)}
         ar={ar}
       />
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-
   header: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 16, paddingBottom: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth, gap: 12,
   },
   backBtn: { fontSize: 26, fontWeight: '400', lineHeight: 30 },
   headerSide: { width: 36 },
   headerCenter: { flex: 1, alignItems: 'center', gap: 4 },
   roomTitle: { fontSize: 16, fontWeight: '600' },
-  herePill: {
-    paddingHorizontal: 8, paddingVertical: 2,
-    borderRadius: 20,
-  },
+  herePill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20 },
   hereText: { color: '#fff', fontSize: 11, fontWeight: '500' },
-
-  composerWrap: {
+  replyBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 14, paddingVertical: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 12, paddingTop: 10,
   },
-  composerRow: { alignItems: 'flex-end', gap: 8 },
-  cameraBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    justifyContent: 'center', alignItems: 'center',
-  },
-  cameraGlyph: { fontSize: 20 },
+  replyBannerText: { flex: 1, fontSize: 13 },
+  composerWrap: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: 14, paddingTop: 12 },
+  inputRow: { alignItems: 'flex-end', gap: 10, marginBottom: 10 },
   inputCard: {
-    flex: 1, borderRadius: 20, borderWidth: 1,
-    paddingHorizontal: 14, minHeight: 40, maxHeight: 110,
-    justifyContent: 'center',
+    flex: 1, borderRadius: 22, borderWidth: 1.5,
+    paddingHorizontal: 16, minHeight: 44, maxHeight: 120, justifyContent: 'center',
   },
   input: { fontSize: 15, fontWeight: '400', paddingVertical: 10 },
-  sendBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    justifyContent: 'center', alignItems: 'center',
+  sendBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  actionsRow: { gap: 8, marginBottom: 4 },
+  actionChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
   },
-  sendIcon: { fontSize: 20, fontWeight: '500' },
+  actionChipText: { fontSize: 13, fontWeight: '500' },
 });

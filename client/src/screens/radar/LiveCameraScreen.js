@@ -40,7 +40,7 @@ export default function LiveCameraScreen({ route, navigation }) {
     if (!camRef.current || busy) return;
     setBusy(true);
     try {
-      const photo = await camRef.current.takePictureAsync({ quality: 0.7, skipProcessing: false });
+      const photo = await camRef.current.takePictureAsync({ quality: 0.7, skipProcessing: true });
       setCaptured(photo.uri);
     } catch (e) {
       Alert.alert('Error', e.message);

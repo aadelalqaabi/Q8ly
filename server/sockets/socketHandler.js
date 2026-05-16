@@ -131,6 +131,7 @@ const initSocket = (server) => {
         }
 
         socket.join(`hachi:${roomId}`);
+
         // Broadcast updated online count
         const onlineCount = io.sockets.adapter.rooms.get(`hachi:${roomId}`)?.size || 0;
         io.to(`hachi:${roomId}`).emit('hachiMemberCount', { roomId, count: onlineCount });
@@ -164,7 +165,7 @@ const initSocket = (server) => {
         const msgId = new mongoose.Types.ObjectId();
         const isAnon = !!anonymous;
 
-        const msgData = { _id: msgId, user: socket.user._id, text: text.trim(), anonymous: isAnon, reactions: [], createdAt: now };
+        const msgData = { _id: msgId, user: socket.user._id, text: text.trim(), anonymous: isAnon, reactions: [], likes: [], createdAt: now };
         if (replyTo?.messageId && replyTo?.userName) {
           msgData.replyTo = { messageId: replyTo.messageId, text: replyTo.text || '', userName: replyTo.userName };
         }
@@ -256,7 +257,7 @@ const initSocket = (server) => {
         const mongoose = require('mongoose');
         const now = new Date();
         const msgId = new mongoose.Types.ObjectId();
-        const msgData = { _id: msgId, user: socket.user._id, image: imageUrl, isLive: !!isLive, reactions: [], createdAt: now };
+        const msgData = { _id: msgId, user: socket.user._id, image: imageUrl, isLive: !!isLive, reactions: [], likes: [], createdAt: now };
 
         const roomCheck = await Hachi.findById(roomId).select('isActive blockedMembers members isVenueCircle venueCoords venueRadius').lean();
         if (!roomCheck || !roomCheck.isActive) return;
