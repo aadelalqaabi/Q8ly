@@ -446,7 +446,7 @@ const s = StyleSheet.create({
     top: 0, left: 0, right: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 20,
     paddingBottom: 8,
     zIndex: 10,
   },

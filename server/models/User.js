@@ -114,15 +114,6 @@ const userSchema = new mongoose.Schema(
     likesReceived: { type: Number, default: 0 },
     // Hachi point economy
     hachiPoints: { type: Number, default: 0 },
-    referralCode: { type: String, unique: true, sparse: true },
-    referredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
-    // Invite system
-    inviteCodes: [{
-      code: { type: String, required: true },
-      usedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
-      usedAt: { type: Date, default: null },
-    }],
-    invitedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     lastLoginBonusDate: { type: Date, default: null },
     // Admin role
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
@@ -210,12 +201,6 @@ userSchema.methods.toPublicProfile = function () {
     postsCount: this.postsCount,
     likesReceived: this.likesReceived,
     hachiPoints: this.hachiPoints || 0,
-    inviteCodes: (this.inviteCodes || []).map((c) => ({
-      code: c.code,
-      used: !!c.usedBy,
-      usedBy: c.usedBy || null,
-      usedAt: c.usedAt || null,
-    })),
     pinnedCircles: (this.pinnedCircles || []).map(String),
     createdAt: this.createdAt,
   };

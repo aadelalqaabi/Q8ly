@@ -12,7 +12,6 @@ import {
   Pressable,
 } from "react-native";
 import ViewShot from "react-native-view-shot";
-import QRCode from "react-native-qrcode-svg";
 import { useTranslation } from "react-i18next";
 
 const BLUE = "#0033A0";
@@ -20,11 +19,8 @@ const GOLD = "#CBA052";
 const CARD_W  = 300;
 const CARD_H  = Math.round(CARD_W * (16 / 9)); // 533
 
-// Fixed section heights — no empty gaps anywhere
-const TOP_BAR_H  = 6;   // gold stripe
-const GOLD_SEP_H = 4;   // gold belt between blue and white
-const QR_H       = 182; // white QR panel
-const BLUE_H     = CARD_H - TOP_BAR_H - GOLD_SEP_H - QR_H; // 341
+const TOP_BAR_H = 6;
+const BLUE_H    = CARD_H - TOP_BAR_H;
 
 const BADGE_LABELS_EN = {
   government: "OFFICIAL",
@@ -154,50 +150,13 @@ export default function ShareProfileCard({ visible, onClose, profile }) {
               </View>
             </View>
 
-            {/* ═════════════════════════════════
-                3 · GOLD BELT — divides sections
-            ═════════════════════════════════ */}
-            <View style={s.goldBelt} />
-
-            {/* ═════════════════════════════════
-                4 · WHITE QR PANEL — dense, no gaps
-            ═════════════════════════════════ */}
-            <View style={s.qrPanel}>
-              <View style={s.qrRow}>
-
-                {/* QR: blue-tinted inset box — on-brand */}
-                <View style={s.qrBox}>
-                  <QRCode
-                    value={profileUrl}
-                    size={88}
-                    color={BLUE}
-                    backgroundColor="transparent"
-                  />
-                </View>
-
-                {/* Branding column — packed tight */}
-                <View style={s.qrBranding}>
-                  <Text style={s.qrWordmark}>KUWAI</Text>
-                  <Text style={s.qrSub}>
-                    {isArabic ? "أول منصة\nكويتية" : "Kuwait's\nFirst Social App"}
-                  </Text>
-                  <TouchableOpacity style={s.scanPill} activeOpacity={1}>
-                    <Text style={s.scanText}>
-                      {isArabic ? "امسح للمتابعة" : "Scan to Follow"}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-              </View>
-
-              {/* URL — always visible, keeps panel dense */}
-              <View style={s.urlRow}>
-                <View style={s.urlDot} />
-                <Text style={s.urlText} numberOfLines={1}>
-                  kuwai.app/profile/{profile?.username}
-                </Text>
-                <View style={s.urlDot} />
-              </View>
+            {/* URL at bottom of blue section */}
+            <View style={s.urlRow}>
+              <View style={s.urlDot} />
+              <Text style={s.urlText} numberOfLines={1}>
+                kuwai.app/profile/{profile?.username}
+              </Text>
+              <View style={s.urlDot} />
             </View>
 
           </View>
@@ -259,6 +218,7 @@ const s = StyleSheet.create({
     height: BLUE_H,
     backgroundColor: BLUE,
     overflow: "hidden",
+    justifyContent: "space-between",
   },
 
   // Diagonal hatch lines — fills negative space with subtle gold texture
@@ -422,85 +382,23 @@ const s = StyleSheet.create({
     fontWeight: "500",
   },
 
-  // ── 3. Gold belt ──────────────────────────────────────────────────
-  goldBelt: {
-    width: CARD_W,
-    height: GOLD_SEP_H,
-    backgroundColor: GOLD,
-  },
-
-  // ── 4. White QR panel ─────────────────────────────────────────────
-  qrPanel: {
-    width: CARD_W,
-    height: QR_H,
-    backgroundColor: "#fff",
-    paddingHorizontal: 18,
-    paddingTop: 16,
-    paddingBottom: 14,
-  },
-
-  qrRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    flex: 1,
-  },
-
-  // QR inset box: light blue tint — ties back to brand color
-  qrBox: {
-    backgroundColor: "#EDF2FF",
-    borderRadius: 12,
-    padding: 10,
-    borderWidth: 1.5,
-    borderColor: "rgba(0,51,160,0.12)",
-    alignSelf: "center",
-  },
-
-  qrBranding: {
-    flex: 1,
-  },
-  qrWordmark: {
-    fontSize: 22,
-    fontWeight: "900",
-    color: BLUE,
-    marginBottom: 3,
-  },
-  qrSub: {
-    fontSize: 10.5,
-    color: "#6C6C70",
-    lineHeight: 16,
-    marginBottom: 10,
-  },
-  scanPill: {
-    backgroundColor: BLUE,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    alignSelf: "flex-start",
-  },
-  scanText: {
-    color: "#fff",
-    fontSize: 11,
-    fontWeight: "700",
-  },
-
   urlRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    marginTop: 10,
+    paddingBottom: 20,
   },
   urlDot: {
     width: 3,
     height: 3,
     borderRadius: 1.5,
     backgroundColor: GOLD,
-    opacity: 0.7,
+    opacity: 0.5,
   },
   urlText: {
     fontSize: 9,
-    color: "#AEAEB2",
+    color: "rgba(255,255,255,0.45)",
   },
 
   // ── Sheet buttons ─────────────────────────────────────────────────

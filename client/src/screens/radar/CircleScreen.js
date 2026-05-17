@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Image,
   KeyboardAvoidingView, Platform, ActivityIndicator, Dimensions, Animated,
-  Modal, PixelRatio,
+  Modal, PixelRatio, Switch,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -41,17 +41,23 @@ function CommentRow({ msg, currentUserId, ar, onLikeToggle }) {
     (l) => (typeof l === 'string' ? l : l?.toString()) === currentUserId?.toString()
   );
   const likeCount = (msg.likes || []).length;
+  const isAnonPost = msg.anonymous !== false || !msg.user?.name;
+  const displayName = isAnonPost ? (ar ? 'شخص هنا' : 'Someone here') : msg.user.name;
+  const displayPic = !isAnonPost && msg.user?.profilePic;
 
   return (
     <View style={[cmtStyles.row, { borderTopColor: SEPARATOR }]}>
-      <View style={[cmtStyles.dot, { backgroundColor: ACCENT + '18' }]}>
-        <Text style={{ fontSize: 10 }}>👤</Text>
+      <View style={[cmtStyles.dot, { backgroundColor: isAnonPost ? ACCENT + '18' : FILL }]}>
+        {displayPic
+          ? <Image source={{ uri: displayPic }} style={{ width: 24, height: 24, borderRadius: 12 }} />
+          : isAnonPost
+            ? <Text style={{ fontSize: 10 }}>👤</Text>
+            : <Text style={{ fontSize: 10, fontWeight: '700', color: ACCENT }}>{displayName?.[0]?.toUpperCase()}</Text>
+        }
       </View>
       <View style={{ flex: 1 }}>
         <View style={[cmtStyles.header, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
-          <Text style={[cmtStyles.author, { color: MUTED }]}>
-            {ar ? 'شخص هنا' : 'Someone here'}
-          </Text>
+          <Text style={[cmtStyles.author, { color: MUTED }]}>{displayName}</Text>
           <Text style={[cmtStyles.ts, { color: MUTED }]}>{timeAgo(msg.createdAt, ar)}</Text>
         </View>
         {!!msg.text && (
@@ -111,17 +117,23 @@ function PostCard({ msg, comments, currentUserId, ar, onImagePress, onLikeToggle
   const hasImage = !!msg.image;
   const hasText = !!msg.text;
   const ts = timeAgo(msg.createdAt, ar);
+  const isAnonPost = msg.anonymous !== false || !msg.user?.name;
+  const displayName = isAnonPost ? (ar ? 'شخص هنا' : 'Someone here') : msg.user.name;
+  const displayPic = !isAnonPost && msg.user?.profilePic;
 
   return (
     <View style={[cardStyles.card, { backgroundColor: BG, borderBottomColor: SEPARATOR }]}>
       {/* Meta */}
       <View style={[cardStyles.meta, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
-        <View style={[cardStyles.anonDot, { backgroundColor: ACCENT + '22' }]}>
-          <Text style={cardStyles.anonIcon}>👤</Text>
+        <View style={[cardStyles.anonDot, { backgroundColor: isAnonPost ? ACCENT + '22' : FILL }]}>
+          {displayPic
+            ? <Image source={{ uri: displayPic }} style={{ width: 30, height: 30, borderRadius: 15 }} />
+            : isAnonPost
+              ? <Text style={cardStyles.anonIcon}>👤</Text>
+              : <Text style={[cardStyles.anonIcon, { fontWeight: '700', color: ACCENT }]}>{displayName?.[0]?.toUpperCase()}</Text>
+          }
         </View>
-        <Text style={[cardStyles.author, { color: TEXT }]}>
-          {ar ? 'شخص هنا' : 'Someone here'}
-        </Text>
+        <Text style={[cardStyles.author, { color: TEXT }]}>{displayName}</Text>
         {!hasImage && <Text style={[cardStyles.ts, { color: MUTED }]}>{ts}</Text>}
       </View>
 
@@ -601,14 +613,18 @@ export default function CircleScreen({ route, navigation }) {
               <Text style={[styles.actionChipText, { color: MUTED }]}>{ar ? 'تصويت' : 'Poll'}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.actionChip, { backgroundColor: isAnon ? ACCENT : FILL }]}
-              onPress={() => setIsAnon((v) => !v)}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="glasses-outline" size={18} color={isAnon ? '#fff' : MUTED} />
-              <Text style={[styles.actionChipText, { color: isAnon ? '#fff' : MUTED }]}>{ar ? 'مجهول' : 'Anon'}</Text>
-            </TouchableOpacity>
+            <View style={[styles.anonToggle, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
+              <Ionicons name="glasses-outline" size={16} color={isAnon ? ACCENT : MUTED} />
+              <Text style={[styles.actionChipText, { color: isAnon ? ACCENT : MUTED }]}>{ar ? 'مجهول' : 'Anon'}</Text>
+              <Switch
+                value={isAnon}
+                onValueChange={setIsAnon}
+                trackColor={{ false: SEPARATOR, true: ACCENT + '55' }}
+                thumbColor={isAnon ? ACCENT : '#fff'}
+                ios_backgroundColor={SEPARATOR}
+                style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+              />
+            </View>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -657,7 +673,8 @@ const styles = StyleSheet.create({
   },
   input: { fontSize: 15, fontWeight: '400', paddingVertical: 10 },
   sendBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
-  actionsRow: { gap: 8, marginBottom: 4 },
+  actionsRow: { gap: 8, marginBottom: 4, alignItems: 'center', flex: 1 },
+  anonToggle: { flex: 1, justifyContent: 'flex-end', alignItems: 'center', gap: 4 },
   actionChip: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,

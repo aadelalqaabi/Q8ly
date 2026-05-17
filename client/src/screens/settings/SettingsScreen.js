@@ -1,7 +1,7 @@
 import { useContext, useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Modal, Alert, KeyboardAvoidingView,
-  Platform, Share, TouchableOpacity, TextInput,
+  Platform, TouchableOpacity, TextInput,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -37,16 +37,6 @@ export default function SettingsScreen({ navigation }) {
   const [suggestText, setSuggestText] = useState('');
   const [suggestLoading, setSuggestLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
-
-  const handleShareInvite = async (code) => {
-    try {
-      await Share.share({
-        message: ar
-          ? `انضم لـ KUWAI بكود الدعوة: ${code}\n\nhttps://kuwai.app`
-          : `Join KUWAI with my invite code: ${code}\n\nhttps://kuwai.app`,
-      });
-    } catch {}
-  };
 
   const handleSuggest = async () => {
     if (!suggestText.trim()) return;
@@ -114,42 +104,6 @@ export default function SettingsScreen({ navigation }) {
         <BrutHero title={t('settings.title')} label={ar ? 'الإعدادات' : 'CONTROL'} />
         <BrutRule mt={26} />
 
-        {/* INVITES */}
-        {currentUser?.inviteCodes?.length > 0 && (
-          <>
-            <BrutSection title={t('settings.invites')} />
-            {currentUser.inviteCodes.map((invite, idx) => {
-              const used = !!invite.used;
-              return (
-                <View key={invite.code}>
-                  <View style={[styles.inviteRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[
-                        styles.inviteCode, { color: TEXT },
-                        used && { color: MUTED, textDecorationLine: 'line-through' },
-                        { textAlign: ar ? 'right' : 'left' },
-                      ]}>
-                        {invite.code}
-                      </Text>
-                      <Text style={[styles.inviteStatus, { color: MUTED, textAlign: ar ? 'right' : 'left' }]}>
-                        {used ? t('settings.inviteUsed') : t('settings.inviteAvailable')}
-                      </Text>
-                    </View>
-                    {!used && (
-                      <TouchableOpacity onPress={() => handleShareInvite(invite.code)}>
-                        <Text style={[styles.shareLink, { color: ACCENT }]}>
-                          {t('common.share')}
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                  {idx < currentUser.inviteCodes.length - 1 && <BrutHair />}
-                </View>
-              );
-            })}
-          </>
-        )}
-
         {/* LANGUAGE */}
         <BrutSection title={t('settings.language')} />
         <BrutRow
@@ -183,14 +137,6 @@ export default function SettingsScreen({ navigation }) {
         {/* FEEDBACK */}
         <BrutSection title={t('settings.feedback') || 'Feedback'} />
         <BrutRow label={t('suggest.title')} onPress={() => setSuggestVisible(true)} />
-
-        {/* DEVELOPER */}
-        {isFounder && (
-          <>
-            <BrutSection title="Developer" />
-            <BrutRow label="Dev Accounts" onPress={() => navigation.navigate('DeveloperAccounts')} />
-          </>
-        )}
 
         <BrutRule mt={36} mb={6} />
 
@@ -246,20 +192,6 @@ export default function SettingsScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  inviteRow: {
-    minHeight: 64, alignItems: 'center',
-    paddingHorizontal: 4,
-  },
-  inviteCode: {
-    fontSize: 20, fontWeight: '600',
-    fontVariant: ['tabular-nums'],
-  },
-  inviteStatus: {
-    fontSize: 12, fontWeight: '400', marginTop: 3,
-  },
-  shareLink: {
-    fontSize: 14, fontWeight: '600',
-  },
   sendLink: { fontSize: 14, fontWeight: '600' },
   version: {
     fontSize: 12, fontWeight: '400',

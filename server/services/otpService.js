@@ -154,15 +154,21 @@ async function verifyOtp(phone, code) {
 
   try {
     const result = await verifyService.verificationChecks.create({ to: normalized, code: String(code) });
-    return { valid: result.status === 'approved' };
+    if (result.status === 'approved') return { valid: true };
+    return { valid: false, reason: 'Incorrect code' };
   } catch (err) {
     const code2 = err.code || err.status;
+    console.error('[OTP] verifyOtp Twilio error:', code2, err.message);
     if (code2 === 20003) {
       TEST_MODE = true; verifyService = null;
       return { valid: false, reason: 'Verification service unavailable. Please request a new code.' };
     }
-    if (code2 === 60200) return { valid: false, reason: 'Incorrect code' };
-    const e = new Error('Could not verify code. Please try again.'); e.statusCode = 502; throw e;
+    // 60200: resource not found (expired or already used) — treat as expired
+    if (code2 === 60200) return { valid: false, reason: 'Code has expired. Please request a new one.' };
+    // 60202: max check attempts reached
+    if (code2 === 60202) return { valid: false, reason: 'Too many attempts. Please request a new code.' };
+    // Any other Twilio error — return gracefully, never throw a 502 to the user
+    return { valid: false, reason: 'Could not verify code. Please try again.' };
   }
 }
 

@@ -16,7 +16,6 @@ import { registerForPushNotifications } from '../services/notificationService';
 import * as Notifications from 'expo-notifications';
 
 import OnboardingScreen, { ONBOARDING_KEY } from '../screens/onboarding/OnboardingScreen';
-import InviteCodeScreen, { INVITE_KEY } from '../screens/auth/InviteCodeScreen';
 import LanguageSelectScreen from '../screens/auth/LanguageSelectScreen';
 import PhoneScreen from '../screens/auth/PhoneScreen';
 import OtpScreen from '../screens/auth/OtpScreen';
@@ -32,7 +31,6 @@ import CircleScreen from '../screens/radar/CircleScreen';
 import LiveCameraScreen from '../screens/radar/LiveCameraScreen';
 import RequestLocationScreen from '../screens/radar/RequestLocationScreen';
 import SettingsScreen from '../screens/settings/SettingsScreen';
-import DeveloperAccountsScreen from '../screens/dev/DeveloperAccountsScreen';
 import MediaViewerScreen from '../screens/media/MediaViewerScreen';
 
 const Stack = createNativeStackNavigator();
@@ -81,7 +79,6 @@ function AppStack() {
       <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="DeveloperAccounts" component={DeveloperAccountsScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Terms" component={TermsScreen} options={{ headerShown: false, presentation: 'modal' }} />
       <Stack.Screen
         name="MediaViewer"
@@ -112,7 +109,6 @@ export default function AppNavigator() {
   const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
   const [langChosen, setLangChosen] = useState(null); // null = still checking
   const [onboardingDone, setOnboardingDone] = useState(null);
-  const [hasInvite, setHasInvite] = useState(null);
 
   useEffect(() => {
     dispatch(restoreSession());
@@ -122,9 +118,6 @@ export default function AppNavigator() {
     AsyncStorage.getItem(ONBOARDING_KEY)
       .then((val) => { setOnboardingDone(val === 'true'); })
       .catch(() => { setOnboardingDone(false); });
-    AsyncStorage.getItem(INVITE_KEY)
-      .then((val) => { setHasInvite(!!val); })
-      .catch(() => { setHasInvite(false); });
   }, []);
 
   // Claim daily login bonus silently whenever the user is authenticated
@@ -161,7 +154,7 @@ export default function AppNavigator() {
     return () => sub.remove();
   }, []);
 
-  if (!isSessionRestored || langChosen === null || onboardingDone === null || hasInvite === null) {
+  if (!isSessionRestored || langChosen === null || onboardingDone === null) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator size="large" color={COLORS.accent} />
@@ -176,15 +169,6 @@ export default function AppNavigator() {
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="LanguageSelect" component={LanguageSelectScreen} />
         </Stack.Navigator>
-      </NavigationContainer>
-    );
-  }
-
-  // Invite gate — before auth, after language
-  if (!hasInvite && !isAuthenticated) {
-    return (
-      <NavigationContainer>
-        <InviteCodeScreen onValid={() => setHasInvite(true)} />
       </NavigationContainer>
     );
   }

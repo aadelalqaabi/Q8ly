@@ -3,6 +3,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   Image, ActivityIndicator, Alert, Share, Platform, Modal, RefreshControl, Dimensions,
+  Animated, Easing,
 } from 'react-native';
 
 const { width: SW } = Dimensions.get('window');
@@ -74,17 +75,79 @@ function avatarBg(name) {
 }
 
 // ── Artifact fullscreen modal ─────────────────────────────────────────────
+const STAMP_SIZE = 220;
+
 function ArtifactModal({ item, onClose, isRTL, t }) {
+  const scaleAnim = useRef(new Animated.Value(0.4)).current;
+  const floatAnim = useRef(new Animated.Value(0)).current;
+  const glowAnim  = useRef(new Animated.Value(0.4)).current;
+  const ripple1   = useRef(new Animated.Value(0)).current;
+  const ripple2   = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!item) return;
+    scaleAnim.setValue(0.4);
+
+    // Pop in
+    Animated.spring(scaleAnim, {
+      toValue: 1, damping: 11, stiffness: 120, useNativeDriver: true,
+    }).start();
+
+    if (!item.visited) return;
+
+    // Gentle float bob
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim, { toValue: -10, duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(floatAnim, { toValue: 0,   duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ])
+    ).start();
+
+    // Glow pulse
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, { toValue: 1,    duration: 1600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(glowAnim, { toValue: 0.3,  duration: 1600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ])
+    ).start();
+
+    // Two offset ripple rings expanding outward
+    const runRipple = (anim, delay) => {
+      setTimeout(() => {
+        Animated.loop(
+          Animated.timing(anim, {
+            toValue: 1, duration: 2200, easing: Easing.out(Easing.ease), useNativeDriver: true,
+          })
+        ).start();
+      }, delay);
+    };
+    runRipple(ripple1, 0);
+    runRipple(ripple2, 1100);
+  }, [item?._id]);
+
+  const rippleStyle = (anim) => ({
+    position: 'absolute',
+    width: STAMP_SIZE,
+    height: STAMP_SIZE,
+    borderRadius: STAMP_SIZE / 2,
+    borderWidth: 1.5,
+    borderColor: '#0033A0',
+    opacity: anim.interpolate({ inputRange: [0, 0.4, 1], outputRange: [0.9, 0.5, 0] }),
+    transform: [{
+      scale: anim.interpolate({ inputRange: [0, 1], outputRange: [1, 2.4] }),
+    }],
+  });
+
   if (!item) return null;
   const visited = !!item.visited;
-  const bg = visited ? '#000000' : '#F2F2F7';
-  const fg = visited ? '#FFFFFF' : '#000000';
-  const tag = visited
-    ? (isRTL ? 'تم الفتح' : 'UNLOCKED')
-    : (isRTL ? 'مغلق' : 'LOCKED');
+  const bg  = visited ? '#000' : '#F2F2F7';
+  const fg  = visited ? '#fff' : '#000';
+  const tag = visited ? (isRTL ? 'تم الفتح' : 'UNLOCKED') : (isRTL ? 'مغلق' : 'LOCKED');
+
   return (
     <Modal visible animationType="fade" presentationStyle="overFullScreen" transparent={false} onRequestClose={onClose}>
       <View style={[am.root, { backgroundColor: bg }]}>
+
         <View style={[am.topBar, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
           <View style={[am.tagWrap, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
             <View style={[am.tagDot, { backgroundColor: fg }]} />
@@ -98,19 +161,38 @@ function ArtifactModal({ item, onClose, isRTL, t }) {
         </View>
 
         <View style={am.body}>
+
+          {/* Ripple rings + glow — all behind the stamp, no touch on stamp pixels */}
+          {visited && (
+            <View style={am.rippleWrap} pointerEvents="none">
+              <Animated.View style={[am.glow, { opacity: glowAnim }]} />
+              <Animated.View style={rippleStyle(ripple1)} />
+              <Animated.View style={rippleStyle(ripple2)} />
+            </View>
+          )}
+
+          {/* Stamp — floats, no rotation */}
+          <Animated.View style={{ transform: [{ scale: scaleAnim }, { translateY: floatAnim }] }}>
+            {item.stampUrl ? (
+              <Image source={{ uri: item.stampUrl }} style={am.stampImg} resizeMode="contain" />
+            ) : (
+              <View style={am.stampFallback}>
+                <Text style={am.stampFallbackText}>{(item.title || '?')[0].toUpperCase()}</Text>
+              </View>
+            )}
+          </Animated.View>
+
           <Text
-            style={[
-              am.name,
-              { color: fg, textAlign: isRTL ? 'right' : 'left', letterSpacing: isRTL ? 0 : -3 },
-            ]}
-            numberOfLines={4}
+            style={[am.name, { color: fg, textAlign: 'center', letterSpacing: isRTL ? 0 : -2 }]}
+            numberOfLines={2}
             adjustsFontSizeToFit
             minimumFontScale={0.4}
           >
-            {isRTL ? item.title : (item.title || '').toUpperCase()}
+            {visited ? (isRTL ? item.title : (item.title || '').toUpperCase()) : '???'}
           </Text>
           <View style={[am.rule, { backgroundColor: fg }]} />
         </View>
+
       </View>
     </Modal>
   );
@@ -123,9 +205,37 @@ const am = StyleSheet.create({
   tagDot: { width: 8, height: 8, borderRadius: 4 },
   tag: { fontSize: 11, fontWeight: '900' },
   close: { fontSize: 12, fontWeight: '900' },
-  body: { flex: 1, justifyContent: 'center' },
-  name: { fontSize: 96, fontWeight: '900', lineHeight: 96 },
-  rule: { height: 4, marginTop: 32, alignSelf: 'stretch' },
+
+  body: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 36 },
+
+  rippleWrap: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: STAMP_SIZE,
+    height: STAMP_SIZE,
+  },
+  glow: {
+    position: 'absolute',
+    width: STAMP_SIZE * 1.5,
+    height: STAMP_SIZE * 1.5,
+    borderRadius: STAMP_SIZE,
+    backgroundColor: 'rgba(0,51,160,0.18)',
+    shadowColor: '#0033A0',
+    shadowOpacity: 1,
+    shadowRadius: 80,
+    shadowOffset: { width: 0, height: 0 },
+  },
+
+  stampImg: { width: STAMP_SIZE, height: STAMP_SIZE },
+  stampFallback: {
+    width: STAMP_SIZE, height: STAMP_SIZE, borderRadius: STAMP_SIZE / 2,
+    backgroundColor: '#0033A0', alignItems: 'center', justifyContent: 'center',
+  },
+  stampFallbackText: { fontSize: STAMP_SIZE * 0.38, fontWeight: '900', color: '#fff' },
+
+  name: { fontSize: 52, fontWeight: '900', lineHeight: 56, paddingHorizontal: 8 },
+  rule: { height: 4, width: '100%', borderRadius: 2 },
 });
 
 export default function ProfileScreen({ navigation, route }) {
@@ -527,8 +637,8 @@ export default function ProfileScreen({ navigation, route }) {
                 <TouchableOpacity
                   key={item._id}
                   style={styles.vaultCell}
-                  activeOpacity={0.75}
-                  onPress={() => setSelectedArtifact(item)}
+                  activeOpacity={item.visited ? 0.75 : 1}
+                  onPress={() => { if (item.visited) setSelectedArtifact(item); }}
                 >
                   <Artifact id={item._id} title={item.title} stampUrl={item.stampUrl} size={cellSize} locked={!item.visited} />
                 </TouchableOpacity>
@@ -564,13 +674,6 @@ export default function ProfileScreen({ navigation, route }) {
           <Text style={[styles.navLink, { color: COLORS.text }]}>{isRTL ? `${t('common.back')} ›` : `‹ ${t('common.back')}`}</Text>
         </TouchableOpacity>
         <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 16 }}>
-          {isOwnProfile && (
-            <TouchableOpacity onPress={() => navigation.navigate('Notifications')} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-              <Text style={[styles.navLink, { color: COLORS.accent }]}>
-                {t('profile.inbox')}{unreadCount > 0 ? ` · ${unreadCount > 99 ? '99+' : unreadCount}` : ''}
-              </Text>
-            </TouchableOpacity>
-          )}
           <TouchableOpacity onPress={handleShare} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
             <Text style={[styles.navLink, { color: COLORS.textMuted }]}>{t('common.share')}</Text>
           </TouchableOpacity>

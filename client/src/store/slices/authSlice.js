@@ -38,9 +38,9 @@ export const sendOtp = createAsyncThunk('auth/sendOtp', async (phone, { rejectWi
   }
 });
 
-export const verifyOtp = createAsyncThunk('auth/verifyOtp', async ({ phone, code, name, referralCode, inviteCode }, { rejectWithValue }) => {
+export const verifyOtp = createAsyncThunk('auth/verifyOtp', async ({ phone, code, name }, { rejectWithValue }) => {
   try {
-    const response = await authAPI.verifyOtp(phone, code, name, referralCode, inviteCode);
+    const response = await authAPI.verifyOtp(phone, code, name);
     await AsyncStorage.setItem('token', response.token);
     await AsyncStorage.setItem('user', JSON.stringify(response.user));
     // Save into multi-account store
@@ -95,14 +95,6 @@ export const logout = createAsyncThunk('auth/logout', async () => {
 export const claimDailyBonus = createAsyncThunk('auth/claimDailyBonus', async (_, { rejectWithValue }) => {
   try {
     return await authAPI.dailyBonus();
-  } catch (error) {
-    return rejectWithValue(error.message);
-  }
-});
-
-export const redeemReferral = createAsyncThunk('auth/redeemReferral', async (code, { rejectWithValue }) => {
-  try {
-    return await authAPI.redeemReferral(code);
   } catch (error) {
     return rejectWithValue(error.message);
   }
@@ -269,12 +261,6 @@ const authSlice = createSlice({
       }
     });
 
-    // Redeem referral
-    builder.addCase(redeemReferral.fulfilled, (state, action) => {
-      if (state.user) {
-        state.user = { ...state.user, hachiPoints: action.payload.hachiPoints };
-      }
-    });
   },
 });
 

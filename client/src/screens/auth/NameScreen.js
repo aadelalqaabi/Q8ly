@@ -3,7 +3,7 @@ import { View, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { updateProfile, redeemReferral } from '../../store/slices/authSlice';
+import { updateProfile } from '../../store/slices/authSlice';
 import {
   BrutHero, BrutRule, BrutInput, BrutBrick, useBrutColors, isAr,
 } from '../../components/Brut';
@@ -16,16 +16,12 @@ export default function NameScreen() {
   const { BG } = useBrutColors();
   const { isLoading } = useSelector((s) => s.auth);
   const [name, setName] = useState('');
-  const [referral, setReferral] = useState('');
 
   const isValid = name.trim().length >= 2;
 
   const handleJoin = async () => {
     if (!isValid || isLoading) return;
     await dispatch(updateProfile({ name: name.trim() }));
-    if (referral.trim()) {
-      dispatch(redeemReferral(referral.trim())).catch(() => {});
-    }
   };
 
   return (
@@ -43,14 +39,6 @@ export default function NameScreen() {
             maxLength={50}
             autoFocus
             accent
-          />
-          <BrutInput
-            label={t('auth.referralPlaceholder')}
-            value={referral}
-            onChangeText={(v) => setReferral(v.toUpperCase())}
-            placeholder="A1B2C3"
-            autoCapitalize="characters"
-            maxLength={6}
           />
         </View>
         <BrutBrick
