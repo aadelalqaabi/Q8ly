@@ -29,7 +29,7 @@ export default function OtpScreen({ navigation, route }) {
   const [countdown, setCountdown] = useState(RESEND_SECONDS);
   const [resending, setResending] = useState(false);
 
-  const inputRefs = useRef([]);
+  const hiddenRef = useRef(null);
   const timerRef = useRef(null);
   const submittedRef = useRef(false);
 
@@ -40,7 +40,7 @@ export default function OtpScreen({ navigation, route }) {
 
   useFocusEffect(
     React.useCallback(() => {
-      const timer = setTimeout(() => inputRefs.current[0]?.focus(), 500);
+      const timer = setTimeout(() => hiddenRef.current?.focus(), 500);
       return () => clearTimeout(timer);
     }, [])
   );
@@ -59,7 +59,7 @@ export default function OtpScreen({ navigation, route }) {
       await authAPI.sendOtp(phone);
       startCountdown();
       setDigits(Array(CODE_LENGTH).fill(''));
-      inputRefs.current[0]?.focus();
+      hiddenRef.current?.focus();
     } catch {}
     setResending(false);
   };
@@ -71,43 +71,21 @@ export default function OtpScreen({ navigation, route }) {
     if (result.meta.requestStatus === 'rejected') {
       setDigits(Array(CODE_LENGTH).fill(''));
       submittedRef.current = false;
-      setTimeout(() => inputRefs.current[0]?.focus(), 100);
+      setTimeout(() => hiddenRef.current?.focus(), 100);
     }
   };
 
-  const handleChange = (text, index) => {
+  const handleChange = (text) => {
     if (submittedRef.current) return;
-    const cleaned = text.replace(/\D/g, '');
-    if (cleaned.length > 1) {
-      const full = cleaned.slice(0, CODE_LENGTH);
-      const next = Array(CODE_LENGTH).fill('');
-      full.split('').forEach((ch, i) => { next[i] = ch; });
-      setDigits(next);
-      const lastIdx = Math.min(full.length - 1, CODE_LENGTH - 1);
-      inputRefs.current[lastIdx]?.focus();
-      if (full.length === CODE_LENGTH) submit(full);
-      return;
-    }
-    const next = [...digits];
-    next[index] = cleaned;
+    const cleaned = text.replace(/\D/g, '').slice(0, CODE_LENGTH);
+    const next = Array(CODE_LENGTH).fill('');
+    cleaned.split('').forEach((ch, i) => { next[i] = ch; });
     setDigits(next);
-    if (cleaned && index < CODE_LENGTH - 1) inputRefs.current[index + 1]?.focus();
-    const code = next.join('');
-    if (code.length === CODE_LENGTH && !next.includes('')) submit(code);
-  };
-
-  const handleKeyPress = ({ nativeEvent }, index) => {
-    if (nativeEvent.key === 'Backspace') {
-      if (digits[index]) {
-        const next = [...digits]; next[index] = ''; setDigits(next);
-      } else if (index > 0) {
-        const next = [...digits]; next[index - 1] = ''; setDigits(next);
-        inputRefs.current[index - 1]?.focus();
-      }
-    }
+    if (cleaned.length === CODE_LENGTH) submit(cleaned);
   };
 
   const displayPhone = phone.replace('+965', '+965 ');
+  const filled = digits.join('');
 
   return (
     <KeyboardAvoidingView style={[styles.root, { backgroundColor: BG }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -133,25 +111,43 @@ export default function OtpScreen({ navigation, route }) {
             </Text>
           )}
 
-          <View style={[styles.boxRow, { flexDirection: 'row' }]}>
+          {/* Single hidden input — owns keyboard + iOS autofill */}
+          <TextInput
+            ref={hiddenRef}
+            value={filled}
+            onChangeText={handleChange}
+            keyboardType="number-pad"
+            textContentType="oneTimeCode"
+            autoComplete="sms-otp"
+            maxLength={CODE_LENGTH}
+            style={styles.hidden}
+            caretHidden
+          />
+
+          {/* Visual digit boxes — tapping any focuses the hidden input */}
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={() => hiddenRef.current?.focus()}
+            style={styles.boxRow}
+          >
             {Array.from({ length: CODE_LENGTH }).map((_, i) => (
-              <TextInput
+              <View
                 key={i}
-                ref={(el) => { inputRefs.current[i] = el; }}
-                value={digits[i]}
-                onChangeText={(text) => handleChange(text, i)}
-                onKeyPress={(e) => handleKeyPress(e, i)}
-                keyboardType="number-pad"
-                maxLength={1}
-                textContentType="oneTimeCode"
-                autoComplete="sms-otp"
                 style={[
                   styles.box,
-                  { backgroundColor: FILL, color: TEXT, borderColor: digits[i] ? ACCENT : 'transparent' },
+                  {
+                    backgroundColor: FILL,
+                    borderColor: digits[i] ? ACCENT : 'transparent',
+                    // cursor indicator on the next empty box
+                    borderBottomColor: !digits[i] && i === filled.length ? ACCENT : undefined,
+                    borderBottomWidth: !digits[i] && i === filled.length ? 2 : undefined,
+                  },
                 ]}
-              />
+              >
+                <Text style={[styles.boxText, { color: TEXT }]}>{digits[i]}</Text>
+              </View>
             ))}
-          </View>
+          </TouchableOpacity>
         </View>
 
         <View>
@@ -179,8 +175,10 @@ const styles = StyleSheet.create({
   phoneHighlight: { fontWeight: '900', fontVariant: ['tabular-nums'] },
   testTag: { fontSize: 11, fontWeight: '900', marginBottom: 12 },
   error: { fontSize: 11, fontWeight: '800', color: '#D32F2F', marginBottom: 14 },
-  boxRow: { gap: 8, marginTop: 24 },
-  box: { flex: 1, height: 60, borderRadius: 12, borderWidth: 2, fontSize: 28, fontWeight: '600', textAlign: 'center', fontVariant: ['tabular-nums'] },
+  hidden: { position: 'absolute', width: 1, height: 1, opacity: 0 },
+  boxRow: { flexDirection: 'row', gap: 8, marginTop: 24 },
+  box: { flex: 1, height: 60, borderRadius: 12, borderWidth: 2, justifyContent: 'center', alignItems: 'center' },
+  boxText: { fontSize: 28, fontWeight: '600', fontVariant: ['tabular-nums'] },
   resend: { fontSize: 15, fontWeight: '600' },
   resendDim: { fontSize: 13, fontWeight: '400' },
 });
