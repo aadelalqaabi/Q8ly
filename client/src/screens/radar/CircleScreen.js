@@ -814,30 +814,30 @@ export default function CircleScreen({ route, navigation }) {
 
             <View style={[styles.actionsRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
               <TouchableOpacity
-                style={[styles.actionChip, { backgroundColor: FILL }]}
+                style={[styles.actionChip, { backgroundColor: FILL, borderColor: SEPARATOR }]}
                 onPress={() => navigation.navigate('LiveCamera', { circleId })}
                 activeOpacity={0.7}
               >
-                <Ionicons name="camera-outline" size={18} color={MUTED} />
-                <Text style={[styles.actionChipText, { color: MUTED }]}>{ar ? 'لايف' : 'Live'}</Text>
+                <Ionicons name="camera-outline" size={18} color={TEXT} />
+                <Text style={[styles.actionChipText, { color: TEXT }]}>{ar ? 'لايف' : 'Live'}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.actionChip, { backgroundColor: FILL }]}
+                style={[styles.actionChip, { backgroundColor: FILL, borderColor: SEPARATOR }]}
                 onPress={() => setShowCreatePoll(true)}
                 activeOpacity={0.7}
               >
-                <Ionicons name="bar-chart-outline" size={18} color={MUTED} />
-                <Text style={[styles.actionChipText, { color: MUTED }]}>{ar ? 'تصويت' : 'Poll'}</Text>
+                <Ionicons name="bar-chart-outline" size={18} color={TEXT} />
+                <Text style={[styles.actionChipText, { color: TEXT }]}>{ar ? 'تصويت' : 'Poll'}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.actionChip, { backgroundColor: FILL }]}
+                style={[styles.actionChip, { backgroundColor: FILL, borderColor: SEPARATOR }]}
                 onPress={() => setShowQuestionComposer(true)}
                 activeOpacity={0.7}
               >
                 <Text style={{ fontSize: 16, lineHeight: 20 }}>❓</Text>
-                <Text style={[styles.actionChipText, { color: MUTED }]}>{ar ? 'سؤال' : 'Ask'}</Text>
+                <Text style={[styles.actionChipText, { color: TEXT }]}>{ar ? 'سؤال' : 'Ask'}</Text>
               </TouchableOpacity>
 
               <View style={[styles.anonToggle, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
@@ -900,7 +900,7 @@ const styles = StyleSheet.create({
   input: { fontSize: 15, fontWeight: '400', paddingVertical: 10 },
   sendBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
   actionsRow: { gap: 8, marginBottom: 4, alignItems: 'center', flex: 1 },
-  anonToggle: { flex: 1, justifyContent: 'flex-end', alignItems: 'center', gap: 4 },
-  actionChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
+  anonToggle: { flex: 1, justifyContent: 'flex-end', alignItems: 'center', gap: 4, flexDirection: 'row' },
+  actionChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
   actionChipText: { fontSize: 13, fontWeight: '500' },
 });

@@ -324,7 +324,7 @@ export default function RadarScreen() {
 
         <TouchableOpacity style={s.avatarBtn} onPress={() => navigation.navigate('Profile')} activeOpacity={0.75}>
           {user?.profilePic ? (
-            <Image source={{ uri: cdnUrl(user.profilePic, 68) }} style={s.avatarImg} />
+            <Image source={{ uri: cdnUrl(user.profilePic, 84) }} style={s.avatarImg} />
           ) : (
             <View style={[s.avatarImg, { backgroundColor: avatarBg(user?.name) }]}>
               <Text style={s.avatarInitial}>{user?.name?.[0]?.toUpperCase() || '?'}</Text>
@@ -460,9 +460,9 @@ const s = StyleSheet.create({
     zIndex: 20,
   },
   findBtnText: { fontSize: 14, fontWeight: '800', letterSpacing: 0, color: '#fff' },
-  avatarBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  avatarImg: { width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center' },
-  avatarInitial: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  avatarBtn: { width: 48, height: 48, justifyContent: 'center', alignItems: 'center' },
+  avatarImg: { width: 42, height: 42, borderRadius: 21, justifyContent: 'center', alignItems: 'center' },
+  avatarInitial: { fontSize: 16, fontWeight: '700', color: '#fff' },
 
   // Enter card
   enterCard: {
