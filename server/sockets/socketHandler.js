@@ -219,6 +219,41 @@ const initSocket = (server) => {
       }
     });
 
+    socket.on('hachiSendQuestion', async ({ roomId, text, anonymous }) => {
+      if (!socket.user || !text?.trim()) return;
+      try {
+        const Hachi = require('../models/Hachi');
+        const mongoose = require('mongoose');
+        const isAnon = !!anonymous;
+        const now = new Date();
+        const msgId = new mongoose.Types.ObjectId();
+        const msgData = {
+          _id: msgId, user: socket.user._id, type: 'question',
+          text: text.trim(), anonymous: isAnon, reactions: [], likes: [], createdAt: now,
+        };
+        const room = await Hachi.findById(roomId).select('blockedMembers members memberCount').lean();
+        if (!room) return;
+        if ((room.blockedMembers || []).some((b) => b.toString() === socket.user._id.toString())) return;
+        const isNewMember = !(room.members || []).some((m) => m.toString() === socket.user._id.toString());
+        await Hachi.findByIdAndUpdate(roomId, {
+          $push: { messages: { $each: [msgData], $slice: -500 } },
+          $set: { lastMessage: { text: `❓ ${text.trim()}`, createdAt: now } },
+          $addToSet: { members: socket.user._id },
+          ...(isNewMember ? { $inc: { memberCount: 1 } } : {}),
+        });
+        const populated = {
+          _id: msgId, type: 'question', text: text.trim(), anonymous: isAnon,
+          reactions: [], likes: [], createdAt: now, replyTo: null,
+          user: isAnon
+            ? { _id: socket.user._id }
+            : { _id: socket.user._id, name: socket.user.name, username: socket.user.username, profilePic: socket.user.profilePic },
+        };
+        io.to(`hachi:${roomId}`).emit('hachiMessage', { roomId, message: populated });
+      } catch (err) {
+        console.error('hachiSendQuestion error:', err.message);
+      }
+    });
+
     socket.on('hachiSendVoice', async ({ roomId, voiceUrl, voiceDuration }) => {
       if (!socket.user || !voiceUrl) return;
       try {

@@ -7,6 +7,7 @@ const reactionSchema = new mongoose.Schema({
 
 const messageSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  type: { type: String, enum: ['text', 'image', 'video', 'voice', 'question'], default: 'text' },
   text: { type: String, maxlength: 500, trim: true },
   image: { type: String },
   video: { type: String },

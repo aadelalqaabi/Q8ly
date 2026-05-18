@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useSelector } from 'react-redux';
 import { hachiAPI } from '../../services/api';
-import { getSocket, joinHachiRoom, leaveHachiRoom, sendHachiMessage } from '../../services/socket';
+import { getSocket, joinHachiRoom, leaveHachiRoom, sendHachiMessage, sendHachiQuestion } from '../../services/socket';
 import { Ionicons } from '@expo/vector-icons';
 import { useBrutColors, isAr } from '../../components/Brut';
 import { PollCard, PollComposer } from '../../components/Poll';
@@ -17,6 +17,7 @@ let Location = null;
 try { Location = require('expo-location'); } catch {}
 
 const SW = Dimensions.get('window').width;
+const SH = Dimensions.get('window').height;
 const CARD_IMAGE_HEIGHT = SW * 0.72;
 
 function cdnUrl(url, px) {
@@ -33,8 +34,7 @@ function timeAgo(date, ar) {
   return ar ? `${Math.floor(diff / 86400)}ي` : `${Math.floor(diff / 86400)}d`;
 }
 
-
-// ── Comment row (reply shown inside the post) ─────────────────────────────────
+// ── Comment row ───────────────────────────────────────────────────────────────
 function CommentRow({ msg, currentUserId, ar, onLikeToggle }) {
   const { TEXT, MUTED, ACCENT, FILL, SEPARATOR } = useBrutColors();
   const liked = (msg.likes || []).some(
@@ -67,34 +67,20 @@ function CommentRow({ msg, currentUserId, ar, onLikeToggle }) {
         )}
         {!!msg.image && (
           <View style={[cmtStyles.imgWrap, { backgroundColor: FILL }]}>
-            <Image
-              source={{ uri: cdnUrl(msg.image, 160) }}
-              style={cmtStyles.img}
-              resizeMode="cover"
-            />
+            <Image source={{ uri: cdnUrl(msg.image, 160) }} style={cmtStyles.img} resizeMode="cover" />
           </View>
         )}
       </View>
-      <TouchableOpacity
-        style={cmtStyles.likeBtn}
-        onPress={() => onLikeToggle(msg._id)}
-        activeOpacity={0.7}
-      >
+      <TouchableOpacity style={cmtStyles.likeBtn} onPress={() => onLikeToggle(msg._id)} activeOpacity={0.7}>
         <Ionicons name={liked ? 'heart' : 'heart-outline'} size={14} color={liked ? '#FF3B30' : MUTED} />
-        {likeCount > 0 && (
-          <Text style={[cmtStyles.likeCount, { color: liked ? '#FF3B30' : MUTED }]}>{likeCount}</Text>
-        )}
+        {likeCount > 0 && <Text style={[cmtStyles.likeCount, { color: liked ? '#FF3B30' : MUTED }]}>{likeCount}</Text>}
       </TouchableOpacity>
     </View>
   );
 }
 
 const cmtStyles = StyleSheet.create({
-  row: {
-    flexDirection: 'row', alignItems: 'flex-start',
-    gap: 8, paddingHorizontal: 14, paddingVertical: 9,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
+  row: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingHorizontal: 14, paddingVertical: 9, borderTopWidth: StyleSheet.hairlineWidth },
   dot: { width: 24, height: 24, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginTop: 1 },
   header: { alignItems: 'center', gap: 6, marginBottom: 2 },
   author: { fontSize: 12, fontWeight: '500' },
@@ -104,6 +90,99 @@ const cmtStyles = StyleSheet.create({
   img: { width: 120, height: 120 },
   likeBtn: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingTop: 2 },
   likeCount: { fontSize: 11, fontWeight: '500' },
+});
+
+// ── Question card ─────────────────────────────────────────────────────────────
+function QuestionCard({ msg, answers, currentUserId, ar, onLikeToggle, onAnswer }) {
+  const { TEXT, MUTED, ACCENT, BG, FILL, SEPARATOR } = useBrutColors();
+  const [expanded, setExpanded] = useState(false);
+  const [answerText, setAnswerText] = useState('');
+  const answerCount = answers.length;
+
+  const handleSubmitAnswer = () => {
+    if (!answerText.trim()) return;
+    onAnswer(msg._id, answerText.trim());
+    setAnswerText('');
+  };
+
+  return (
+    <View style={[qStyles.card, { backgroundColor: BG, borderBottomColor: SEPARATOR }]}>
+      <View style={[qStyles.questionBubble, { backgroundColor: ACCENT + '12', borderColor: ACCENT + '30' }]}>
+        <Text style={qStyles.qIcon}>❓</Text>
+        <Text style={[qStyles.questionText, { color: TEXT, textAlign: ar ? 'right' : 'left' }]}>
+          {msg.text}
+        </Text>
+      </View>
+
+      <Text style={[qStyles.meta, { color: MUTED, textAlign: ar ? 'right' : 'left' }]}>
+        {timeAgo(msg.createdAt, ar)} · {ar ? 'شخص هنا' : 'Someone here'}
+      </Text>
+
+      <TouchableOpacity
+        style={[qStyles.seeBtn, { borderColor: SEPARATOR }]}
+        onPress={() => setExpanded((v) => !v)}
+        activeOpacity={0.7}
+      >
+        <Text style={[qStyles.seeBtnText, { color: ACCENT }]}>
+          {expanded
+            ? (ar ? 'إخفاء الإجابات' : 'Hide answers')
+            : answerCount > 0
+              ? (ar ? `عرض ${answerCount} إجابة` : `See ${answerCount} answer${answerCount !== 1 ? 's' : ''}`)
+              : (ar ? 'لا إجابات · أجب الآن' : 'No answers · Answer now')
+          }
+        </Text>
+        <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={14} color={ACCENT} />
+      </TouchableOpacity>
+
+      {expanded && (
+        <View style={[qStyles.answersSection, { borderTopColor: FILL }]}>
+          {answers.map((a) => (
+            <CommentRow
+              key={String(a._id)}
+              msg={a}
+              currentUserId={currentUserId}
+              ar={ar}
+              onLikeToggle={onLikeToggle}
+            />
+          ))}
+          <View style={[qStyles.answerInput, { backgroundColor: FILL, borderTopColor: SEPARATOR }]}>
+            <TextInput
+              style={[qStyles.answerField, { color: TEXT, textAlign: ar ? 'right' : 'left' }]}
+              value={answerText}
+              onChangeText={setAnswerText}
+              placeholder={ar ? 'أجب بشكل مجهول…' : 'Answer anonymously…'}
+              placeholderTextColor={MUTED}
+              maxLength={300}
+              returnKeyType="send"
+              onSubmitEditing={handleSubmitAnswer}
+            />
+            <TouchableOpacity
+              onPress={handleSubmitAnswer}
+              disabled={!answerText.trim()}
+              style={[qStyles.answerSend, { backgroundColor: answerText.trim() ? ACCENT : SEPARATOR }]}
+              activeOpacity={0.75}
+            >
+              <Ionicons name={ar ? 'arrow-back' : 'arrow-forward'} size={14} color={answerText.trim() ? '#fff' : MUTED} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}
+
+const qStyles = StyleSheet.create({
+  card: { borderBottomWidth: StyleSheet.hairlineWidth, paddingHorizontal: 14, paddingTop: 14, paddingBottom: 8 },
+  questionBubble: { borderWidth: 1, borderRadius: 16, padding: 14, flexDirection: 'row', gap: 10, alignItems: 'flex-start', marginBottom: 8 },
+  qIcon: { fontSize: 20, lineHeight: 26 },
+  questionText: { flex: 1, fontSize: 16, fontWeight: '600', lineHeight: 23 },
+  meta: { fontSize: 12, marginBottom: 10 },
+  seeBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth },
+  seeBtnText: { fontSize: 13, fontWeight: '600' },
+  answersSection: { borderTopWidth: 2, marginTop: 2 },
+  answerInput: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth },
+  answerField: { flex: 1, fontSize: 14, paddingVertical: 4 },
+  answerSend: { width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center' },
 });
 
 // ── Post card ─────────────────────────────────────────────────────────────────
@@ -123,7 +202,6 @@ function PostCard({ msg, comments, currentUserId, ar, onImagePress, onLikeToggle
 
   return (
     <View style={[cardStyles.card, { backgroundColor: BG, borderBottomColor: SEPARATOR }]}>
-      {/* Meta */}
       <View style={[cardStyles.meta, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
         <View style={[cardStyles.anonDot, { backgroundColor: isAnonPost ? ACCENT + '22' : FILL }]}>
           {displayPic
@@ -137,28 +215,19 @@ function PostCard({ msg, comments, currentUserId, ar, onImagePress, onLikeToggle
         {!hasImage && <Text style={[cardStyles.ts, { color: MUTED }]}>{ts}</Text>}
       </View>
 
-      {/* Image with timestamp overlay */}
       {hasImage && (
         <TouchableOpacity activeOpacity={0.92} onPress={() => onImagePress(msg.image)}>
-          <Image
-            source={{ uri: cdnUrl(msg.image, SW) }}
-            style={{ width: SW, height: CARD_IMAGE_HEIGHT }}
-            resizeMode="cover"
-          />
+          <Image source={{ uri: cdnUrl(msg.image, SW) }} style={{ width: SW, height: CARD_IMAGE_HEIGHT }} resizeMode="cover" />
           <View style={cardStyles.imgTs}>
             <Text style={cardStyles.imgTsText}>{ts}</Text>
           </View>
         </TouchableOpacity>
       )}
 
-      {/* Text */}
       {hasText && (
-        <Text style={[cardStyles.text, { color: TEXT, textAlign: ar ? 'right' : 'left' }]}>
-          {msg.text}
-        </Text>
+        <Text style={[cardStyles.text, { color: TEXT, textAlign: ar ? 'right' : 'left' }]}>{msg.text}</Text>
       )}
 
-      {/* Actions */}
       <View style={[cardStyles.actions, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
         <TouchableOpacity
           style={cardStyles.actionBtn}
@@ -166,30 +235,18 @@ function PostCard({ msg, comments, currentUserId, ar, onImagePress, onLikeToggle
           activeOpacity={0.7}
         >
           <Ionicons name={showComments ? 'chatbubble' : 'chatbubble-outline'} size={16} color={showComments ? ACCENT : MUTED} />
-          {comments.length > 0 && (
-            <Text style={[cardStyles.actionLabel, { color: showComments ? ACCENT : MUTED }]}>{comments.length}</Text>
-          )}
+          {comments.length > 0 && <Text style={[cardStyles.actionLabel, { color: showComments ? ACCENT : MUTED }]}>{comments.length}</Text>}
         </TouchableOpacity>
-
         <TouchableOpacity style={cardStyles.actionBtn} onPress={() => onLikeToggle(msg._id)} activeOpacity={0.7}>
           <Ionicons name={liked ? 'heart' : 'heart-outline'} size={16} color={liked ? '#FF3B30' : MUTED} />
-          {likeCount > 0 && (
-            <Text style={[cardStyles.actionLabel, { color: liked ? '#FF3B30' : MUTED }]}>{likeCount}</Text>
-          )}
+          {likeCount > 0 && <Text style={[cardStyles.actionLabel, { color: liked ? '#FF3B30' : MUTED }]}>{likeCount}</Text>}
         </TouchableOpacity>
       </View>
 
-      {/* Inline comments — collapsed by default */}
       {showComments && comments.length > 0 && (
         <View style={[cardStyles.commentSection, { borderTopColor: FILL }]}>
           {comments.map((c) => (
-            <CommentRow
-              key={String(c._id)}
-              msg={c}
-              currentUserId={currentUserId}
-              ar={ar}
-              onLikeToggle={onLikeToggle}
-            />
+            <CommentRow key={String(c._id)} msg={c} currentUserId={currentUserId} ar={ar} onLikeToggle={onLikeToggle} />
           ))}
         </View>
       )}
@@ -204,11 +261,7 @@ const cardStyles = StyleSheet.create({
   anonIcon: { fontSize: 13 },
   author: { flex: 1, fontSize: 14, fontWeight: '600' },
   ts: { fontSize: 12 },
-  imgTs: {
-    position: 'absolute', bottom: 8, left: 10,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6,
-  },
+  imgTs: { position: 'absolute', bottom: 8, left: 10, backgroundColor: 'rgba(0,0,0,0.4)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
   imgTsText: { color: '#fff', fontSize: 10, fontWeight: '500' },
   text: { fontSize: 16, lineHeight: 23, paddingHorizontal: 14, paddingTop: 4, paddingBottom: 4 },
   actions: { paddingHorizontal: 14, paddingVertical: 10, alignItems: 'center', gap: 20 },
@@ -240,9 +293,7 @@ function StampModal({ visible, stampUrl, venueName, onClose, ar }) {
         <Animated.View style={[stampStyles.card, { transform: [{ scale: scaleAnim }] }]}>
           <Text style={stampStyles.congrats}>{ar ? '🎉 جمعت الطابع!' : '🎉 Stamp Collected!'}</Text>
           <Text style={stampStyles.venue}>{venueName}</Text>
-          {stampUrl && (
-            <Image source={{ uri: cdnUrl(stampUrl, 440) }} style={stampStyles.stamp} resizeMode="contain" />
-          )}
+          {stampUrl && <Image source={{ uri: cdnUrl(stampUrl, 440) }} style={stampStyles.stamp} resizeMode="contain" />}
           <TouchableOpacity style={stampStyles.btn} onPress={onClose} activeOpacity={0.8}>
             <Text style={stampStyles.btnText}>{ar ? 'رائع!' : 'Nice!'}</Text>
           </TouchableOpacity>
@@ -254,16 +305,106 @@ function StampModal({ visible, stampUrl, venueName, onClose, ar }) {
 
 const stampStyles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', alignItems: 'center' },
-  card: {
-    width: 300, backgroundColor: '#fff', borderRadius: 28,
-    alignItems: 'center', paddingHorizontal: 24, paddingVertical: 32,
-    shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 24, shadowOffset: { width: 0, height: 8 },
-  },
+  card: { width: 300, backgroundColor: '#fff', borderRadius: 28, alignItems: 'center', paddingHorizontal: 24, paddingVertical: 32, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 24, shadowOffset: { width: 0, height: 8 } },
   congrats: { fontSize: 20, fontWeight: '800', color: '#000', marginBottom: 4, textAlign: 'center' },
   venue: { fontSize: 14, color: '#6C6C70', marginBottom: 20, textAlign: 'center' },
   stamp: { width: 220, height: 220, marginBottom: 24 },
   btn: { backgroundColor: '#0033A0', borderRadius: 22, paddingHorizontal: 48, paddingVertical: 14 },
   btnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+});
+
+// ── Photo reel item (full-screen TikTok style) ────────────────────────────────
+function ReelItem({ msg, currentUserId, ar, onLikeToggle, height }) {
+  const liked = (msg.likes || []).some(
+    (l) => (typeof l === 'string' ? l : l?.toString()) === currentUserId?.toString()
+  );
+  const likeCount = (msg.likes || []).length;
+  const isAnonPost = msg.anonymous !== false || !msg.user?.name;
+  const displayName = isAnonPost ? (ar ? 'شخص هنا' : 'Someone here') : msg.user.name;
+
+  return (
+    <View style={{ width: SW, height, backgroundColor: '#000' }}>
+      <Image source={{ uri: cdnUrl(msg.image, SW) }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      <View style={reelStyles.bottomGradient} />
+      <View style={[reelStyles.info, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
+        <View style={{ flex: 1 }}>
+          <Text style={reelStyles.name}>{displayName}</Text>
+          {!!msg.text && <Text style={reelStyles.caption} numberOfLines={2}>{msg.text}</Text>}
+          <Text style={reelStyles.ts}>{timeAgo(msg.createdAt, ar)}</Text>
+        </View>
+        <TouchableOpacity style={reelStyles.likeBtn} onPress={() => onLikeToggle(msg._id)} activeOpacity={0.7}>
+          <Ionicons name={liked ? 'heart' : 'heart-outline'} size={28} color={liked ? '#FF3B30' : '#fff'} />
+          {likeCount > 0 && <Text style={reelStyles.likeCount}>{likeCount}</Text>}
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+const reelStyles = StyleSheet.create({
+  bottomGradient: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 200, backgroundColor: 'rgba(0,0,0,0.35)' },
+  info: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20, paddingBottom: 32, alignItems: 'flex-end', gap: 16 },
+  name: { color: '#fff', fontSize: 14, fontWeight: '700', marginBottom: 4 },
+  caption: { color: 'rgba(255,255,255,0.9)', fontSize: 13, lineHeight: 18 },
+  ts: { color: 'rgba(255,255,255,0.6)', fontSize: 11, marginTop: 4 },
+  likeBtn: { alignItems: 'center', gap: 4 },
+  likeCount: { color: '#fff', fontSize: 13, fontWeight: '600' },
+});
+
+// ── Question composer modal ───────────────────────────────────────────────────
+function QuestionComposer({ visible, onClose, onSubmit, ar }) {
+  const { TEXT, MUTED, ACCENT, BG, FILL, SEPARATOR } = useBrutColors();
+  const [text, setText] = useState('');
+
+  const handleSubmit = () => {
+    if (!text.trim()) return;
+    onSubmit(text.trim());
+    setText('');
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={onClose} />
+        <View style={[qcStyles.sheet, { backgroundColor: BG, borderTopColor: SEPARATOR }]}>
+          <Text style={[qcStyles.title, { color: TEXT }]}>{ar ? '❓ اطرح سؤالاً' : '❓ Ask the circle'}</Text>
+          <Text style={[qcStyles.sub, { color: MUTED }]}>{ar ? 'سيُرسل بشكل مجهول' : 'Posted anonymously'}</Text>
+          <View style={[qcStyles.inputWrap, { backgroundColor: FILL }]}>
+            <TextInput
+              style={[qcStyles.input, { color: TEXT, textAlign: ar ? 'right' : 'left' }]}
+              value={text}
+              onChangeText={setText}
+              placeholder={ar ? 'ما سؤالك؟' : "What's your question?"}
+              placeholderTextColor={MUTED}
+              multiline
+              maxLength={200}
+              autoFocus
+            />
+          </View>
+          <TouchableOpacity
+            style={[qcStyles.btn, { backgroundColor: text.trim() ? ACCENT : FILL }]}
+            onPress={handleSubmit}
+            disabled={!text.trim()}
+            activeOpacity={0.8}
+          >
+            <Text style={[qcStyles.btnText, { color: text.trim() ? '#fff' : MUTED }]}>
+              {ar ? 'أرسل' : 'Ask'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
+const qcStyles = StyleSheet.create({
+  sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, borderTopWidth: StyleSheet.hairlineWidth },
+  title: { fontSize: 18, fontWeight: '700', marginBottom: 4 },
+  sub: { fontSize: 13, marginBottom: 16 },
+  inputWrap: { borderRadius: 16, padding: 14, marginBottom: 16, minHeight: 80 },
+  input: { fontSize: 16, lineHeight: 22 },
+  btn: { borderRadius: 22, paddingVertical: 14, alignItems: 'center' },
+  btnText: { fontSize: 16, fontWeight: '700' },
 });
 
 // ── Main screen ───────────────────────────────────────────────────────────────
@@ -281,18 +422,20 @@ export default function CircleScreen({ route, navigation }) {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
   const [showCreatePoll, setShowCreatePoll] = useState(false);
+  const [showQuestionComposer, setShowQuestionComposer] = useState(false);
   const [userLoc, setUserLoc] = useState(null);
   const [isAnon, setIsAnon] = useState(false);
-  const [replyTo, setReplyTo] = useState(null); // { messageId, text, userName }
+  const [replyTo, setReplyTo] = useState(null);
   const [stampToast, setStampToast] = useState(null);
+  const [activeTab, setActiveTab] = useState('feed');
 
   const watchRef = useRef(null);
   const flatRef = useRef(null);
+  const reelRef = useRef(null);
   const exitedRef = useRef(false);
   const expectedVoteRef = useRef({});
   const slideAnim = useRef(new Animated.Value(60)).current;
 
-  // Derive feed: top-level posts + replies map
   const { topLevel, repliesMap } = useMemo(() => {
     const replies = {};
     const top = [];
@@ -307,6 +450,12 @@ export default function CircleScreen({ route, navigation }) {
     }
     return { topLevel: top, repliesMap: replies };
   }, [messages]);
+
+  const photoMessages = useMemo(() => topLevel.filter((m) => !!m.image), [topLevel]);
+
+  // Height for one reel page: full screen minus safe areas and header
+  const HEADER_H = insets.top + 10 + 12 + 20 + 22 + 38; // approx header height
+  const reelHeight = SH - HEADER_H - insets.bottom;
 
   const prevTopCount = useRef(0);
   useEffect(() => {
@@ -352,11 +501,8 @@ export default function CircleScreen({ route, navigation }) {
       loadedOnce = true;
       loadRoom(loc);
     };
-
     if (!Location) { safeLoad(null); return () => { cancelled = true; }; }
-
     const fallback = setTimeout(() => safeLoad(null), 4000);
-
     (async () => {
       try {
         const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
@@ -424,19 +570,13 @@ export default function CircleScreen({ route, navigation }) {
     return () => clearInterval(id);
   }, [polls.length]);
 
-
   const handleLikeToggle = useCallback(async (msgId) => {
     setMessages((prev) => prev.map((m) => {
       if (String(m._id) !== String(msgId)) return m;
       const uid = currentUser?._id?.toString();
       const likes = m.likes || [];
       const already = likes.some((l) => (typeof l === 'string' ? l : l?.toString()) === uid);
-      return {
-        ...m,
-        likes: already
-          ? likes.filter((l) => (typeof l === 'string' ? l : l?.toString()) !== uid)
-          : [...likes, uid],
-      };
+      return { ...m, likes: already ? likes.filter((l) => (typeof l === 'string' ? l : l?.toString()) !== uid) : [...likes, uid] };
     }));
     try { await hachiAPI.likeMessage(circleId, msgId); } catch {}
   }, [circleId, currentUser]);
@@ -449,6 +589,19 @@ export default function CircleScreen({ route, navigation }) {
     });
   }, [ar]);
 
+  const handleAnswer = useCallback((questionId, answerText) => {
+    const sock = getSocket();
+    if (!sock?.connected) return;
+    const locParam = userLoc ? { lat: userLoc.lat, lng: userLoc.lng, speed: userLoc.speed } : null;
+    sendHachiMessage(
+      circleId,
+      answerText,
+      { messageId: questionId, text: '', userName: ar ? 'شخص هنا' : 'Someone here' },
+      locParam,
+      true
+    );
+  }, [circleId, userLoc, ar]);
+
   const handleSend = () => {
     if (!text.trim()) return;
     const sock = getSocket();
@@ -457,6 +610,11 @@ export default function CircleScreen({ route, navigation }) {
     sendHachiMessage(circleId, text.trim(), replyTo || null, locParam, isAnon);
     setText('');
     setReplyTo(null);
+  };
+
+  const handleAskQuestion = (questionText) => {
+    sendHachiQuestion(circleId, questionText, true);
+    setShowQuestionComposer(false);
   };
 
   const handleVote = (pollId, optionId) => {
@@ -495,14 +653,7 @@ export default function CircleScreen({ route, navigation }) {
   const listHeader = polls.length > 0 ? (
     <View style={{ paddingHorizontal: 16, paddingTop: 10 }}>
       {polls.map((poll) => (
-        <PollCard
-          key={poll._id}
-          poll={poll}
-          onVote={handleVote}
-          onDelete={handleDeletePoll}
-          currentUserId={currentUser?._id}
-          ar={ar}
-        />
+        <PollCard key={poll._id} poll={poll} onVote={handleVote} onDelete={handleDeletePoll} currentUserId={currentUser?._id} ar={ar} />
       ))}
     </View>
   ) : null;
@@ -525,114 +676,194 @@ export default function CircleScreen({ route, navigation }) {
               <Text style={styles.hereText}>{activeHere} {t('radar.hereNow')}</Text>
             </View>
           )}
+          {/* Tab switcher */}
+          <View style={[styles.tabRow, { borderTopColor: SEPARATOR }]}>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'feed' && { borderBottomColor: ACCENT, borderBottomWidth: 2 }]}
+              onPress={() => setActiveTab('feed')}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.tabText, { color: activeTab === 'feed' ? ACCENT : MUTED }]}>
+                {ar ? 'المنشورات' : 'Feed'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'photos' && { borderBottomColor: ACCENT, borderBottomWidth: 2 }]}
+              onPress={() => setActiveTab('photos')}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.tabText, { color: activeTab === 'photos' ? ACCENT : MUTED }]}>
+                {photoMessages.length > 0
+                  ? (ar ? `صور (${photoMessages.length})` : `Photos (${photoMessages.length})`)
+                  : (ar ? 'صور' : 'Photos')
+                }
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
         <View style={styles.headerSide} />
       </View>
 
-      {/* Feed */}
-      <Animated.View style={[{ flex: 1 }, { transform: [{ translateY: slideAnim }] }]}>
-        <FlatList
-          ref={flatRef}
-          data={topLevel}
-          keyExtractor={(m) => String(m._id)}
-          ListHeaderComponent={listHeader}
-          renderItem={({ item }) => (
-            <PostCard
-              msg={item}
-              comments={repliesMap[String(item._id)] || []}
-              currentUserId={currentUser?._id}
-              ar={ar}
-              onImagePress={(uri) => navigation.navigate('MediaViewer', { media: [{ uri, type: 'image' }], initialIndex: 0 })}
-              onLikeToggle={handleLikeToggle}
-              onReply={handleReply}
+      {/* Feed tab */}
+      {activeTab === 'feed' && (
+        <Animated.View style={[{ flex: 1 }, { transform: [{ translateY: slideAnim }] }]}>
+          <FlatList
+            ref={flatRef}
+            data={topLevel}
+            keyExtractor={(m) => String(m._id)}
+            ListHeaderComponent={listHeader}
+            renderItem={({ item }) => {
+              if (item.type === 'question') {
+                return (
+                  <QuestionCard
+                    msg={item}
+                    answers={repliesMap[String(item._id)] || []}
+                    currentUserId={currentUser?._id}
+                    ar={ar}
+                    onLikeToggle={handleLikeToggle}
+                    onAnswer={handleAnswer}
+                  />
+                );
+              }
+              return (
+                <PostCard
+                  msg={item}
+                  comments={repliesMap[String(item._id)] || []}
+                  currentUserId={currentUser?._id}
+                  ar={ar}
+                  onImagePress={(uri) => navigation.navigate('MediaViewer', { media: [{ uri, type: 'image' }], initialIndex: 0 })}
+                  onLikeToggle={handleLikeToggle}
+                  onReply={handleReply}
+                />
+              );
+            }}
+            contentContainerStyle={{ paddingBottom: 12 }}
+            showsVerticalScrollIndicator={false}
+          />
+        </Animated.View>
+      )}
+
+      {/* Photos reel tab */}
+      {activeTab === 'photos' && (
+        <View style={{ flex: 1, backgroundColor: '#000' }}>
+          {photoMessages.length === 0 ? (
+            <View style={styles.emptyReel}>
+              <Text style={styles.emptyReelIcon}>📷</Text>
+              <Text style={[styles.emptyReelText, { color: '#888' }]}>
+                {ar ? 'لا توجد صور بعد' : 'No photos yet'}
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+              ref={reelRef}
+              data={photoMessages}
+              keyExtractor={(m) => String(m._id)}
+              pagingEnabled
+              showsVerticalScrollIndicator={false}
+              snapToInterval={reelHeight}
+              decelerationRate="fast"
+              getItemLayout={(_, index) => ({ length: reelHeight, offset: reelHeight * index, index })}
+              renderItem={({ item }) => (
+                <ReelItem
+                  msg={item}
+                  currentUserId={currentUser?._id}
+                  ar={ar}
+                  onLikeToggle={handleLikeToggle}
+                  height={reelHeight}
+                />
+              )}
             />
           )}
-          contentContainerStyle={{ paddingBottom: 12 }}
-          showsVerticalScrollIndicator={false}
-        />
-      </Animated.View>
-
-      {/* Composer */}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={0}
-      >
-        {replyTo && (
-          <View style={[styles.replyBanner, { backgroundColor: FILL, borderTopColor: SEPARATOR }]}>
-            <Ionicons name="chatbubble-outline" size={13} color={ACCENT} />
-            <Text style={[styles.replyBannerText, { color: MUTED }]} numberOfLines={1}>
-              {replyTo.text}
-            </Text>
-            <TouchableOpacity onPress={() => setReplyTo(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="close" size={16} color={MUTED} />
-            </TouchableOpacity>
-          </View>
-        )}
-
-        <View style={[styles.composerWrap, { backgroundColor: BG, borderTopColor: SEPARATOR, paddingBottom: insets.bottom + 10 }]}>
-          {/* Input row */}
-          <View style={[styles.inputRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
-            <View style={[styles.inputCard, { backgroundColor: FILL, borderColor: replyTo ? ACCENT : 'transparent' }]}>
-              <TextInput
-                style={[styles.input, { color: TEXT, textAlign: ar ? 'right' : 'left' }]}
-                value={text}
-                onChangeText={setText}
-                placeholder={replyTo ? (ar ? 'اكتب تعليقاً…' : 'Write a comment…') : t('radar.composerPlaceholder')}
-                placeholderTextColor={MUTED}
-                multiline
-                maxLength={500}
-              />
-            </View>
-            <TouchableOpacity
-              onPress={handleSend}
-              disabled={!text.trim()}
-              style={[styles.sendBtn, { backgroundColor: text.trim() ? ACCENT : FILL }]}
-              activeOpacity={0.75}
-            >
-              <Ionicons name={ar ? 'arrow-back' : 'arrow-forward'} size={18} color={text.trim() ? '#fff' : MUTED} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Actions row */}
-          <View style={[styles.actionsRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
-            <TouchableOpacity
-              style={[styles.actionChip, { backgroundColor: FILL }]}
-              onPress={() => navigation.navigate('LiveCamera', { circleId })}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="camera-outline" size={18} color={MUTED} />
-              <Text style={[styles.actionChipText, { color: MUTED }]}>{ar ? 'لايف' : 'Live'}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.actionChip, { backgroundColor: FILL }]}
-              onPress={() => setShowCreatePoll(true)}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="bar-chart-outline" size={18} color={MUTED} />
-              <Text style={[styles.actionChipText, { color: MUTED }]}>{ar ? 'تصويت' : 'Poll'}</Text>
-            </TouchableOpacity>
-
-            <View style={[styles.anonToggle, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
-              <Ionicons name="glasses-outline" size={16} color={isAnon ? ACCENT : MUTED} />
-              <Text style={[styles.actionChipText, { color: isAnon ? ACCENT : MUTED }]}>{ar ? 'مجهول' : 'Anon'}</Text>
-              <Switch
-                value={isAnon}
-                onValueChange={setIsAnon}
-                trackColor={{ false: SEPARATOR, true: ACCENT + '55' }}
-                thumbColor={isAnon ? ACCENT : '#fff'}
-                ios_backgroundColor={SEPARATOR}
-                style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
-              />
-            </View>
-          </View>
         </View>
-      </KeyboardAvoidingView>
+      )}
 
-      <PollComposer
-        visible={showCreatePoll}
-        onClose={() => setShowCreatePoll(false)}
-        onSubmit={handleCreatePoll}
+      {/* Composer — feed tab only */}
+      {activeTab === 'feed' && (
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={0}>
+          {replyTo && (
+            <View style={[styles.replyBanner, { backgroundColor: FILL, borderTopColor: SEPARATOR }]}>
+              <Ionicons name="chatbubble-outline" size={13} color={ACCENT} />
+              <Text style={[styles.replyBannerText, { color: MUTED }]} numberOfLines={1}>{replyTo.text}</Text>
+              <TouchableOpacity onPress={() => setReplyTo(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="close" size={16} color={MUTED} />
+              </TouchableOpacity>
+            </View>
+          )}
+          <View style={[styles.composerWrap, { backgroundColor: BG, borderTopColor: SEPARATOR, paddingBottom: insets.bottom + 10 }]}>
+            <View style={[styles.inputRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
+              <View style={[styles.inputCard, { backgroundColor: FILL, borderColor: replyTo ? ACCENT : 'transparent' }]}>
+                <TextInput
+                  style={[styles.input, { color: TEXT, textAlign: ar ? 'right' : 'left' }]}
+                  value={text}
+                  onChangeText={setText}
+                  placeholder={replyTo ? (ar ? 'اكتب تعليقاً…' : 'Write a comment…') : t('radar.composerPlaceholder')}
+                  placeholderTextColor={MUTED}
+                  multiline
+                  maxLength={500}
+                />
+              </View>
+              <TouchableOpacity
+                onPress={handleSend}
+                disabled={!text.trim()}
+                style={[styles.sendBtn, { backgroundColor: text.trim() ? ACCENT : FILL }]}
+                activeOpacity={0.75}
+              >
+                <Ionicons name={ar ? 'arrow-back' : 'arrow-forward'} size={18} color={text.trim() ? '#fff' : MUTED} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={[styles.actionsRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
+              <TouchableOpacity
+                style={[styles.actionChip, { backgroundColor: FILL }]}
+                onPress={() => navigation.navigate('LiveCamera', { circleId })}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="camera-outline" size={18} color={MUTED} />
+                <Text style={[styles.actionChipText, { color: MUTED }]}>{ar ? 'لايف' : 'Live'}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.actionChip, { backgroundColor: FILL }]}
+                onPress={() => setShowCreatePoll(true)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="bar-chart-outline" size={18} color={MUTED} />
+                <Text style={[styles.actionChipText, { color: MUTED }]}>{ar ? 'تصويت' : 'Poll'}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.actionChip, { backgroundColor: FILL }]}
+                onPress={() => setShowQuestionComposer(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={{ fontSize: 16, lineHeight: 20 }}>❓</Text>
+                <Text style={[styles.actionChipText, { color: MUTED }]}>{ar ? 'سؤال' : 'Ask'}</Text>
+              </TouchableOpacity>
+
+              <View style={[styles.anonToggle, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
+                <Ionicons name="glasses-outline" size={16} color={isAnon ? ACCENT : MUTED} />
+                <Text style={[styles.actionChipText, { color: isAnon ? ACCENT : MUTED }]}>{ar ? 'مجهول' : 'Anon'}</Text>
+                <Switch
+                  value={isAnon}
+                  onValueChange={setIsAnon}
+                  trackColor={{ false: SEPARATOR, true: ACCENT + '55' }}
+                  thumbColor={isAnon ? ACCENT : '#fff'}
+                  ios_backgroundColor={SEPARATOR}
+                  style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+                />
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      )}
+
+      <PollComposer visible={showCreatePoll} onClose={() => setShowCreatePoll(false)} onSubmit={handleCreatePoll} />
+
+      <QuestionComposer
+        visible={showQuestionComposer}
+        onClose={() => setShowQuestionComposer(false)}
+        onSubmit={handleAskQuestion}
+        ar={ar}
       />
 
       <StampModal
@@ -648,36 +879,28 @@ export default function CircleScreen({ route, navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingBottom: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth, gap: 12,
-  },
-  backBtn: { fontSize: 26, fontWeight: '400', lineHeight: 30 },
+  header: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16, paddingBottom: 0, borderBottomWidth: StyleSheet.hairlineWidth, gap: 12 },
+  backBtn: { fontSize: 26, fontWeight: '400', lineHeight: 30, marginTop: 2 },
   headerSide: { width: 36 },
   headerCenter: { flex: 1, alignItems: 'center', gap: 4 },
   roomTitle: { fontSize: 16, fontWeight: '600' },
   herePill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20 },
   hereText: { color: '#fff', fontSize: 11, fontWeight: '500' },
-  replyBanner: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingHorizontal: 14, paddingVertical: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
+  tabRow: { flexDirection: 'row', width: '100%', marginTop: 8, borderTopWidth: StyleSheet.hairlineWidth },
+  tab: { flex: 1, alignItems: 'center', paddingVertical: 8 },
+  tabText: { fontSize: 13, fontWeight: '600' },
+  emptyReel: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
+  emptyReelIcon: { fontSize: 48 },
+  emptyReelText: { fontSize: 15, fontWeight: '500' },
+  replyBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth },
   replyBannerText: { flex: 1, fontSize: 13 },
   composerWrap: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: 14, paddingTop: 12 },
   inputRow: { alignItems: 'flex-end', gap: 10, marginBottom: 10 },
-  inputCard: {
-    flex: 1, borderRadius: 22, borderWidth: 1.5,
-    paddingHorizontal: 16, minHeight: 44, maxHeight: 120, justifyContent: 'center',
-  },
+  inputCard: { flex: 1, borderRadius: 22, borderWidth: 1.5, paddingHorizontal: 16, minHeight: 44, maxHeight: 120, justifyContent: 'center' },
   input: { fontSize: 15, fontWeight: '400', paddingVertical: 10 },
   sendBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
   actionsRow: { gap: 8, marginBottom: 4, alignItems: 'center', flex: 1 },
   anonToggle: { flex: 1, justifyContent: 'flex-end', alignItems: 'center', gap: 4 },
-  actionChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
-  },
+  actionChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
   actionChipText: { fontSize: 13, fontWeight: '500' },
 });
