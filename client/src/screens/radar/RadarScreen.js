@@ -460,9 +460,9 @@ const s = StyleSheet.create({
     zIndex: 20,
   },
   findBtnText: { fontSize: 14, fontWeight: '800', letterSpacing: 0, color: '#fff' },
-  avatarBtn: { width: 48, height: 48, justifyContent: 'center', alignItems: 'center' },
-  avatarImg: { width: 42, height: 42, borderRadius: 21, justifyContent: 'center', alignItems: 'center' },
-  avatarInitial: { fontSize: 16, fontWeight: '700', color: '#fff' },
+  avatarBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
+  avatarImg: { width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center' },
+  avatarInitial: { fontSize: 15, fontWeight: '700', color: '#fff' },
 
   // Enter card
   enterCard: {

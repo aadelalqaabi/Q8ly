@@ -899,8 +899,8 @@ const styles = StyleSheet.create({
   inputCard: { flex: 1, borderRadius: 22, borderWidth: 1.5, paddingHorizontal: 16, minHeight: 44, maxHeight: 120, justifyContent: 'center' },
   input: { fontSize: 15, fontWeight: '400', paddingVertical: 10 },
   sendBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
-  actionsRow: { gap: 8, marginBottom: 4, alignItems: 'center', flex: 1 },
-  anonToggle: { flex: 1, justifyContent: 'flex-end', alignItems: 'center', gap: 4, flexDirection: 'row' },
+  actionsRow: { gap: 8, marginBottom: 4, alignItems: 'center', flexWrap: 'nowrap' },
+  anonToggle: { marginLeft: 'auto', justifyContent: 'flex-end', alignItems: 'center', gap: 4, flexDirection: 'row' },
   actionChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
   actionChipText: { fontSize: 13, fontWeight: '500' },
 });
