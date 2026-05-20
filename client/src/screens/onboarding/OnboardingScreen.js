@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, Image, TouchableOpacity, Animated, Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import { useTranslation } from 'react-i18next';
 
 import * as Haptics from 'expo-haptics';
@@ -37,9 +37,8 @@ export default function OnboardingScreen({ onDone }) {
     ]).start();
   }, []);
 
-  const handleDone = async () => {
+  const handleDone = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
     onDone?.();
   };
 
