@@ -3,14 +3,12 @@ import {
   View, Text, StyleSheet, Image, TouchableOpacity, Animated, Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
 import { useTranslation } from 'react-i18next';
-
 import * as Haptics from 'expo-haptics';
 import { useBrutColors, isAr } from '../../components/Brut';
 import { useTheme } from '../../context/ThemeContext';
 
-const { width: SW, height: SH } = Dimensions.get('window');
+const { width: SW } = Dimensions.get('window');
 export const ONBOARDING_KEY = '@kn_onboarding_done';
 
 const UNDRAW = require('../../assets/Undraw.png');
@@ -23,17 +21,18 @@ const STEPS = [
 
 export default function OnboardingScreen({ onDone }) {
   const insets = useSafeAreaInsets();
-  const { i18n: i18nHook } = useTranslation();
-  const ar = isAr(i18nHook);
-  const { TEXT, ACCENT, BG } = useBrutColors();
+  const { i18n } = useTranslation();
+  const ar = isAr(i18n);
+  const { TEXT, ACCENT } = useBrutColors();
   const { isDark } = useTheme();
-  const scaleAnim = useRef(new Animated.Value(0.96)).current;
+
+  const slideAnim = useRef(new Animated.Value(60)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
     Animated.parallel([
-      Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, damping: 18, stiffness: 160 }),
-      Animated.timing(opacityAnim, { toValue: 1, duration: 280, useNativeDriver: true }),
+      Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, damping: 20, stiffness: 180 }),
+      Animated.timing(opacityAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
     ]).start();
   }, []);
 
@@ -42,16 +41,17 @@ export default function OnboardingScreen({ onDone }) {
     onDone?.();
   };
 
+  const cardBg = isDark ? '#1C1A18' : '#fff';
+
   return (
-    <View style={[styles.root, { backgroundColor: BG }]}>
+    <View style={styles.backdrop}>
       <Animated.View
         style={[
           styles.card,
           {
-            backgroundColor: isDark ? '#1C1A18' : '#fff',
-            paddingTop: insets.top + 24,
-            paddingBottom: insets.bottom + 32,
-            transform: [{ scale: scaleAnim }],
+            backgroundColor: cardBg,
+            paddingBottom: insets.bottom + 28,
+            transform: [{ translateY: slideAnim }],
             opacity: opacityAnim,
           },
         ]}
@@ -59,7 +59,7 @@ export default function OnboardingScreen({ onDone }) {
         {/* Illustration */}
         <Image
           source={UNDRAW}
-          style={styles.illustration}
+          style={[styles.illustration, { backgroundColor: cardBg }]}
           resizeMode="contain"
         />
 
@@ -91,44 +91,55 @@ export default function OnboardingScreen({ onDone }) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.72)',
+    justifyContent: 'flex-end',
+  },
   card: {
     width: SW,
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingTop: 28,
     paddingHorizontal: 32,
+    gap: 28,
+    // shadow
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: -6 },
   },
   illustration: {
-    width: SW * 0.85,
-    height: SH * 0.38,
+    width: '100%',
+    height: SW * 0.6,
+    borderRadius: 16,
+    alignSelf: 'center',
   },
   steps: {
-    width: '100%',
-    gap: 20,
+    gap: 18,
   },
   stepRow: {
     alignItems: 'center',
     gap: 16,
   },
   stepIcon: {
-    fontSize: 28,
-    lineHeight: 36,
+    fontSize: 26,
+    lineHeight: 32,
   },
   stepText: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
-    lineHeight: 28,
+    lineHeight: 26,
   },
   btn: {
     width: '100%',
-    paddingVertical: 18,
+    paddingVertical: 17,
     borderRadius: 28,
     alignItems: 'center',
   },
   btnText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
     letterSpacing: 0.3,
   },

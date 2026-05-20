@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useDispatch, useSelector } from 'react-redux';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Modal } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { restoreSession, claimDailyBonus } from '../store/slices/authSlice';
@@ -181,13 +181,22 @@ export default function AppNavigator() {
       <Stack.Screen name="NameSetup" component={NameScreen} />
     </Stack.Navigator>
   );
-  else if (showWelcome) content = <OnboardingScreen onDone={() => setShowWelcome(false)} />;
   else content = <AppStack />;
 
   return (
     <NavigationContainer linking={linking}>
       <GuestGateProvider>
         {content}
+        {isAuthenticated && !needsName && (
+          <Modal
+            visible={showWelcome}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setShowWelcome(false)}
+          >
+            <OnboardingScreen onDone={() => setShowWelcome(false)} />
+          </Modal>
+        )}
       </GuestGateProvider>
     </NavigationContainer>
   );
