@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions, Easing,
 } from 'react-native';
@@ -6,48 +6,57 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
 import { isAr } from '../../components/Brut';
+import { useTheme } from '../../context/ThemeContext';
 
 const { width: SW } = Dimensions.get('window');
 export const ONBOARDING_KEY = '@kn_onboarding_done';
 
-const ACCENT   = '#4D80FF';
+// Map section always stays dark — maps look intentional dark
 const MAP_BG   = '#080E1C';
-const GRID     = 'rgba(77,128,255,0.09)';
-const DOT_CLR  = '#4D80FF';
-const TEXT_CLR = '#F0EDE8';
-const MUTED    = 'rgba(240,237,232,0.45)';
-const CARD_BG  = '#0D1526';
+const MAP_GRID = 'rgba(77,128,255,0.09)';
+const RADAR_H  = SW * 0.52;
+const DOT_SIZE = 10;
 
 const STEPS = [
-  { label: '01', en: 'Go out',         ar: 'اخرج',          sub_en: 'leave home',      sub_ar: 'اترك المنزل' },
-  { label: '02', en: 'Join a circle',  ar: 'انضم لدائرة',    sub_en: 'at a nearby spot', sub_ar: 'في مكان قريب' },
-  { label: '03', en: 'Collect stamps', ar: 'جمّع الطوابع',   sub_en: 'visit, explore',  sub_ar: 'زر واستكشف' },
+  {
+    label_en: '01', label_ar: '٠١',
+    en: 'Go out',         ar: 'اخرج',
+    sub_en: 'leave home', sub_ar: 'اترك المنزل',
+  },
+  {
+    label_en: '02', label_ar: '٠٢',
+    en: 'Join a circle',       ar: 'انضم لدائرة',
+    sub_en: 'at a nearby spot', sub_ar: 'في مكان قريب',
+  },
+  {
+    label_en: '03', label_ar: '٠٣',
+    en: 'Collect stamps',    ar: 'جمّع الطوابع',
+    sub_en: 'visit, explore', sub_ar: 'زر واستكشف',
+  },
 ];
 
-// Kuwait City coordinates shown as a decorative label
-const COORDS = '29.3759° N  ·  47.9774° E';
-
-function RadarPing() {
-  const rings = [useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current];
+function RadarPing({ accent }) {
+  const rings = [
+    useRef(new Animated.Value(0)).current,
+    useRef(new Animated.Value(0)).current,
+    useRef(new Animated.Value(0)).current,
+  ];
 
   useEffect(() => {
     rings.forEach((anim, i) => {
-      const pulse = Animated.loop(
+      Animated.loop(
         Animated.sequence([
           Animated.delay(i * 600),
-          Animated.parallel([
-            Animated.timing(anim, { toValue: 1, duration: 1800, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-          ]),
+          Animated.timing(anim, { toValue: 1, duration: 1800, easing: Easing.out(Easing.quad), useNativeDriver: true }),
           Animated.timing(anim, { toValue: 0, duration: 0, useNativeDriver: true }),
         ])
-      );
-      pulse.start();
+      ).start();
     });
   }, []);
 
   return (
     <View style={radar.wrap}>
-      {/* Grid lines */}
+      {/* Grid */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         {[0.2, 0.4, 0.6, 0.8].map((f) => (
           <View key={`h${f}`} style={[radar.gridH, { top: `${f * 100}%` }]} />
@@ -63,6 +72,7 @@ function RadarPing() {
           key={i}
           style={[
             radar.ring,
+            { borderColor: accent },
             {
               transform: [{ scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.1, 2.6] }) }],
               opacity: anim.interpolate({ inputRange: [0, 0.3, 1], outputRange: [0, 0.55, 0] }),
@@ -71,58 +81,52 @@ function RadarPing() {
         />
       ))}
 
-      {/* Center dot */}
-      <View style={radar.centerOuter}>
-        <View style={radar.centerInner} />
+      {/* Center */}
+      <View style={[radar.centerOuter, { backgroundColor: accent + '30' }]}>
+        <View style={[radar.centerInner, { backgroundColor: accent }]} />
       </View>
 
-      {/* Crosshair lines */}
-      <View style={radar.crossH} />
-      <View style={radar.crossV} />
+      {/* Crosshair */}
+      <View style={[radar.crossH, { backgroundColor: accent + '40' }]} />
+      <View style={[radar.crossV, { backgroundColor: accent + '40' }]} />
 
-      {/* Coords label */}
-      <Text style={radar.coords}>{COORDS}</Text>
+      {/* Kuwait coords */}
+      <Text style={[radar.coords, { color: accent + 'AA' }]}>
+        29.3759° N  ·  47.9774° E
+      </Text>
     </View>
   );
 }
 
-const RADAR_H = SW * 0.52;
-const DOT_SIZE = 10;
-
 const radar = StyleSheet.create({
   wrap: {
-    width: '100%',
-    height: RADAR_H,
+    width: '100%', height: RADAR_H,
     backgroundColor: MAP_BG,
-    borderRadius: 20,
-    overflow: 'hidden',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  gridH: { position: 'absolute', left: 0, right: 0, height: StyleSheet.hairlineWidth, backgroundColor: GRID },
-  gridV: { position: 'absolute', top: 0, bottom: 0, width: StyleSheet.hairlineWidth, backgroundColor: GRID },
-  ring: {
-    position: 'absolute',
-    width: 90, height: 90,
-    borderRadius: 45,
-    borderWidth: 1.5,
-    borderColor: ACCENT,
-  },
-  centerOuter: {
-    width: 22, height: 22, borderRadius: 11,
-    backgroundColor: ACCENT + '30',
+    borderRadius: 20, overflow: 'hidden',
     justifyContent: 'center', alignItems: 'center',
   },
-  centerInner: { width: 8, height: 8, borderRadius: 4, backgroundColor: ACCENT },
-  crossH: { position: 'absolute', left: '30%', right: '30%', height: StyleSheet.hairlineWidth, backgroundColor: ACCENT + '40' },
-  crossV: { position: 'absolute', top: '30%', bottom: '30%', width: StyleSheet.hairlineWidth, backgroundColor: ACCENT + '40' },
-  coords: { position: 'absolute', bottom: 12, alignSelf: 'center', fontSize: 10, fontWeight: '600', color: ACCENT + 'AA', letterSpacing: 1.2 },
+  gridH: { position: 'absolute', left: 0, right: 0, height: StyleSheet.hairlineWidth, backgroundColor: MAP_GRID },
+  gridV: { position: 'absolute', top: 0, bottom: 0, width: StyleSheet.hairlineWidth, backgroundColor: MAP_GRID },
+  ring: { position: 'absolute', width: 90, height: 90, borderRadius: 45, borderWidth: 1.5 },
+  centerOuter: { width: 22, height: 22, borderRadius: 11, justifyContent: 'center', alignItems: 'center' },
+  centerInner: { width: 8, height: 8, borderRadius: 4 },
+  crossH: { position: 'absolute', left: '30%', right: '30%', height: StyleSheet.hairlineWidth },
+  crossV: { position: 'absolute', top: '30%', bottom: '30%', width: StyleSheet.hairlineWidth },
+  coords: { position: 'absolute', bottom: 12, alignSelf: 'center', fontSize: 10, fontWeight: '600', letterSpacing: 1.2 },
 });
 
 export default function OnboardingScreen({ onDone }) {
   const insets = useSafeAreaInsets();
   const { i18n } = useTranslation();
   const ar = isAr(i18n);
+  const { isDark } = useTheme();
+
+  // Theme-aware colors
+  const ACCENT   = isDark ? '#4D80FF' : '#0033A0';
+  const CARD_BG  = isDark ? '#0D1526' : '#FFFFFF';
+  const TEXT_CLR = isDark ? '#F0EDE8' : '#0A0E1A';
+  const MUTED    = isDark ? 'rgba(240,237,232,0.45)' : 'rgba(10,14,26,0.45)';
+  const CONNECTOR = isDark ? ACCENT + '35' : ACCENT + '25';
 
   const slideAnim = useRef(new Animated.Value(80)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -145,31 +149,34 @@ export default function OnboardingScreen({ onDone }) {
         style={[
           styles.card,
           {
+            backgroundColor: CARD_BG,
             paddingBottom: insets.bottom + 28,
             transform: [{ translateY: slideAnim }],
             opacity: opacityAnim,
           },
         ]}
       >
-        {/* Map radar header */}
-        <RadarPing />
+        <RadarPing accent={ACCENT} />
 
         {/* Waypoint steps */}
         <View style={styles.steps}>
           {STEPS.map((step, i) => (
             <View key={i} style={[styles.stepRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
               {/* Dot + connector */}
-              <View style={styles.dotCol}>
-                <View style={[styles.dot, { backgroundColor: DOT_CLR }]} />
-                {i < STEPS.length - 1 && <View style={styles.connector} />}
+              <View style={[styles.dotCol, ar && { alignItems: 'flex-end' }]}>
+                <View style={[styles.dot, { backgroundColor: ACCENT }]} />
+                {i < STEPS.length - 1 && <View style={[styles.connector, { backgroundColor: CONNECTOR }]} />}
               </View>
+
               {/* Text */}
-              <View style={[styles.stepText, { alignItems: ar ? 'flex-end' : 'flex-start' }]}>
-                <Text style={[styles.stepLabel, { color: MUTED }]}>{step.label}</Text>
-                <Text style={[styles.stepMain, { textAlign: ar ? 'right' : 'left' }]}>
+              <View style={[styles.stepTextWrap, { alignItems: ar ? 'flex-end' : 'flex-start' }]}>
+                <Text style={[styles.stepLabel, { color: MUTED }]}>
+                  {ar ? step.label_ar : step.label_en}
+                </Text>
+                <Text style={[styles.stepMain, { color: TEXT_CLR, textAlign: ar ? 'right' : 'left' }]}>
                   {ar ? step.ar : step.en}
                 </Text>
-                <Text style={[styles.stepSub, { textAlign: ar ? 'right' : 'left' }]}>
+                <Text style={[styles.stepSub, { color: MUTED, textAlign: ar ? 'right' : 'left' }]}>
                   {ar ? step.sub_ar : step.sub_en}
                 </Text>
               </View>
@@ -178,8 +185,14 @@ export default function OnboardingScreen({ onDone }) {
         </View>
 
         {/* CTA */}
-        <TouchableOpacity style={styles.btn} onPress={handleDone} activeOpacity={0.82}>
-          <Text style={styles.btnText}>{ar ? 'يالله ←' : "Let's go →"}</Text>
+        <TouchableOpacity
+          style={[styles.btn, { backgroundColor: ACCENT }]}
+          onPress={handleDone}
+          activeOpacity={0.82}
+        >
+          <Text style={styles.btnText}>
+            {ar ? '← يالله' : "Let's go →"}
+          </Text>
         </TouchableOpacity>
       </Animated.View>
     </View>
@@ -194,7 +207,6 @@ const styles = StyleSheet.create({
   },
   card: {
     width: SW,
-    backgroundColor: CARD_BG,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingTop: 24,
@@ -206,23 +218,15 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -8 },
   },
   steps: { gap: 0 },
-  stepRow: { alignItems: 'flex-start', gap: 16, minHeight: 56 },
-  dotCol: { alignItems: 'center', width: DOT_SIZE, paddingTop: 4 },
+  stepRow: { alignItems: 'flex-start', gap: 16, minHeight: 58 },
+  dotCol: { alignItems: 'center', width: DOT_SIZE, paddingTop: 5 },
   dot: { width: DOT_SIZE, height: DOT_SIZE, borderRadius: DOT_SIZE / 2 },
-  connector: {
-    width: 1.5,
-    flex: 1,
-    minHeight: 32,
-    backgroundColor: ACCENT + '35',
-    marginTop: 4,
-    marginBottom: -4,
-  },
-  stepText: { flex: 1, paddingBottom: 20 },
+  connector: { width: 1.5, flex: 1, minHeight: 28, marginTop: 4, marginBottom: -4 },
+  stepTextWrap: { flex: 1, paddingBottom: 18 },
   stepLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 2, marginBottom: 2 },
-  stepMain: { fontSize: 22, fontWeight: '800', color: TEXT_CLR, lineHeight: 28 },
-  stepSub: { fontSize: 13, color: MUTED, marginTop: 2, fontWeight: '500' },
+  stepMain: { fontSize: 22, fontWeight: '800', lineHeight: 28 },
+  stepSub: { fontSize: 13, fontWeight: '500', marginTop: 2 },
   btn: {
-    backgroundColor: ACCENT,
     borderRadius: 22,
     paddingVertical: 16,
     alignItems: 'center',
