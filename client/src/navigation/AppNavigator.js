@@ -109,7 +109,6 @@ export default function AppNavigator() {
   const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
   const [langChosen, setLangChosen] = useState(null); // null = still checking
   const [onboardingDone, setOnboardingDone] = useState(null);
-  const [showWelcome, setShowWelcome] = useState(true);
 
   useEffect(() => {
     dispatch(restoreSession());
@@ -155,7 +154,7 @@ export default function AppNavigator() {
     return () => sub.remove();
   }, []);
 
-  if (!isSessionRestored || langChosen === null) {
+  if (!isSessionRestored || langChosen === null || onboardingDone === null) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator size="large" color={COLORS.accent} />
@@ -187,14 +186,14 @@ export default function AppNavigator() {
     <NavigationContainer linking={linking}>
       <GuestGateProvider>
         {content}
-        {isAuthenticated && !needsName && (
+        {isAuthenticated && !needsName && !onboardingDone && (
           <Modal
-            visible={showWelcome}
+            visible
             transparent
             animationType="fade"
-            onRequestClose={() => setShowWelcome(false)}
+            onRequestClose={() => setOnboardingDone(true)}
           >
-            <OnboardingScreen onDone={() => setShowWelcome(false)} />
+            <OnboardingScreen onDone={() => setOnboardingDone(true)} />
           </Modal>
         )}
       </GuestGateProvider>

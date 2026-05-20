@@ -1,9 +1,10 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions, Easing,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { isAr } from '../../components/Brut';
 import { useTheme } from '../../context/ThemeContext';
@@ -11,7 +12,6 @@ import { useTheme } from '../../context/ThemeContext';
 const { width: SW } = Dimensions.get('window');
 export const ONBOARDING_KEY = '@kn_onboarding_done';
 
-// Map section always stays dark — maps look intentional dark
 const MAP_BG   = '#080E1C';
 const MAP_GRID = 'rgba(77,128,255,0.09)';
 const RADAR_H  = SW * 0.52;
@@ -25,7 +25,7 @@ const STEPS = [
   },
   {
     label_en: '02', label_ar: '٠٢',
-    en: 'Join a circle',       ar: 'انضم لدائرة',
+    en: 'Join a circle',        ar: 'انضم لدائرة',
     sub_en: 'at a nearby spot', sub_ar: 'في مكان قريب',
   },
   {
@@ -56,7 +56,6 @@ function RadarPing({ accent }) {
 
   return (
     <View style={radar.wrap}>
-      {/* Grid */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         {[0.2, 0.4, 0.6, 0.8].map((f) => (
           <View key={`h${f}`} style={[radar.gridH, { top: `${f * 100}%` }]} />
@@ -65,8 +64,6 @@ function RadarPing({ accent }) {
           <View key={`v${f}`} style={[radar.gridV, { left: `${f * 100}%` }]} />
         ))}
       </View>
-
-      {/* Expanding rings */}
       {rings.map((anim, i) => (
         <Animated.View
           key={i}
@@ -80,17 +77,11 @@ function RadarPing({ accent }) {
           ]}
         />
       ))}
-
-      {/* Center */}
       <View style={[radar.centerOuter, { backgroundColor: accent + '30' }]}>
         <View style={[radar.centerInner, { backgroundColor: accent }]} />
       </View>
-
-      {/* Crosshair */}
       <View style={[radar.crossH, { backgroundColor: accent + '40' }]} />
       <View style={[radar.crossV, { backgroundColor: accent + '40' }]} />
-
-      {/* Kuwait coords */}
       <Text style={[radar.coords, { color: accent + 'AA' }]}>
         29.3759° N  ·  47.9774° E
       </Text>
@@ -99,12 +90,7 @@ function RadarPing({ accent }) {
 }
 
 const radar = StyleSheet.create({
-  wrap: {
-    width: '100%', height: RADAR_H,
-    backgroundColor: MAP_BG,
-    borderRadius: 20, overflow: 'hidden',
-    justifyContent: 'center', alignItems: 'center',
-  },
+  wrap: { width: '100%', height: RADAR_H, backgroundColor: MAP_BG, borderRadius: 20, overflow: 'hidden', justifyContent: 'center', alignItems: 'center' },
   gridH: { position: 'absolute', left: 0, right: 0, height: StyleSheet.hairlineWidth, backgroundColor: MAP_GRID },
   gridV: { position: 'absolute', top: 0, bottom: 0, width: StyleSheet.hairlineWidth, backgroundColor: MAP_GRID },
   ring: { position: 'absolute', width: 90, height: 90, borderRadius: 45, borderWidth: 1.5 },
@@ -118,18 +104,16 @@ const radar = StyleSheet.create({
 export default function OnboardingScreen({ onDone }) {
   const insets = useSafeAreaInsets();
   const { i18n } = useTranslation();
-  const [forceAr, setForceAr] = useState(isAr(i18n));
-  const ar = forceAr;
+  const ar = isAr(i18n);
   const { isDark } = useTheme();
 
-  // Theme-aware colors
-  const ACCENT   = isDark ? '#4D80FF' : '#0033A0';
-  const CARD_BG  = isDark ? '#0D1526' : '#FFFFFF';
-  const TEXT_CLR = isDark ? '#F0EDE8' : '#0A0E1A';
-  const MUTED    = isDark ? 'rgba(240,237,232,0.45)' : 'rgba(10,14,26,0.45)';
-  const CONNECTOR = isDark ? ACCENT + '35' : ACCENT + '25';
+  const ACCENT    = isDark ? '#4D80FF' : '#0033A0';
+  const CARD_BG   = isDark ? '#0D1526' : '#FFFFFF';
+  const TEXT_CLR  = isDark ? '#F0EDE8' : '#0A0E1A';
+  const MUTED     = isDark ? 'rgba(240,237,232,0.45)' : 'rgba(10,14,26,0.45)';
+  const CONNECTOR = ACCENT + (isDark ? '35' : '25');
 
-  const slideAnim = useRef(new Animated.Value(80)).current;
+  const slideAnim   = useRef(new Animated.Value(80)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -139,8 +123,9 @@ export default function OnboardingScreen({ onDone }) {
     ]).start();
   }, []);
 
-  const handleDone = () => {
+  const handleDone = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
     onDone?.();
   };
 
@@ -157,38 +142,15 @@ export default function OnboardingScreen({ onDone }) {
           },
         ]}
       >
-        {/* Language toggle — for testing */}
-        <View style={styles.langRow}>
-          {['en', 'ar'].map((lng) => {
-            const active = (lng === 'ar') === ar;
-            return (
-              <TouchableOpacity
-                key={lng}
-                onPress={() => setForceAr(lng === 'ar')}
-                style={[styles.langPill, { backgroundColor: active ? ACCENT : 'transparent', borderColor: ACCENT }]}
-                activeOpacity={0.75}
-              >
-                <Text style={[styles.langPillText, { color: active ? '#fff' : ACCENT }]}>
-                  {lng === 'ar' ? 'عربي' : 'EN'}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
         <RadarPing accent={ACCENT} />
 
-        {/* Waypoint steps */}
         <View style={styles.steps}>
           {STEPS.map((step, i) => (
             <View key={i} style={[styles.stepRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
-              {/* Dot + connector */}
-              <View style={[styles.dotCol, ar && { alignItems: 'flex-end' }]}>
+              <View style={styles.dotCol}>
                 <View style={[styles.dot, { backgroundColor: ACCENT }]} />
                 {i < STEPS.length - 1 && <View style={[styles.connector, { backgroundColor: CONNECTOR }]} />}
               </View>
-
-              {/* Text */}
               <View style={[styles.stepTextWrap, { alignItems: ar ? 'flex-end' : 'flex-start' }]}>
                 <Text style={[styles.stepLabel, { color: MUTED }]}>
                   {ar ? step.label_ar : step.label_en}
@@ -204,15 +166,8 @@ export default function OnboardingScreen({ onDone }) {
           ))}
         </View>
 
-        {/* CTA */}
-        <TouchableOpacity
-          style={[styles.btn, { backgroundColor: ACCENT }]}
-          onPress={handleDone}
-          activeOpacity={0.82}
-        >
-          <Text style={styles.btnText}>
-            {ar ? '← يالله' : "Let's go →"}
-          </Text>
+        <TouchableOpacity style={[styles.btn, { backgroundColor: ACCENT }]} onPress={handleDone} activeOpacity={0.82}>
+          <Text style={styles.btnText}>{ar ? '← يالله' : "Let's go →"}</Text>
         </TouchableOpacity>
       </Animated.View>
     </View>
@@ -220,22 +175,12 @@ export default function OnboardingScreen({ onDone }) {
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.78)',
-    justifyContent: 'flex-end',
-  },
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.78)', justifyContent: 'flex-end' },
   card: {
     width: SW,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingTop: 24,
-    paddingHorizontal: 24,
-    gap: 24,
-    shadowColor: '#000',
-    shadowOpacity: 0.5,
-    shadowRadius: 32,
-    shadowOffset: { width: 0, height: -8 },
+    borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    paddingTop: 24, paddingHorizontal: 24, gap: 24,
+    shadowColor: '#000', shadowOpacity: 0.5, shadowRadius: 32, shadowOffset: { width: 0, height: -8 },
   },
   steps: { gap: 0 },
   stepRow: { alignItems: 'flex-start', gap: 16, minHeight: 58 },
@@ -246,13 +191,6 @@ const styles = StyleSheet.create({
   stepLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 2, marginBottom: 2 },
   stepMain: { fontSize: 22, fontWeight: '800', lineHeight: 28 },
   stepSub: { fontSize: 13, fontWeight: '500', marginTop: 2 },
-  btn: {
-    borderRadius: 22,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
+  btn: { borderRadius: 22, paddingVertical: 16, alignItems: 'center' },
   btnText: { color: '#fff', fontSize: 16, fontWeight: '800', letterSpacing: 0.5 },
-  langRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
-  langPill: { borderWidth: 1.5, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 5 },
-  langPillText: { fontSize: 12, fontWeight: '700' },
 });
