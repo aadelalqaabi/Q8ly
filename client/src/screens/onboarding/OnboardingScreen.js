@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions, Easing,
 } from 'react-native';
@@ -118,7 +118,8 @@ const radar = StyleSheet.create({
 export default function OnboardingScreen({ onDone }) {
   const insets = useSafeAreaInsets();
   const { i18n } = useTranslation();
-  const ar = isAr(i18n);
+  const [forceAr, setForceAr] = useState(isAr(i18n));
+  const ar = forceAr;
   const { isDark } = useTheme();
 
   // Theme-aware colors
@@ -156,6 +157,25 @@ export default function OnboardingScreen({ onDone }) {
           },
         ]}
       >
+        {/* Language toggle — for testing */}
+        <View style={styles.langRow}>
+          {['en', 'ar'].map((lng) => {
+            const active = (lng === 'ar') === ar;
+            return (
+              <TouchableOpacity
+                key={lng}
+                onPress={() => setForceAr(lng === 'ar')}
+                style={[styles.langPill, { backgroundColor: active ? ACCENT : 'transparent', borderColor: ACCENT }]}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.langPillText, { color: active ? '#fff' : ACCENT }]}>
+                  {lng === 'ar' ? 'عربي' : 'EN'}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
         <RadarPing accent={ACCENT} />
 
         {/* Waypoint steps */}
@@ -232,4 +252,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   btnText: { color: '#fff', fontSize: 16, fontWeight: '800', letterSpacing: 0.5 },
+  langRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
+  langPill: { borderWidth: 1.5, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 5 },
+  langPillText: { fontSize: 12, fontWeight: '700' },
 });
