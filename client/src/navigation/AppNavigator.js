@@ -109,6 +109,7 @@ export default function AppNavigator() {
   const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
   const [langChosen, setLangChosen] = useState(null); // null = still checking
   const [onboardingDone, setOnboardingDone] = useState(null);
+  const [showWelcome, setShowWelcome] = useState(true);
 
   useEffect(() => {
     dispatch(restoreSession());
@@ -154,7 +155,7 @@ export default function AppNavigator() {
     return () => sub.remove();
   }, []);
 
-  if (!isSessionRestored || langChosen === null || onboardingDone === null) {
+  if (!isSessionRestored || langChosen === null) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator size="large" color={COLORS.accent} />
@@ -180,7 +181,7 @@ export default function AppNavigator() {
       <Stack.Screen name="NameSetup" component={NameScreen} />
     </Stack.Navigator>
   );
-  else if (isAuthenticated && !onboardingDone) content = <OnboardingScreen onDone={() => setOnboardingDone(true)} />;
+  else if (showWelcome) content = <OnboardingScreen onDone={() => setShowWelcome(false)} />;
   else content = <AppStack />;
 
   return (
