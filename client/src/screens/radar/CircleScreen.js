@@ -321,7 +321,7 @@ function StampModal({ visible, stampUrl, venueName, onClose, ar }) {
         <Animated.View style={[stampStyles.card, { transform: [{ scale: scaleAnim }] }]}>
           <Text style={stampStyles.congrats}>{ar ? '🎉 جمعت الطابع!' : '🎉 Stamp Collected!'}</Text>
           <Text style={stampStyles.venue}>{venueName}</Text>
-          {stampUrl && <Image source={{ uri: cdnUrl(stampUrl, 440) }} style={stampStyles.stamp} resizeMode="contain" />}
+          {stampUrl && <Image source={{ uri: stampUrl }} style={stampStyles.stamp} resizeMode="contain" />}
           <TouchableOpacity style={stampStyles.btn} onPress={onClose} activeOpacity={0.8}>
             <Text style={stampStyles.btnText}>{ar ? 'رائع!' : 'Nice!'}</Text>
           </TouchableOpacity>
@@ -509,7 +509,13 @@ export default function CircleScreen({ route, navigation }) {
       setMessages(res.room.messages || []);
       if (hasLoc) {
         hachiAPI.recordVisit(circleId, loc.lat, loc.lng, loc.speed || 0)
-          .then((r) => { if (r?.firstVisit && r?.stampUrl) setStampToast({ stampUrl: r.stampUrl, venueName: r.venueName || '' }); })
+          .then(async (r) => {
+            if (r?.firstVisit && r?.stampUrl) {
+              const optimized = cdnUrl(r.stampUrl, 220);
+              try { await Image.prefetch(optimized); } catch {}
+              setStampToast({ stampUrl: optimized, venueName: r.venueName || '' });
+            }
+          })
           .catch(() => {});
       }
       try {

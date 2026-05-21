@@ -18,7 +18,13 @@ import ShareProfileCard from '../../components/ui/ShareProfileCard';
 import Artifact from '../../components/Artifact';
 import { useTheme } from '../../context/ThemeContext';
 import { useGuestGate } from '../../context/GuestGateContext';
+import { PixelRatio } from 'react-native';
 
+function cdnUrl(url, px) {
+  if (!url || !url.includes('res.cloudinary.com')) return url;
+  const w = PixelRatio.getPixelSizeForLayoutSize(px);
+  return url.replace('/upload/', `/upload/w_${w},f_webp,q_auto:good/`);
+}
 
 const CATEGORY_ICONS = {
   general:       'chatbubbles-outline',
@@ -174,7 +180,7 @@ function ArtifactModal({ item, onClose, isRTL, t }) {
           {/* Stamp — floats, no rotation */}
           <Animated.View style={{ transform: [{ scale: scaleAnim }, { translateY: floatAnim }] }}>
             {item.stampUrl ? (
-              <Image source={{ uri: item.stampUrl }} style={am.stampImg} resizeMode="contain" />
+              <Image source={{ uri: cdnUrl(item.stampUrl, STAMP_SIZE) }} style={am.stampImg} resizeMode="contain" />
             ) : (
               <View style={am.stampFallback}>
                 <Text style={am.stampFallbackText}>{(item.title || '?')[0].toUpperCase()}</Text>
@@ -273,12 +279,17 @@ export default function ProfileScreen({ navigation, route }) {
     if (!isOwnProfile) return;
     try {
       const res = await hachiAPI.getVault();
+      const items = res.items || [];
       setVault({
-        items: res.items || [],
+        items,
         visitedCount: res.visitedCount || 0,
         totalCircles: res.totalCircles || 0,
         percentage: res.percentage || 0,
       });
+      // Prefetch visited stamp images so they load instantly when opened
+      items
+        .filter((it) => it.visited && it.stampUrl)
+        .forEach((it) => { Image.prefetch(cdnUrl(it.stampUrl, STAMP_SIZE)).catch(() => {}); });
     } catch {}
   }, [isOwnProfile]);
   useEffect(() => { loadVault(); }, [loadVault]);
