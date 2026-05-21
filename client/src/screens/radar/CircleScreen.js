@@ -2,13 +2,13 @@ import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Image,
   KeyboardAvoidingView, Platform, ActivityIndicator, Dimensions, Animated,
-  Modal, PixelRatio, Switch,
+  Modal, PixelRatio, Switch, Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useSelector } from 'react-redux';
 import { hachiAPI } from '../../services/api';
-import { getSocket, joinHachiRoom, leaveHachiRoom, sendHachiMessage, sendHachiQuestion } from '../../services/socket';
+import { getSocket, joinHachiRoom, leaveHachiRoom, sendHachiMessage, sendHachiQuestion, deleteHachiMessage, sendHachiReport } from '../../services/socket';
 import { Ionicons } from '@expo/vector-icons';
 import { useBrutColors, isAr } from '../../components/Brut';
 import { PollCard, PollComposer } from '../../components/Poll';
@@ -186,7 +186,7 @@ const qStyles = StyleSheet.create({
 });
 
 // ── Post card ─────────────────────────────────────────────────────────────────
-function PostCard({ msg, comments, currentUserId, ar, onImagePress, onLikeToggle, onReply }) {
+function PostCard({ msg, comments, currentUserId, ar, onImagePress, onLikeToggle, onReply, onDelete, onReport }) {
   const { TEXT, MUTED, ACCENT, BG, FILL, SEPARATOR } = useBrutColors();
   const [showComments, setShowComments] = useState(false);
   const liked = (msg.likes || []).some(
@@ -199,6 +199,31 @@ function PostCard({ msg, comments, currentUserId, ar, onImagePress, onLikeToggle
   const isAnonPost = msg.anonymous !== false || !msg.user?.name;
   const displayName = isAnonPost ? (ar ? 'شخص هنا' : 'Someone here') : msg.user.name;
   const displayPic = !isAnonPost && msg.user?.profilePic;
+  const isOwn = msg.user?._id?.toString() === currentUserId?.toString();
+
+  const handleMore = () => {
+    if (isOwn) {
+      Alert.alert(
+        ar ? 'خيارات' : 'Options',
+        '',
+        [
+          { text: ar ? 'حذف' : 'Delete', style: 'destructive', onPress: () => onDelete(msg._id) },
+          { text: ar ? 'إلغاء' : 'Cancel', style: 'cancel' },
+        ]
+      );
+    } else {
+      Alert.alert(
+        ar ? 'الإبلاغ عن المنشور' : 'Report post',
+        ar ? 'هل تريد الإبلاغ عن هذا المنشور؟' : 'Report this post as inappropriate?',
+        [
+          { text: ar ? 'محتوى مسيء' : 'Offensive',  onPress: () => onReport(msg._id, 'offensive') },
+          { text: ar ? 'بريد مزعج' : 'Spam',         onPress: () => onReport(msg._id, 'spam') },
+          { text: ar ? 'محتوى آخر' : 'Other',        onPress: () => onReport(msg._id, 'other') },
+          { text: ar ? 'إلغاء' : 'Cancel', style: 'cancel' },
+        ]
+      );
+    }
+  };
 
   return (
     <View style={[cardStyles.card, { backgroundColor: BG, borderBottomColor: SEPARATOR }]}>
@@ -213,6 +238,9 @@ function PostCard({ msg, comments, currentUserId, ar, onImagePress, onLikeToggle
         </View>
         <Text style={[cardStyles.author, { color: TEXT }]}>{displayName}</Text>
         {!hasImage && <Text style={[cardStyles.ts, { color: MUTED }]}>{ts}</Text>}
+        <TouchableOpacity onPress={handleMore} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <Ionicons name="ellipsis-horizontal" size={16} color={MUTED} />
+        </TouchableOpacity>
       </View>
 
       {hasImage && (
@@ -549,15 +577,21 @@ export default function CircleScreen({ route, navigation }) {
       return { ...poll, options: poll.options.map((o) => ({ ...o, mine: mineMap.get(o._id) || false })) };
     }));
     const onPollRemoved = ({ pollId }) => setPolls((p) => p.filter((x) => x._id !== pollId));
+    const onMsgDeleted = ({ roomId, messageId }) => {
+      if (roomId !== circleId) return;
+      setMessages((prev) => prev.filter((m) => String(m._id) !== String(messageId)));
+    };
     socket.on('hachiMessage', onMsg);
     socket.on('flashPollCreated', onPollCreated);
     socket.on('flashPollUpdate', onPollUpdate);
     socket.on('flashPollRemoved', onPollRemoved);
+    socket.on('hachiMessageDeleted', onMsgDeleted);
     return () => {
       socket.off('hachiMessage', onMsg);
       socket.off('flashPollCreated', onPollCreated);
       socket.off('flashPollUpdate', onPollUpdate);
       socket.off('flashPollRemoved', onPollRemoved);
+      socket.off('hachiMessageDeleted', onMsgDeleted);
       leaveHachiRoom(circleId);
     };
   }, [circleId]);
@@ -588,6 +622,20 @@ export default function CircleScreen({ route, navigation }) {
       userName: ar ? 'شخص هنا' : 'Someone here',
     });
   }, [ar]);
+
+  const handleDelete = useCallback((msgId) => {
+    setMessages((prev) => prev.filter((m) => String(m._id) !== String(msgId)));
+    deleteHachiMessage(circleId, msgId);
+  }, [circleId]);
+
+  const handleReport = useCallback((msgId, reason) => {
+    sendHachiReport(circleId, msgId, reason);
+    Alert.alert(
+      ar ? 'تم الإبلاغ' : 'Reported',
+      ar ? 'شكراً، سنراجع هذا المحتوى.' : 'Thanks, we will review this post.',
+      [{ text: ar ? 'حسناً' : 'OK' }]
+    );
+  }, [circleId, ar]);
 
   const handleAnswer = useCallback((questionId, answerText) => {
     const sock = getSocket();
@@ -734,6 +782,8 @@ export default function CircleScreen({ route, navigation }) {
                   onImagePress={(uri) => navigation.navigate('MediaViewer', { media: [{ uri, type: 'image' }], initialIndex: 0 })}
                   onLikeToggle={handleLikeToggle}
                   onReply={handleReply}
+                  onDelete={handleDelete}
+                  onReport={handleReport}
                 />
               );
             }}

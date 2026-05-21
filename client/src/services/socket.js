@@ -124,6 +124,10 @@ export const sendHachiReport = (roomId, messageId, reason = 'other') => {
   if (socket) socket.emit('hachiReportMessage', { roomId, messageId, reason });
 };
 
+export const deleteHachiMessage = (roomId, messageId) => {
+  if (socket) socket.emit('hachiDeleteMessage', { roomId, messageId });
+};
+
 export const sendHachiQuestion = (roomId, text, anonymous = false) => {
   if (socket) socket.emit('hachiSendQuestion', { roomId, text, anonymous });
 };
