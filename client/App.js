@@ -1,6 +1,9 @@
 import 'react-native-url-polyfill/auto';
 import './src/i18n'; // registers i18next before anything else
 import { useState, useEffect, useCallback } from 'react';
+import * as SplashScreen from 'expo-splash-screen';
+
+SplashScreen.preventAutoHideAsync();
 import { StatusBar } from 'expo-status-bar';
 import { Provider } from 'react-redux';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';

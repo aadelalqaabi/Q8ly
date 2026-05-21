@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useDispatch, useSelector } from 'react-redux';
-import { View, ActivityIndicator, StyleSheet, Modal } from 'react-native';
+import { Modal } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SplashScreen from 'expo-splash-screen';
 
 import { restoreSession, claimDailyBonus } from '../store/slices/authSlice';
 import { upsertCurrentAccount } from '../utils/accountsStore';
@@ -106,7 +107,7 @@ export default function AppNavigator() {
   const dispatch = useDispatch();
   const { isAuthenticated, isSessionRestored, needsName, isGuest } = useSelector((s) => s.auth);
   const { colors: COLORS } = useTheme();
-  const styles = useMemo(() => makeStyles(COLORS), [COLORS]);
+
   const [langChosen, setLangChosen] = useState(null); // null = still checking
   const [onboardingDone, setOnboardingDone] = useState(null);
 
@@ -154,13 +155,13 @@ export default function AppNavigator() {
     return () => sub.remove();
   }, []);
 
-  if (!isSessionRestored || langChosen === null || onboardingDone === null) {
-    return (
-      <View style={styles.loading}>
-        <ActivityIndicator size="large" color={COLORS.accent} />
-      </View>
-    );
-  }
+  const appReady = isSessionRestored && langChosen !== null && onboardingDone !== null;
+
+  useEffect(() => {
+    if (appReady) SplashScreen.hideAsync().catch(() => {});
+  }, [appReady]);
+
+  if (!appReady) return null;
 
   // Language not yet chosen → show language picker before anything else
   if (!langChosen) {
@@ -201,6 +202,3 @@ export default function AppNavigator() {
   );
 }
 
-const makeStyles = (C) => StyleSheet.create({
-  loading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: C.white },
-});
