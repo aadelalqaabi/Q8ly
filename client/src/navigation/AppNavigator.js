@@ -33,6 +33,7 @@ import LiveCameraScreen from '../screens/radar/LiveCameraScreen';
 import RequestLocationScreen from '../screens/radar/RequestLocationScreen';
 import SettingsScreen from '../screens/settings/SettingsScreen';
 import MediaViewerScreen from '../screens/media/MediaViewerScreen';
+import AdminCirclesScreen from '../screens/admin/AdminCirclesScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -86,6 +87,7 @@ function AppStack() {
         component={MediaViewerScreen}
         options={{ headerShown: false, presentation: 'transparentModal', animation: 'fade', contentStyle: { backgroundColor: 'transparent' } }}
       />
+      <Stack.Screen name="AdminCircles" component={AdminCirclesScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }

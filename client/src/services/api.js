@@ -246,4 +246,10 @@ export const adsAPI = {
   click: (id) => api.post(`/ads/${id}/click`),
 };
 
+export const founderAPI = {
+  listCircles: (page = 1) => api.get('/hachi/founder/circles', { params: { page, limit: 30 } }),
+  getCircle: (id) => api.get(`/hachi/founder/circles/${id}`),
+  deleteMessage: (circleId, msgId) => api.delete(`/hachi/founder/circles/${circleId}/messages/${msgId}`),
+};
+
 export default api;

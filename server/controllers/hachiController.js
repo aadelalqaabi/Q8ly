@@ -768,3 +768,54 @@ exports.likeMessage = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+// ── Founder-only: list all circles (no messages) ──────────────────────────────
+exports.founderListCircles = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 30;
+    const [circles, total] = await Promise.all([
+      Hachi.find({})
+        .select('-messages')
+        .populate('creator', 'username name profilePic')
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
+      Hachi.countDocuments({}),
+    ]);
+    res.json({ success: true, circles, total, page, pages: Math.ceil(total / limit) });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ── Founder-only: get single circle with messages populated ───────────────────
+exports.founderGetCircle = async (req, res) => {
+  try {
+    const room = await Hachi.findById(req.params.id)
+      .populate('messages.user', 'username name profilePic');
+    if (!room) return res.status(404).json({ success: false, message: 'Circle not found' });
+    res.json({ success: true, circle: room });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ── Founder-only: delete a message from a circle ─────────────────────────────
+exports.founderDeleteMessage = async (req, res) => {
+  try {
+    const { id, msgId } = req.params;
+    const mongoose = require('mongoose');
+    await Hachi.updateOne(
+      { _id: id },
+      { $pull: { messages: { _id: new mongoose.Types.ObjectId(msgId) } } }
+    );
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`hachi:${id}`).emit('hachiMessageDeleted', { roomId: id, messageId: msgId });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};

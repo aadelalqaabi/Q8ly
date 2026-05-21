@@ -418,6 +418,37 @@ exports.getCircles = async (req, res) => {
   }
 };
 
+// GET /api/admin/circles/:id/messages — all posts in a circle
+exports.getCircleMessages = async (req, res) => {
+  try {
+    const room = await Hachi.findById(req.params.id)
+      .populate('messages.user', 'username name profilePic');
+    if (!room) return res.status(404).json({ success: false, message: 'Circle not found' });
+    res.json({ success: true, circle: { _id: room._id, title: room.title, venueName: room.venueName }, messages: room.messages });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// DELETE /api/admin/circles/:id/messages/:msgId — remove a single post
+exports.deleteCircleMessageDirect = async (req, res) => {
+  try {
+    const { id, msgId } = req.params;
+    const mongoose = require('mongoose');
+    await Hachi.updateOne(
+      { _id: id },
+      { $pull: { messages: { _id: new mongoose.Types.ObjectId(msgId) } } }
+    );
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`hachi:${id}`).emit('hachiMessageDeleted', { roomId: id, messageId: msgId });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 // DELETE /api/admin/circles/:id — force close (admin bypass)
 exports.forceCloseCircle = async (req, res) => {
   try {

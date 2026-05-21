@@ -1,8 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const { protect, optionalAuth } = require('../middleware/auth');
-const { getRooms, getArchivedRooms, createRoom, getRoom, closeRoom, reactRoom, searchRooms, getMyRooms, getJoinedRooms, deleteRoom, pinRoom, unpinRoom, leaveRoom, getPinnedMoments, getUserMessages, getSubjects, checkLocation, getRadar, recordVisit, getVault, getNearby, likeMessage } = require('../controllers/hachiController');
+const { getRooms, getArchivedRooms, createRoom, getRoom, closeRoom, reactRoom, searchRooms, getMyRooms, getJoinedRooms, deleteRoom, pinRoom, unpinRoom, leaveRoom, getPinnedMoments, getUserMessages, getSubjects, checkLocation, getRadar, recordVisit, getVault, getNearby, likeMessage, founderListCircles, founderGetCircle, founderDeleteMessage } = require('../controllers/hachiController');
 const flashPoll = require('../controllers/flashPollController');
+
+const founderOnly = (req, res, next) => {
+  const phone = req.user?.phone;
+  if (!req.user?.isFounder && phone !== '+96599440289') {
+    return res.status(403).json({ success: false, message: 'Founder access only' });
+  }
+  next();
+};
 
 router.get('/', optionalAuth, getRooms);
 router.get('/radar', optionalAuth, getRadar);
@@ -19,6 +27,10 @@ router.get('/archived', getArchivedRooms);
 router.get('/my', protect, getMyRooms);
 router.get('/joined', protect, getJoinedRooms);
 router.get('/user-messages/:username', getUserMessages);
+// Founder-only circle management (must be before /:id to avoid route conflict)
+router.get('/founder/circles', protect, founderOnly, founderListCircles);
+router.get('/founder/circles/:id', protect, founderOnly, founderGetCircle);
+router.delete('/founder/circles/:id/messages/:msgId', protect, founderOnly, founderDeleteMessage);
 router.post('/', protect, createRoom);
 router.get('/:id/check-location', optionalAuth, checkLocation);
 router.get('/:id/polls', protect, flashPoll.listPolls);

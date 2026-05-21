@@ -1131,7 +1131,8 @@ async function loadCircles(page = 1) {
               <td>${c.memberCount || 0}</td>
               <td><span class="badge ${c.isActive ? 'badge-active' : 'badge-removed'}">${c.isActive ? 'Active' : 'Ended'}</span></td>
               <td style="color:#6C6C70;font-size:13px">${new Date(c.createdAt).toLocaleDateString()}</td>
-              <td>
+              <td style="display:flex;gap:6px;flex-wrap:wrap">
+                <button class="btn btn-outline" onclick="openCirclePosts('${c._id}','${(c.venueName||c.title).replace(/'/g,"\\'")}')">Posts</button>
                 ${c.isActive ? `<button class="btn btn-red" onclick="adminCloseCircle('${c._id}','${c.title.replace(/'/g,"\\'")}')">End</button>` : ''}
               </td>
             </tr>
@@ -1289,6 +1290,86 @@ async function denyLocReq(id) {
     loadLocReqs('pending');
   } catch (e) { alert('Error: ' + e.message); }
 }
+
+// ─── Circle Posts Modal ───────────────────────────────────────────────────────
+let _circlePostsId = null;
+
+async function openCirclePosts(circleId, circleName) {
+  _circlePostsId = circleId;
+  document.getElementById('cpm-title').textContent = circleName;
+  document.getElementById('cpm-body').innerHTML = '<div class="loading">Loading…</div>';
+  document.getElementById('circle-posts-modal').style.display = 'flex';
+  try {
+    const data = await apiFetch('/admin/circles/' + circleId + '/messages');
+    renderCirclePosts(data.messages || []);
+  } catch(e) {
+    document.getElementById('cpm-body').innerHTML = '<div class="empty">Error: ' + e.message + '</div>';
+  }
+}
+
+function closeCirclePostsModal() {
+  document.getElementById('circle-posts-modal').style.display = 'none';
+  _circlePostsId = null;
+}
+
+function renderCirclePosts(messages) {
+  const body = document.getElementById('cpm-body');
+  if (!messages.length) {
+    body.innerHTML = '<div class="empty">No posts in this circle.</div>';
+    return;
+  }
+  body.innerHTML = messages.map(m => {
+    const name = m.anonymous ? '<em style="color:#6C6C70">Anonymous</em>' : (m.user ? `<strong>${m.user.name || m.user.username}</strong> <span style="color:#6C6C70">@${m.user.username}</span>` : '—');
+    const time = new Date(m.createdAt).toLocaleString();
+    let content = '';
+    if (m.type === 'image' || m.image) content = `<span style="color:#6C6C70;font-style:italic">📷 Image</span>`;
+    else if (m.type === 'video' || m.video) content = `<span style="color:#6C6C70;font-style:italic">🎬 Video</span>`;
+    else if (m.type === 'question') content = `<span style="color:#0033A0">❓ ${escHtml(m.text || '')}</span>`;
+    else content = escHtml(m.text || '');
+    return `<div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid #F2F2F7">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;margin-bottom:4px">${name} <span style="color:#aaa;font-size:12px;margin-left:6px">${time}</span></div>
+        <div style="font-size:14px;line-height:1.5;word-break:break-word">${content}</div>
+      </div>
+      <button class="btn btn-red" style="flex-shrink:0;padding:5px 10px;font-size:12px" onclick="deleteCirclePost('${m._id}',this)">Delete</button>
+    </div>`;
+  }).join('');
+}
+
+async function deleteCirclePost(msgId, btn) {
+  if (!_circlePostsId) return;
+  if (!confirm('Delete this post?')) return;
+  btn.disabled = true;
+  btn.textContent = '…';
+  try {
+    await apiFetch('/admin/circles/' + _circlePostsId + '/messages/' + msgId, { method: 'DELETE' });
+    btn.closest('div[style]').remove();
+    toast('Post deleted.');
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = 'Delete';
+    toast('Error: ' + e.message);
+  }
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 </script>
+
+<!-- Circle Posts Modal -->
+<div id="circle-posts-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;width:min(640px,94vw);max-height:80vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #F2F2F7">
+      <div>
+        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#6C6C70;margin-bottom:2px">CIRCLE</div>
+        <div id="cpm-title" style="font-size:18px;font-weight:700"></div>
+      </div>
+      <button onclick="closeCirclePostsModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#6C6C70;line-height:1">✕</button>
+    </div>
+    <div id="cpm-body" style="overflow-y:auto;padding:0 20px;flex:1"></div>
+  </div>
+</div>
+
 </body>
 </html>

@@ -138,6 +138,18 @@ export default function SettingsScreen({ navigation }) {
         <BrutSection title={t('settings.feedback') || 'Feedback'} />
         <BrutRow label={t('suggest.title')} onPress={() => setSuggestVisible(true)} />
 
+        {/* FOUNDER ADMIN */}
+        {isFounder && (
+          <>
+            <BrutRule mt={36} mb={6} />
+            <BrutSection title="Admin" />
+            <BrutRow
+              label="Circles & Posts"
+              onPress={() => navigation.navigate('AdminCircles')}
+            />
+          </>
+        )}
+
         <BrutRule mt={36} mb={6} />
 
         {/* ACCOUNT */}
