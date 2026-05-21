@@ -5,7 +5,7 @@ const Comment = require('../models/Comment');
 const Topic = require('../models/Topic');
 const Notification = require('../models/Notification');
 const Report = require('../models/Report');
-const { checkContent } = require('../utils/contentFilter');
+const { checkContent, moderateContent } = require('../utils/contentFilter');
 const { sendToUser } = require('../services/pushService');
 
 // @desc    Get home feed (For You / Following)
@@ -177,9 +177,9 @@ const createPost = async (req, res, next) => {
       await user.save({ validateBeforeSave: false });
     }
 
-    // Content moderation
+    // Content moderation (keyword + AI)
     if (content) {
-      const { isBlocked, isFlagged } = checkContent(content);
+      const { isBlocked, isFlagged } = await moderateContent(content);
       if (isBlocked) {
         return res.status(400).json({ success: false, message: 'يحتوي منشورك على محتوى مسيء. يرجى مراجعة قواعد المجتمع.' });
       }

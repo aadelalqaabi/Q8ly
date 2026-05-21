@@ -3,6 +3,7 @@ const Post = require('../models/Post');
 const Notification = require('../models/Notification');
 const User = require('../models/User');
 const Report = require('../models/Report');
+const { moderateContent } = require('../utils/contentFilter');
 const { sendToUser } = require('../services/pushService');
 
 // @desc    Get comments for a post
@@ -60,6 +61,14 @@ const addComment = async (req, res, next) => {
     }
 
     const { content, parentId } = req.body;
+
+    // Content moderation (keyword + AI)
+    if (content) {
+      const { isBlocked } = await moderateContent(content);
+      if (isBlocked) {
+        return res.status(400).json({ success: false, message: 'يحتوي تعليقك على محتوى مسيء. يرجى مراجعة قواعد المجتمع.' });
+      }
+    }
 
     let depth = 0;
     if (parentId) {

@@ -2,7 +2,7 @@ const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const User = require('../models/User');
-const { checkContent } = require('../utils/contentFilter');
+const { checkContent, moderateContent } = require('../utils/contentFilter');
 
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 
@@ -151,7 +151,7 @@ const initSocket = (server) => {
     socket.on('hachiSend', async ({ roomId, text, replyTo, lat, lng, speed, anonymous }) => {
       if (!socket.user || !text?.trim()) return;
       try {
-        const { isBlocked } = checkContent(text.trim());
+        const { isBlocked } = await moderateContent(text.trim());
         if (isBlocked) {
           socket.emit('hachiError', { message: 'رسالتك تحتوي على محتوى مسيء ولم يتم إرسالها.' });
           return;
@@ -222,6 +222,11 @@ const initSocket = (server) => {
     socket.on('hachiSendQuestion', async ({ roomId, text, anonymous }) => {
       if (!socket.user || !text?.trim()) return;
       try {
+        const { isBlocked } = await moderateContent(text.trim());
+        if (isBlocked) {
+          socket.emit('hachiError', { message: 'رسالتك تحتوي على محتوى مسيء ولم يتم إرسالها.' });
+          return;
+        }
         const Hachi = require('../models/Hachi');
         const mongoose = require('mongoose');
         const isAnon = !!anonymous;

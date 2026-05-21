@@ -91,4 +91,75 @@ function checkContent(text) {
   return { isBlocked: false, isFlagged: false, matchedWord: null };
 }
 
-module.exports = { checkContent };
+/**
+ * AI moderation via OpenAI's free Moderation API.
+ * Returns { isBlocked, isFlagged, reason }
+ * Falls back gracefully if OPENAI_API_KEY is not set or the request fails.
+ */
+async function aiModerate(text) {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key || !text?.trim()) return { isBlocked: false, isFlagged: false, reason: null };
+
+  try {
+    const res = await fetch('https://api.openai.com/v1/moderations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+      body: JSON.stringify({ model: 'omni-moderation-latest', input: text.trim() }),
+      signal: AbortSignal.timeout(4000),
+    });
+
+    if (!res.ok) return { isBlocked: false, isFlagged: false, reason: null };
+
+    const data = await res.json();
+    const result = data.results?.[0];
+    if (!result) return { isBlocked: false, isFlagged: false, reason: null };
+
+    // Hard block: hate with threat, harassment with threat, sexual, violence, self-harm
+    const HARD_BLOCK = ['hate/threatening', 'harassment/threatening', 'sexual', 'violence/graphic', 'self-harm/instructions'];
+    for (const cat of HARD_BLOCK) {
+      if (result.categories?.[cat]) {
+        return { isBlocked: true, isFlagged: false, reason: cat };
+      }
+    }
+
+    // Soft flag: general hate, harassment, violence
+    const SOFT_FLAG = ['hate', 'harassment', 'violence'];
+    for (const cat of SOFT_FLAG) {
+      if (result.categories?.[cat]) {
+        return { isBlocked: false, isFlagged: true, reason: cat };
+      }
+    }
+
+    // Also flag if overall flagged by OpenAI
+    if (result.flagged) {
+      return { isBlocked: false, isFlagged: true, reason: 'ai_flagged' };
+    }
+
+    return { isBlocked: false, isFlagged: false, reason: null };
+  } catch {
+    // Network error / timeout — fail open so the service stays up
+    return { isBlocked: false, isFlagged: false, reason: null };
+  }
+}
+
+/**
+ * Full moderation check: keyword list first (sync, fast), then AI (async).
+ * @param {string} text
+ * @returns {Promise<{ isBlocked: boolean, isFlagged: boolean, reason: string|null }>}
+ */
+async function moderateContent(text) {
+  // Fast sync keyword pre-check
+  const keyword = checkContent(text);
+  if (keyword.isBlocked) return { isBlocked: true, isFlagged: false, reason: `keyword:${keyword.matchedWord}` };
+  if (keyword.isFlagged) {
+    // Still run AI in parallel but don't wait to upgrade to block
+    const ai = await aiModerate(text);
+    if (ai.isBlocked) return { isBlocked: true, isFlagged: false, reason: ai.reason };
+    return { isBlocked: false, isFlagged: true, reason: `keyword:${keyword.matchedWord}` };
+  }
+
+  // No keyword hit — run AI check
+  return aiModerate(text);
+}
+
+module.exports = { checkContent, moderateContent };
