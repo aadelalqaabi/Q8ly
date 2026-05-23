@@ -12,6 +12,7 @@ import { getSocket, joinHachiRoom, leaveHachiRoom, sendHachiMessage, sendHachiQu
 import { Ionicons } from '@expo/vector-icons';
 import { useBrutColors, isAr } from '../../components/Brut';
 import { PollCard, PollComposer } from '../../components/Poll';
+import * as ImagePicker from 'expo-image-picker';
 
 let Location = null;
 try { Location = require('expo-location'); } catch {}
@@ -380,16 +381,44 @@ const reelStyles = StyleSheet.create({
 });
 
 // ── Decide card ───────────────────────────────────────────────────────────────
-function DecideCard({ msg, currentUserId, ar, onVote }) {
-  const { TEXT, MUTED, ACCENT, BG, FILL, SEPARATOR } = useBrutColors();
+const KAHOOT_TILES = [
+  { color: '#E21B3C', shape: '▲' },
+  { color: '#1368CE', shape: '◆' },
+  { color: '#D89E00', shape: '●' },
+  { color: '#26890C', shape: '■' },
+];
+
+const TILE_SIZE = (SW - 28 - 8) / 2;
+
+function DecideCard({ msg, currentUserId, ar, onVote, onDelete }) {
+  const { TEXT, MUTED, BG, FILL, SEPARATOR } = useBrutColors();
   const opts = msg.decideOptions || [];
   const totalVotes = opts.reduce((s, o) => s + (o.votes?.length || 0), 0);
-  const myVote = opts.find((o) => (o.votes || []).some(
+  const myVoteOpt = opts.find((o) => (o.votes || []).some(
     (v) => (typeof v === 'string' ? v : v?.toString()) === currentUserId?.toString()
   ));
   const isAnon = msg.anonymous;
   const name = isAnon ? (ar ? 'شخص هنا' : 'Someone here') : (msg.user?.name || msg.user?.username || '?');
-  const hasImages = opts.some((o) => o.imageUrl);
+  const isOwn = msg.user?._id?.toString() === currentUserId?.toString() || msg.user?.toString() === currentUserId?.toString();
+
+  const handleTilePress = (opt) => {
+    const alreadyVoted = (opt.votes || []).some(
+      (v) => (typeof v === 'string' ? v : v?.toString()) === currentUserId?.toString()
+    );
+    // Tapping own vote removes it; tapping another switches vote
+    onVote(msg._id, opt._id, alreadyVoted ? 'remove' : 'set');
+  };
+
+  const confirmDelete = () => {
+    Alert.alert(
+      ar ? 'حذف القرار؟' : 'Delete decide?',
+      ar ? 'سيُحذف هذا القرار نهائياً' : 'This will be permanently removed.',
+      [
+        { text: ar ? 'إلغاء' : 'Cancel', style: 'cancel' },
+        { text: ar ? 'حذف' : 'Delete', style: 'destructive', onPress: () => onDelete(msg._id) },
+      ]
+    );
+  };
 
   return (
     <View style={[dcStyles.card, { backgroundColor: BG, borderColor: SEPARATOR }]}>
@@ -403,60 +432,53 @@ function DecideCard({ msg, currentUserId, ar, onVote }) {
           <Text style={[dcStyles.name, { color: TEXT }]}>{name}</Text>
           <Text style={[dcStyles.time, { color: MUTED }]}>{timeAgo(msg.createdAt, ar)}</Text>
         </View>
-        <Text style={[dcStyles.tag, { color: ACCENT, backgroundColor: FILL }]}>{ar ? 'قرر' : 'Decide'}</Text>
+        <Text style={[dcStyles.tag, { color: '#fff', backgroundColor: '#E21B3C' }]}>{ar ? 'قرر' : 'Decide'}</Text>
+        {isOwn && (
+          <TouchableOpacity onPress={confirmDelete} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ marginLeft: 8 }}>
+            <Ionicons name="trash-outline" size={16} color={MUTED} />
+          </TouchableOpacity>
+        )}
       </View>
 
       <Text style={[dcStyles.question, { color: TEXT }]}>{msg.decideQuestion}</Text>
 
-      {hasImages ? (
-        <View style={dcStyles.imageGrid}>
-          {opts.map((opt) => {
-            const voted = (opt.votes || []).some((v) => (typeof v === 'string' ? v : v?.toString()) === currentUserId?.toString());
-            const pct = totalVotes > 0 ? Math.round((opt.votes?.length || 0) / totalVotes * 100) : 0;
-            return (
-              <TouchableOpacity
-                key={String(opt._id)}
-                style={[dcStyles.imageOpt, { borderColor: voted ? ACCENT : SEPARATOR, borderWidth: voted ? 2 : 1 }]}
-                onPress={() => !myVote && onVote(msg._id, opt._id)}
-                activeOpacity={0.85}
-              >
-                <Image source={{ uri: opt.imageUrl }} style={dcStyles.optImage} resizeMode="cover" />
-                {myVote && (
-                  <View style={dcStyles.imageOverlay}>
-                    <Text style={dcStyles.imagePct}>{pct}%</Text>
-                  </View>
+      <View style={dcStyles.kahootGrid}>
+        {opts.map((opt, i) => {
+          const tile = KAHOOT_TILES[i % KAHOOT_TILES.length];
+          const voted = (opt.votes || []).some((v) => (typeof v === 'string' ? v : v?.toString()) === currentUserId?.toString());
+          const pct = totalVotes > 0 ? Math.round((opt.votes?.length || 0) / totalVotes * 100) : 0;
+          const dimmed = myVoteOpt && !voted;
+          return (
+            <TouchableOpacity
+              key={String(opt._id)}
+              style={[dcStyles.kahootTile, { backgroundColor: tile.color, opacity: dimmed ? 0.45 : 1 }]}
+              onPress={() => handleTilePress(opt)}
+              activeOpacity={0.8}
+            >
+              {opt.imageUrl
+                ? <Image source={{ uri: opt.imageUrl }} style={dcStyles.tileImage} resizeMode="cover" />
+                : null}
+              <View style={dcStyles.tileOverlay}>
+                <Text style={dcStyles.tileShape}>{tile.shape}</Text>
+                {myVoteOpt && (
+                  <Text style={dcStyles.tilePct}>{pct}%</Text>
                 )}
-                {opt.text ? <Text style={[dcStyles.imageLabel, { color: TEXT, backgroundColor: BG }]} numberOfLines={1}>{opt.text}</Text> : null}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      ) : (
-        <View style={{ gap: 8 }}>
-          {opts.map((opt) => {
-            const voted = (opt.votes || []).some((v) => (typeof v === 'string' ? v : v?.toString()) === currentUserId?.toString());
-            const pct = totalVotes > 0 ? Math.round((opt.votes?.length || 0) / totalVotes * 100) : 0;
-            return (
-              <TouchableOpacity
-                key={String(opt._id)}
-                style={[dcStyles.textOpt, { borderColor: voted ? ACCENT : SEPARATOR, backgroundColor: FILL }]}
-                onPress={() => !myVote && onVote(msg._id, opt._id)}
-                activeOpacity={0.85}
-              >
-                {myVote && (
-                  <View style={[dcStyles.pctBar, { width: `${pct}%`, backgroundColor: ACCENT + '22' }]} />
-                )}
-                <Text style={[dcStyles.optText, { color: voted ? ACCENT : TEXT, fontWeight: voted ? '700' : '500' }]}>{opt.text}</Text>
-                {myVote && <Text style={[dcStyles.pctText, { color: MUTED }]}>{pct}%</Text>}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      )}
+              </View>
+              {voted && (
+                <View style={dcStyles.tileCheck}>
+                  <Ionicons name="checkmark" size={13} color="#fff" />
+                </View>
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
 
       <Text style={[dcStyles.totalVotes, { color: MUTED }]}>
         {totalVotes} {ar ? 'صوت' : totalVotes === 1 ? 'vote' : 'votes'}
-        {!myVote && <Text> · {ar ? 'اضغط للتصويت' : 'tap to vote'}</Text>}
+        {myVoteOpt
+          ? <Text> · {ar ? 'اضغط لتغيير صوتك' : 'tap to change vote'}</Text>
+          : <Text> · {ar ? 'اضغط للتصويت' : 'tap to vote'}</Text>}
       </Text>
     </View>
   );
@@ -471,38 +493,64 @@ const dcStyles = StyleSheet.create({
   time: { fontSize: 11 },
   tag: { fontSize: 11, fontWeight: '700', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
   question: { fontSize: 16, fontWeight: '700', marginBottom: 14, lineHeight: 22 },
-  imageGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
-  imageOpt: { borderRadius: 12, overflow: 'hidden', width: (SW - 28 - 28 - 8) / 2, position: 'relative' },
-  optImage: { width: '100%', height: (SW - 28 - 28 - 8) / 2 * 0.75 },
-  imageOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.35)', alignItems: 'center', justifyContent: 'center' },
-  imagePct: { color: '#fff', fontSize: 22, fontWeight: '800' },
-  imageLabel: { fontSize: 12, fontWeight: '600', padding: 6, textAlign: 'center' },
-  textOpt: { borderRadius: 12, borderWidth: 1.5, paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', overflow: 'hidden', position: 'relative' },
-  pctBar: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 12 },
-  optText: { flex: 1, fontSize: 15 },
-  pctText: { fontSize: 13, fontWeight: '600', marginLeft: 8 },
+  kahootGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  kahootTile: { width: TILE_SIZE, height: TILE_SIZE * 0.72, borderRadius: 10, overflow: 'hidden', position: 'relative' },
+  tileImage: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
+  tileOverlay: { flex: 1, padding: 10, justifyContent: 'space-between' },
+  tileShape: { fontSize: 18, color: 'rgba(255,255,255,0.7)' },
+  tileText: { fontSize: 14, fontWeight: '700', color: '#fff', lineHeight: 18 },
+  tilePctWrap: { position: 'absolute', top: 6, right: 8 },
+  tilePct: { fontSize: 18, fontWeight: '900', color: '#fff' },
+  tileCheck: { position: 'absolute', top: 6, right: 8, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2 },
   totalVotes: { fontSize: 12, marginTop: 10 },
 });
 
 // ── Decide composer modal ─────────────────────────────────────────────────────
+const DCMP_TILE_SIZE = (SW - 40 - 8) / 2;
+
 function DecideComposer({ visible, onClose, onSubmit, ar }) {
   const { TEXT, MUTED, ACCENT, BG, FILL, SEPARATOR } = useBrutColors();
   const [question, setQuestion] = useState('');
-  const [opts, setOpts] = useState([{ text: '', imageUrl: '' }, { text: '', imageUrl: '' }]);
+  const [images, setImages] = useState([null, null, null, null]);
+  const [uploading, setUploading] = useState(false);
 
-  const reset = () => { setQuestion(''); setOpts([{ text: '', imageUrl: '' }, { text: '', imageUrl: '' }]); };
+  const reset = () => { setQuestion(''); setImages([null, null, null, null]); };
 
-  const addOpt = () => { if (opts.length < 4) setOpts([...opts, { text: '', imageUrl: '' }]); };
-  const removeOpt = (i) => { if (opts.length > 2) setOpts(opts.filter((_, idx) => idx !== i)); };
-  const updateOpt = (i, field, val) => setOpts(opts.map((o, idx) => idx === i ? { ...o, [field]: val } : o));
+  const pickImage = async (idx) => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (result.canceled) return;
+    const uri = result.assets[0].uri;
+    setImages((prev) => prev.map((img, i) => i === idx ? { uri, uploaded: null } : img));
+  };
 
-  const canSubmit = question.trim() && opts.every((o) => o.text.trim() || o.imageUrl.trim());
+  const canSubmit = question.trim() && images.slice(0, 2).every(Boolean) && !uploading;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!canSubmit) return;
-    const cleanOpts = opts.map((o) => ({ text: o.text.trim(), imageUrl: o.imageUrl.trim() }));
-    onSubmit(question.trim(), cleanOpts);
-    reset();
+    setUploading(true);
+    try {
+      const filled = images.filter(Boolean);
+      const urls = await Promise.all(filled.map(async (img) => {
+        if (img.uploaded) return img.uploaded;
+        const formData = new FormData();
+        formData.append('images', { uri: img.uri, type: 'image/jpeg', name: 'decide.jpg' });
+        const { uploadAPI } = require('../../services/api');
+        const res = await uploadAPI.images(formData);
+        return Array.isArray(res.data) ? res.data[0] : res.data;
+      }));
+      const opts = urls.map((imageUrl) => ({ text: '', imageUrl }));
+      onSubmit(question.trim(), opts);
+      reset();
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -510,10 +558,41 @@ function DecideComposer({ visible, onClose, onSubmit, ar }) {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => { reset(); onClose(); }} />
         <View style={[dcmpStyles.sheet, { backgroundColor: BG, borderTopColor: SEPARATOR }]}>
-          <Text style={[dcmpStyles.title, { color: TEXT }]}>{ar ? '🤔 قرر عني' : '🤔 Decide for me'}</Text>
+          <Text style={[dcmpStyles.title, { color: TEXT }]}>{ar ? 'قرر عني' : 'Decide for me'}</Text>
           <Text style={[dcmpStyles.sub, { color: MUTED }]}>
-            {ar ? 'أضف سؤالاً وخيارات — حتى 4' : 'Add a question and options — up to 4'}
+            {ar ? 'اختر صورتين أو أكثر وأضف سؤالك' : 'Pick 2–4 images and add your question'}
           </Text>
+
+          <View style={dcmpStyles.tileGrid}>
+            {images.map((img, idx) => {
+              const tile = KAHOOT_TILES[idx];
+              return (
+                <TouchableOpacity
+                  key={idx}
+                  style={[dcmpStyles.tile, { backgroundColor: tile.color }]}
+                  onPress={() => pickImage(idx)}
+                  activeOpacity={0.8}
+                >
+                  {img
+                    ? <Image source={{ uri: img.uri }} style={dcmpStyles.tileImg} resizeMode="cover" />
+                    : <View style={dcmpStyles.tilePlaceholder}>
+                        <Text style={dcmpStyles.tileShapeIcon}>{tile.shape}</Text>
+                        <Ionicons name="add" size={22} color="rgba(255,255,255,0.8)" />
+                      </View>
+                  }
+                  {img && (
+                    <TouchableOpacity
+                      style={dcmpStyles.tileRemove}
+                      onPress={() => setImages((prev) => prev.map((v, i) => i === idx ? null : v))}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons name="close-circle" size={20} color="#fff" />
+                    </TouchableOpacity>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
 
           <View style={[dcmpStyles.inputWrap, { backgroundColor: FILL }]}>
             <TextInput
@@ -523,52 +602,8 @@ function DecideComposer({ visible, onClose, onSubmit, ar }) {
               placeholder={ar ? 'ماذا تريد أن تقرر؟' : 'What do you need help deciding?'}
               placeholderTextColor={MUTED}
               maxLength={200}
-              autoFocus
             />
           </View>
-
-          {opts.map((opt, idx) => (
-            <View key={idx} style={[dcmpStyles.optRow, { borderColor: SEPARATOR }]}>
-              <View style={[dcmpStyles.optNum, { backgroundColor: ACCENT }]}>
-                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>{i + 1}</Text>
-              </View>
-              <View style={{ flex: 1, gap: 6 }}>
-                <View style={[dcmpStyles.optInput, { backgroundColor: FILL }]}>
-                  <TextInput
-                    style={[{ flex: 1, fontSize: 14, color: TEXT, textAlign: ar ? 'right' : 'left' }]}
-                    value={opt.text}
-                    onChangeText={(v) => updateOpt(i, 'text', v)}
-                    placeholder={ar ? `خيار ${i + 1}` : `Option ${i + 1}`}
-                    placeholderTextColor={MUTED}
-                    maxLength={100}
-                  />
-                </View>
-                <View style={[dcmpStyles.optInput, { backgroundColor: FILL }]}>
-                  <TextInput
-                    style={[{ flex: 1, fontSize: 13, color: TEXT, textAlign: ar ? 'right' : 'left' }]}
-                    value={opt.imageUrl}
-                    onChangeText={(v) => updateOpt(i, 'imageUrl', v)}
-                    placeholder={ar ? 'رابط صورة (اختياري)' : 'Image URL (optional)'}
-                    placeholderTextColor={MUTED}
-                    autoCapitalize="none"
-                    keyboardType="url"
-                  />
-                </View>
-              </View>
-              {opts.length > 2 && (
-                <TouchableOpacity onPress={() => removeOpt(i)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                  <Ionicons name="close-circle" size={20} color={MUTED} />
-                </TouchableOpacity>
-              )}
-            </View>
-          ))}
-
-          {opts.length < 4 && (
-            <TouchableOpacity style={[dcmpStyles.addBtn, { borderColor: SEPARATOR }]} onPress={addOpt}>
-              <Ionicons name="add" size={16} color={MUTED} />
-              <Text style={[{ fontSize: 14, color: MUTED }]}>{ar ? 'أضف خياراً' : 'Add option'}</Text>
-            </TouchableOpacity>
-          )}
 
           <TouchableOpacity
             style={[dcmpStyles.submitBtn, { backgroundColor: canSubmit ? ACCENT : FILL }]}
@@ -576,9 +611,10 @@ function DecideComposer({ visible, onClose, onSubmit, ar }) {
             disabled={!canSubmit}
             activeOpacity={0.8}
           >
-            <Text style={[dcmpStyles.submitText, { color: canSubmit ? '#fff' : MUTED }]}>
-              {ar ? 'أرسل' : 'Post'}
-            </Text>
+            {uploading
+              ? <ActivityIndicator color="#fff" />
+              : <Text style={[dcmpStyles.submitText, { color: canSubmit ? '#fff' : MUTED }]}>{ar ? 'أرسل' : 'Post'}</Text>
+            }
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -587,16 +623,18 @@ function DecideComposer({ visible, onClose, onSubmit, ar }) {
 }
 
 const dcmpStyles = StyleSheet.create({
-  sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, borderTopWidth: StyleSheet.hairlineWidth, maxHeight: '90%' },
+  sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, borderTopWidth: StyleSheet.hairlineWidth },
   title: { fontSize: 18, fontWeight: '700', marginBottom: 4 },
-  sub: { fontSize: 13, marginBottom: 14 },
-  inputWrap: { borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 14 },
+  sub: { fontSize: 13, marginBottom: 16 },
+  tileGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+  tile: { width: DCMP_TILE_SIZE, height: DCMP_TILE_SIZE, borderRadius: 12, overflow: 'hidden' },
+  tileImg: { width: '100%', height: '100%' },
+  tilePlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  tileShapeIcon: { fontSize: 22, color: 'rgba(255,255,255,0.5)' },
+  tileRemove: { position: 'absolute', top: 6, right: 6 },
+  inputWrap: { borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 16 },
   questionInput: { fontSize: 16, lineHeight: 22 },
-  optRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 10, paddingBottom: 10, borderBottomWidth: StyleSheet.hairlineWidth },
-  optNum: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', marginTop: 10 },
-  optInput: { borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, flexDirection: 'row' },
-  addBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', padding: 12, justifyContent: 'center', marginBottom: 14 },
-  submitBtn: { borderRadius: 22, paddingVertical: 14, alignItems: 'center', marginTop: 4 },
+  submitBtn: { borderRadius: 22, paddingVertical: 14, alignItems: 'center' },
   submitText: { fontSize: 16, fontWeight: '700' },
 });
 
@@ -616,7 +654,7 @@ function QuestionComposer({ visible, onClose, onSubmit, ar }) {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={onClose} />
         <View style={[qcStyles.sheet, { backgroundColor: BG, borderTopColor: SEPARATOR }]}>
-          <Text style={[qcStyles.title, { color: TEXT }]}>{ar ? '❓ اطرح سؤالاً' : '❓ Ask the circle'}</Text>
+          <Text style={[qcStyles.title, { color: TEXT }]}>{ar ? 'اطرح سؤالاً' : 'Ask the circle'}</Text>
           <Text style={[qcStyles.sub, { color: MUTED }]}>{ar ? 'سيُرسل بشكل مجهول' : 'Posted anonymously'}</Text>
           <View style={[qcStyles.inputWrap, { backgroundColor: FILL }]}>
             <TextInput
@@ -913,8 +951,8 @@ export default function CircleScreen({ route, navigation }) {
     setShowDecideComposer(false);
   };
 
-  const handleDecideVote = useCallback((messageId, optionId) => {
-    sendHachiDecideVote(circleId, messageId, optionId);
+  const handleDecideVote = useCallback((messageId, optionId, action = 'set') => {
+    sendHachiDecideVote(circleId, messageId, optionId, action);
   }, [circleId]);
 
   const handleVote = (pollId, optionId) => {
@@ -1032,6 +1070,7 @@ export default function CircleScreen({ route, navigation }) {
                     currentUserId={currentUser?._id}
                     ar={ar}
                     onVote={handleDecideVote}
+                    onDelete={handleDelete}
                   />
                 );
               }
@@ -1102,6 +1141,20 @@ export default function CircleScreen({ route, navigation }) {
             </View>
           )}
           <View style={[styles.composerWrap, { backgroundColor: BG, borderTopColor: SEPARATOR, paddingBottom: insets.bottom + 10 }]}>
+            <View style={{ flexDirection: ar ? 'row' : 'row-reverse', justifyContent: 'flex-start', alignItems: 'center', marginBottom: 6 }}>
+              <View style={[styles.anonToggle]}>
+                <Ionicons name="glasses-outline" size={15} color={isAnon ? ACCENT : MUTED} />
+                <Text style={[styles.actionChipText, { color: isAnon ? ACCENT : MUTED, fontSize: 12 }]}>{ar ? 'مجهول' : 'Anon'}</Text>
+                <Switch
+                  value={isAnon}
+                  onValueChange={setIsAnon}
+                  trackColor={{ false: SEPARATOR, true: ACCENT + '55' }}
+                  thumbColor={isAnon ? ACCENT : '#fff'}
+                  ios_backgroundColor={SEPARATOR}
+                  style={{ transform: [{ scaleX: 0.75 }, { scaleY: 0.75 }] }}
+                />
+              </View>
+            </View>
             <View style={[styles.inputRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
               <View style={[styles.inputCard, { backgroundColor: FILL, borderColor: replyTo ? ACCENT : 'transparent' }]}>
                 <TextInput
@@ -1148,31 +1201,25 @@ export default function CircleScreen({ route, navigation }) {
                 onPress={() => setShowQuestionComposer(true)}
                 activeOpacity={0.7}
               >
-                <Text style={{ fontSize: 16, lineHeight: 20 }}>❓</Text>
+                <Ionicons name="help-circle-outline" size={18} color={TEXT} />
                 <Text style={[styles.actionChipText, { color: TEXT }]}>{ar ? 'سؤال' : 'Ask'}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.actionChip, { backgroundColor: FILL, borderColor: SEPARATOR }]}
+                style={styles.decideChip}
                 onPress={() => setShowDecideComposer(true)}
-                activeOpacity={0.7}
+                activeOpacity={0.8}
               >
-                <Text style={{ fontSize: 16, lineHeight: 20 }}>🤔</Text>
+                <View style={styles.decideChipGrid}>
+                  {KAHOOT_TILES.map((t, i) => (
+                    <View key={i} style={[styles.decideChipTile, { backgroundColor: t.color }]}>
+                      <Text style={styles.decideChipShape}>{t.shape}</Text>
+                    </View>
+                  ))}
+                </View>
                 <Text style={[styles.actionChipText, { color: TEXT }]}>{ar ? 'قرر' : 'Decide'}</Text>
               </TouchableOpacity>
 
-              <View style={[styles.anonToggle, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
-                <Ionicons name="glasses-outline" size={16} color={isAnon ? ACCENT : MUTED} />
-                <Text style={[styles.actionChipText, { color: isAnon ? ACCENT : MUTED }]}>{ar ? 'مجهول' : 'Anon'}</Text>
-                <Switch
-                  value={isAnon}
-                  onValueChange={setIsAnon}
-                  trackColor={{ false: SEPARATOR, true: ACCENT + '55' }}
-                  thumbColor={isAnon ? ACCENT : '#fff'}
-                  ios_backgroundColor={SEPARATOR}
-                  style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
-                />
-              </View>
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -1227,7 +1274,11 @@ const styles = StyleSheet.create({
   input: { fontSize: 15, fontWeight: '400', paddingVertical: 10 },
   sendBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
   actionsRow: { gap: 8, marginBottom: 4, alignItems: 'center', flexWrap: 'nowrap' },
-  anonToggle: { marginLeft: 'auto', justifyContent: 'flex-end', alignItems: 'center', gap: 4, flexDirection: 'row' },
+  anonToggle: { alignItems: 'center', gap: 4, flexDirection: 'row' },
   actionChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
   actionChipText: { fontSize: 13, fontWeight: '500' },
+  decideChip: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  decideChipGrid: { flexDirection: 'row', flexWrap: 'wrap', width: 30, height: 30, gap: 2, borderRadius: 6, overflow: 'hidden' },
+  decideChipTile: { width: 13, height: 13, alignItems: 'center', justifyContent: 'center' },
+  decideChipShape: { fontSize: 7, color: 'rgba(255,255,255,0.85)' },
 });

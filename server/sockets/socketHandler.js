@@ -438,7 +438,7 @@ const initSocket = (server) => {
     });
 
     // ── Vote on a Decide option ─────────────────────────────────────
-    socket.on('hachiDecideVote', async ({ roomId, messageId, optionId }) => {
+    socket.on('hachiDecideVote', async ({ roomId, messageId, optionId, action = 'set' }) => {
       if (!socket.user) return;
       try {
         const Hachi = require('../models/Hachi');
@@ -452,18 +452,19 @@ const initSocket = (server) => {
         const msg = room.messages.id(msgOid);
         if (!msg || msg.type !== 'decide') return;
 
-        // Remove existing vote from all options first
+        // Remove existing vote from all options
         msg.decideOptions.forEach((opt) => {
           opt.votes = opt.votes.filter((v) => v.toString() !== uid.toString());
         });
 
-        // Add vote to chosen option
-        const opt = msg.decideOptions.id(optOid);
-        if (opt) opt.votes.push(uid);
+        // Only add vote if action is 'set' (not 'remove')
+        if (action === 'set') {
+          const opt = msg.decideOptions.id(optOid);
+          if (opt) opt.votes.push(uid);
+        }
 
         await room.save();
 
-        // Broadcast updated vote counts (no user IDs, just counts + who voted)
         const voteCounts = msg.decideOptions.map((o) => ({
           optionId: o._id,
           count: o.votes.length,
