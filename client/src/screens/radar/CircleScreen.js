@@ -450,7 +450,7 @@ function DecideCard({ msg, currentUserId, ar, onVote, onDelete, navigation }) {
               onPress={() => handleTilePress(opt)}
               activeOpacity={0.85}
             >
-              <Image source={{ uri: opt.imageUrl }} style={dcStyles.tileImage} resizeMode="cover" />
+              {!!opt.imageUrl && <Image source={{ uri: opt.imageUrl }} style={dcStyles.tileImage} resizeMode="cover" />}
 
               {/* vote result overlay */}
               {myVoteOpt && (
@@ -570,7 +570,7 @@ function DecideComposer({ visible, onClose, onSubmit, ar }) {
                   activeOpacity={0.8}
                 >
                   {img
-                    ? <Image source={{ uri: img.uri }} style={dcmpStyles.tileImg} resizeMode="cover" />
+                    ? <Image source={{ uri: img?.uri }} style={dcmpStyles.tileImg} resizeMode="cover" />
                     : <View style={dcmpStyles.tilePlaceholder}>
                         <Text style={[dcmpStyles.tileShapeIcon, { color: MUTED }]}>{shape}</Text>
                         <Ionicons name="add-circle-outline" size={24} color={MUTED} />
