@@ -6,6 +6,8 @@
   <title>KUWAI — Admin</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     * { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
     body { background: #F2F2F7; }
@@ -121,6 +123,10 @@
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
         Suggestions
         <span id="nav-badge-suggestions" style="margin-left:auto;background:#C8102E;color:#fff;border-radius:10px;font-size:11px;font-weight:700;padding:1px 7px;display:none"></span>
+      </div>
+      <div class="nav-item" onclick="showPage('geofencing')">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="9" stroke-dasharray="3 3"/></svg>
+        Geofencing
       </div>
       <div class="nav-item" onclick="showPage('circles')">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
@@ -251,6 +257,50 @@
       <div class="card" style="padding:0;overflow:hidden">
         <div id="circles-table-wrap"></div>
         <div id="circles-pagination" style="padding:12px 16px;display:flex;gap:8px;justify-content:flex-end;border-top:1px solid #F2F2F7"></div>
+      </div>
+    </div>
+
+    <!-- Geofencing -->
+    <div id="page-geofencing" class="page">
+      <h2 style="font-size:22px;font-weight:700;margin-bottom:6px">Geofencing</h2>
+      <p style="color:#6C6C70;font-size:14px;margin-bottom:20px">Click the map to move a venue's center. Use the slider to resize the radius. Save when done.</p>
+
+      <div style="display:flex;gap:16px;flex-wrap:wrap">
+        <!-- Venue list -->
+        <div style="width:260px;flex-shrink:0">
+          <div class="card" style="padding:0;overflow:hidden">
+            <div style="padding:14px 16px;font-size:12px;font-weight:700;color:#6C6C70;letter-spacing:.05em;border-bottom:1px solid #F2F2F7">VENUE CIRCLES</div>
+            <div id="gf-venue-list" style="overflow-y:auto;max-height:520px"></div>
+          </div>
+        </div>
+
+        <!-- Map + editor -->
+        <div style="flex:1;min-width:300px">
+          <div class="card" style="padding:0;overflow:hidden">
+            <div id="gf-map" style="height:420px;width:100%"></div>
+            <div id="gf-editor" style="display:none;padding:16px;border-top:1px solid #F2F2F7">
+              <div style="font-size:15px;font-weight:700;margin-bottom:12px" id="gf-editor-title"></div>
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+                <label style="font-size:13px;color:#6C6C70;width:60px">Lat</label>
+                <input id="gf-lat" type="number" step="0.0001" style="flex:1;background:#F2F2F7;border:none;border-radius:8px;padding:7px 12px;font-size:13px" />
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+                <label style="font-size:13px;color:#6C6C70;width:60px">Lng</label>
+                <input id="gf-lng" type="number" step="0.0001" style="flex:1;background:#F2F2F7;border:none;border-radius:8px;padding:7px 12px;font-size:13px" />
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+                <label style="font-size:13px;color:#6C6C70;width:60px">Radius</label>
+                <input id="gf-radius-slider" type="range" min="50" max="1500" step="25" style="flex:1" oninput="onGfRadiusSlide(this.value)" />
+                <span id="gf-radius-label" style="font-size:13px;font-weight:600;min-width:50px;text-align:right"></span>
+              </div>
+              <div style="display:flex;gap:8px">
+                <button class="btn btn-red" onclick="saveGeofence()" id="gf-save-btn">Save</button>
+                <button class="btn btn-outline" onclick="deselectVenue()">Cancel</button>
+              </div>
+            </div>
+          </div>
+          <p id="gf-hint" style="font-size:12px;color:#6C6C70;margin-top:8px;text-align:center">← Select a venue to edit its geofence</p>
+        </div>
       </div>
     </div>
 
@@ -440,6 +490,7 @@ function showPage(page) {
   else if (page === 'posts') loadPosts(1);
   else if (page === 'reports') loadReports(1);
   else if (page === 'suggestions') loadSuggestions('all', 1);
+  else if (page === 'geofencing') initGeofencing();
   else if (page === 'circles') loadCircles(1);
   else if (page === 'ads') loadAds();
   else if (page === 'waitlist') loadWaitlist('waiting');
@@ -1289,6 +1340,152 @@ async function denyLocReq(id) {
     await apiFetch(`/admin/location-requests/${id}/deny`, { method: 'POST' });
     loadLocReqs('pending');
   } catch (e) { alert('Error: ' + e.message); }
+}
+
+// ─── Geofencing ──────────────────────────────────────────────────────────────
+let gfMap = null;
+let gfMarker = null;
+let gfCircle = null;
+let gfSelected = null; // { _id, venueName, venueCoords, venueRadius }
+let gfVenues = [];
+
+async function initGeofencing() {
+  // Only init map once
+  if (!gfMap) {
+    gfMap = L.map('gf-map').setView([29.3117, 47.9754], 11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors', maxZoom: 19,
+    }).addTo(gfMap);
+    gfMap.on('click', onGfMapClick);
+  }
+
+  // Load venues
+  try {
+    const data = await apiFetch('/admin/circles?limit=50');
+    gfVenues = (data.circles || []).filter(c => c.venueCoords?.lat);
+    renderGfVenueList();
+    plotAllVenues();
+  } catch(e) { toast('Error loading venues: ' + e.message); }
+}
+
+function renderGfVenueList() {
+  const list = document.getElementById('gf-venue-list');
+  list.innerHTML = gfVenues.map(c => `
+    <div onclick="selectVenue('${c._id}')" id="gfv-${c._id}" style="padding:12px 16px;cursor:pointer;border-bottom:1px solid #F2F2F7;font-size:14px;transition:background .1s"
+      onmouseover="this.style.background='#F2F2F7'" onmouseout="this.style.background=gfSelected?._id==='${c._id}'?'#FFF0F0':'#fff'">
+      <div style="font-weight:600;color:#1C1C1E">${c.venueName || c.title}</div>
+      <div style="font-size:12px;color:#6C6C70;margin-top:2px">${(c.venueCoords?.lat||0).toFixed(4)}, ${(c.venueCoords?.lng||0).toFixed(4)} · ${c.venueRadius || 0}m</div>
+    </div>
+  `).join('');
+}
+
+function plotAllVenues() {
+  if (!gfMap) return;
+  gfVenues.forEach(c => {
+    if (!c.venueCoords?.lat) return;
+    L.circle([c.venueCoords.lat, c.venueCoords.lng], {
+      radius: c.venueRadius || 250, color: '#C8102E', fillColor: '#C8102E',
+      fillOpacity: 0.08, weight: 1.5, dashArray: '4',
+    }).addTo(gfMap).bindTooltip(c.venueName || c.title, { permanent: false });
+  });
+}
+
+function selectVenue(id) {
+  gfSelected = gfVenues.find(c => c._id === id);
+  if (!gfSelected) return;
+
+  // Highlight row
+  document.querySelectorAll('[id^="gfv-"]').forEach(el => el.style.background = '#fff');
+  document.getElementById('gfv-' + id).style.background = '#FFF0F0';
+
+  // Pan map
+  const { lat, lng } = gfSelected.venueCoords;
+  const radius = gfSelected.venueRadius || 250;
+  gfMap.setView([lat, lng], 15);
+
+  // Draw editable marker + circle
+  if (gfMarker) gfMap.removeLayer(gfMarker);
+  if (gfCircle) gfMap.removeLayer(gfCircle);
+
+  gfMarker = L.marker([lat, lng], { draggable: true }).addTo(gfMap);
+  gfCircle = L.circle([lat, lng], {
+    radius, color: '#0033A0', fillColor: '#0033A0', fillOpacity: 0.15, weight: 2,
+  }).addTo(gfMap);
+
+  gfMarker.on('drag', (e) => {
+    const pos = e.target.getLatLng();
+    gfCircle.setLatLng(pos);
+    document.getElementById('gf-lat').value = pos.lat.toFixed(6);
+    document.getElementById('gf-lng').value = pos.lng.toFixed(6);
+  });
+
+  // Show editor
+  document.getElementById('gf-editor').style.display = 'block';
+  document.getElementById('gf-hint').style.display = 'none';
+  document.getElementById('gf-editor-title').textContent = gfSelected.venueName || gfSelected.title;
+  document.getElementById('gf-lat').value = lat.toFixed(6);
+  document.getElementById('gf-lng').value = lng.toFixed(6);
+  document.getElementById('gf-radius-slider').value = radius;
+  document.getElementById('gf-radius-label').textContent = radius + 'm';
+
+  // Sync lat/lng inputs → move marker+circle
+  ['gf-lat','gf-lng'].forEach(id => {
+    document.getElementById(id).oninput = () => {
+      const la = parseFloat(document.getElementById('gf-lat').value);
+      const ln = parseFloat(document.getElementById('gf-lng').value);
+      if (!isNaN(la) && !isNaN(ln)) {
+        gfMarker.setLatLng([la, ln]);
+        gfCircle.setLatLng([la, ln]);
+      }
+    };
+  });
+}
+
+function onGfMapClick(e) {
+  if (!gfSelected) return;
+  const { lat, lng } = e.latlng;
+  gfMarker.setLatLng([lat, lng]);
+  gfCircle.setLatLng([lat, lng]);
+  document.getElementById('gf-lat').value = lat.toFixed(6);
+  document.getElementById('gf-lng').value = lng.toFixed(6);
+}
+
+function onGfRadiusSlide(val) {
+  document.getElementById('gf-radius-label').textContent = val + 'm';
+  if (gfCircle) gfCircle.setRadius(parseInt(val));
+}
+
+function deselectVenue() {
+  gfSelected = null;
+  if (gfMarker) { gfMap.removeLayer(gfMarker); gfMarker = null; }
+  if (gfCircle) { gfMap.removeLayer(gfCircle); gfCircle = null; }
+  document.getElementById('gf-editor').style.display = 'none';
+  document.getElementById('gf-hint').style.display = 'block';
+  document.querySelectorAll('[id^="gfv-"]').forEach(el => el.style.background = '#fff');
+}
+
+async function saveGeofence() {
+  if (!gfSelected) return;
+  const lat = parseFloat(document.getElementById('gf-lat').value);
+  const lng = parseFloat(document.getElementById('gf-lng').value);
+  const radius = parseInt(document.getElementById('gf-radius-slider').value);
+  if (isNaN(lat) || isNaN(lng) || isNaN(radius)) { toast('Invalid values'); return; }
+
+  const btn = document.getElementById('gf-save-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    await apiFetch('/admin/circles/' + gfSelected._id + '/geofence', {
+      method: 'PATCH', body: JSON.stringify({ lat, lng, radius }),
+    });
+    // Update local state
+    gfSelected.venueCoords = { lat, lng };
+    gfSelected.venueRadius = radius;
+    const idx = gfVenues.findIndex(c => c._id === gfSelected._id);
+    if (idx !== -1) { gfVenues[idx].venueCoords = { lat, lng }; gfVenues[idx].venueRadius = radius; }
+    renderGfVenueList();
+    toast('✓ Geofence saved for ' + (gfSelected.venueName || gfSelected.title));
+  } catch(e) { toast('Error: ' + e.message); }
+  finally { btn.disabled = false; btn.textContent = 'Save'; }
 }
 
 // ─── Circle Posts Modal ───────────────────────────────────────────────────────

@@ -418,6 +418,27 @@ exports.getCircles = async (req, res) => {
   }
 };
 
+// PATCH /api/admin/circles/:id/geofence — update center coords + radius
+exports.updateCircleGeofence = async (req, res) => {
+  try {
+    const { lat, lng, radius } = req.body;
+    if (!lat || !lng || !radius) return res.status(400).json({ success: false, message: 'lat, lng, radius required' });
+    const room = await Hachi.findByIdAndUpdate(
+      req.params.id,
+      {
+        venueCoords: { lat: parseFloat(lat), lng: parseFloat(lng) },
+        venueRadius: parseInt(radius),
+        location: { type: 'Point', coordinates: [parseFloat(lng), parseFloat(lat)] },
+      },
+      { new: true }
+    );
+    if (!room) return res.status(404).json({ success: false, message: 'Circle not found' });
+    res.json({ success: true, venueCoords: room.venueCoords, venueRadius: room.venueRadius });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 // GET /api/admin/circles/:id/messages — all posts in a circle
 exports.getCircleMessages = async (req, res) => {
   try {
