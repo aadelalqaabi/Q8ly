@@ -378,6 +378,106 @@ const initSocket = (server) => {
       }
     });
 
+    // ── Send a Decide post ──────────────────────────────────────────
+    socket.on('hachiSendDecide', async ({ roomId, question, options, anonymous }) => {
+      if (!socket.user || !question?.trim() || !options?.length) return;
+      try {
+        const { isBlocked } = await moderateContent(question.trim());
+        if (isBlocked) {
+          socket.emit('hachiError', { message: 'رسالتك تحتوي على محتوى مسيء ولم يتم إرسالها.' });
+          return;
+        }
+        const Hachi = require('../models/Hachi');
+        const mongoose = require('mongoose');
+
+        const cleanOptions = options.slice(0, 4).map((o) => ({
+          _id: new mongoose.Types.ObjectId(),
+          text: o.text?.trim() || '',
+          imageUrl: o.imageUrl || '',
+          votes: [],
+        }));
+
+        const msgId = new mongoose.Types.ObjectId();
+        const now = new Date();
+        const isAnon = !!anonymous;
+
+        const msgData = {
+          _id: msgId,
+          user: socket.user._id,
+          type: 'decide',
+          decideQuestion: question.trim(),
+          decideOptions: cleanOptions,
+          anonymous: isAnon,
+          reactions: [],
+          likes: [],
+          createdAt: now,
+        };
+
+        const room = await Hachi.findById(roomId).select('blockedMembers members memberCount').lean();
+        if (!room) return;
+        if ((room.blockedMembers || []).some((b) => b.toString() === socket.user._id.toString())) return;
+
+        const isNewMember = !(room.members || []).some((m) => m.toString() === socket.user._id.toString());
+        await Hachi.findByIdAndUpdate(roomId, {
+          $push: { messages: { $each: [msgData], $slice: -500 } },
+          $set: { lastMessage: { text: `🤔 ${question.trim()}`, createdAt: now } },
+          $addToSet: { members: socket.user._id },
+          ...(isNewMember ? { $inc: { memberCount: 1 } } : {}),
+        });
+
+        const populated = {
+          ...msgData,
+          user: isAnon
+            ? { _id: socket.user._id }
+            : { _id: socket.user._id, name: socket.user.name, username: socket.user.username, profilePic: socket.user.profilePic },
+        };
+        io.to(`hachi:${roomId}`).emit('hachiMessage', { roomId, message: populated });
+      } catch (err) {
+        console.error('hachiSendDecide error:', err.message);
+      }
+    });
+
+    // ── Vote on a Decide option ─────────────────────────────────────
+    socket.on('hachiDecideVote', async ({ roomId, messageId, optionId }) => {
+      if (!socket.user) return;
+      try {
+        const Hachi = require('../models/Hachi');
+        const mongoose = require('mongoose');
+        const uid = socket.user._id;
+        const msgOid = new mongoose.Types.ObjectId(messageId);
+        const optOid = new mongoose.Types.ObjectId(optionId);
+
+        const room = await Hachi.findById(roomId).select('messages');
+        if (!room) return;
+        const msg = room.messages.id(msgOid);
+        if (!msg || msg.type !== 'decide') return;
+
+        // Remove existing vote from all options first
+        msg.decideOptions.forEach((opt) => {
+          opt.votes = opt.votes.filter((v) => v.toString() !== uid.toString());
+        });
+
+        // Add vote to chosen option
+        const opt = msg.decideOptions.id(optOid);
+        if (opt) opt.votes.push(uid);
+
+        await room.save();
+
+        // Broadcast updated vote counts (no user IDs, just counts + who voted)
+        const voteCounts = msg.decideOptions.map((o) => ({
+          optionId: o._id,
+          count: o.votes.length,
+          voted: o.votes.some((v) => v.toString() === uid.toString()),
+        }));
+
+        io.to(`hachi:${roomId}`).emit('hachiDecideVoted', {
+          roomId, messageId, voterId: uid, voteCounts,
+        });
+      } catch (err) {
+        console.error('hachiDecideVote error:', err.message);
+      }
+    });
+
     // ── Delete own message ──────────────────────────────────────────
     socket.on('hachiDeleteMessage', async ({ roomId, messageId }) => {
       if (!socket.user) return;

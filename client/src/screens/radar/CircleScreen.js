@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useSelector } from 'react-redux';
 import { hachiAPI } from '../../services/api';
-import { getSocket, joinHachiRoom, leaveHachiRoom, sendHachiMessage, sendHachiQuestion, deleteHachiMessage, sendHachiReport } from '../../services/socket';
+import { getSocket, joinHachiRoom, leaveHachiRoom, sendHachiMessage, sendHachiQuestion, sendHachiDecide, sendHachiDecideVote, deleteHachiMessage, sendHachiReport } from '../../services/socket';
 import { Ionicons } from '@expo/vector-icons';
 import { useBrutColors, isAr } from '../../components/Brut';
 import { PollCard, PollComposer } from '../../components/Poll';
@@ -379,6 +379,227 @@ const reelStyles = StyleSheet.create({
   likeCount: { color: '#fff', fontSize: 13, fontWeight: '600' },
 });
 
+// ── Decide card ───────────────────────────────────────────────────────────────
+function DecideCard({ msg, currentUserId, ar, onVote }) {
+  const { TEXT, MUTED, ACCENT, BG, FILL, SEPARATOR } = useBrutColors();
+  const opts = msg.decideOptions || [];
+  const totalVotes = opts.reduce((s, o) => s + (o.votes?.length || 0), 0);
+  const myVote = opts.find((o) => (o.votes || []).some(
+    (v) => (typeof v === 'string' ? v : v?.toString()) === currentUserId?.toString()
+  ));
+  const isAnon = msg.anonymous;
+  const name = isAnon ? (ar ? 'شخص هنا' : 'Someone here') : (msg.user?.name || msg.user?.username || '?');
+  const hasImages = opts.some((o) => o.imageUrl);
+
+  return (
+    <View style={[dcStyles.card, { backgroundColor: BG, borderColor: SEPARATOR }]}>
+      <View style={dcStyles.header}>
+        <View style={[dcStyles.avatar, { backgroundColor: FILL }]}>
+          {!isAnon && msg.user?.profilePic
+            ? <Image source={{ uri: msg.user.profilePic }} style={dcStyles.avatarImg} />
+            : <Ionicons name="person" size={14} color={MUTED} />}
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[dcStyles.name, { color: TEXT }]}>{name}</Text>
+          <Text style={[dcStyles.time, { color: MUTED }]}>{timeAgo(msg.createdAt, ar)}</Text>
+        </View>
+        <Text style={[dcStyles.tag, { color: ACCENT, backgroundColor: FILL }]}>{ar ? 'قرر' : 'Decide'}</Text>
+      </View>
+
+      <Text style={[dcStyles.question, { color: TEXT }]}>{msg.decideQuestion}</Text>
+
+      {hasImages ? (
+        <View style={dcStyles.imageGrid}>
+          {opts.map((opt, i) => {
+            const voted = (opt.votes || []).some((v) => (typeof v === 'string' ? v : v?.toString()) === currentUserId?.toString());
+            const pct = totalVotes > 0 ? Math.round((opt.votes?.length || 0) / totalVotes * 100) : 0;
+            return (
+              <TouchableOpacity
+                key={String(opt._id)}
+                style={[dcStyles.imageOpt, { borderColor: voted ? ACCENT : SEPARATOR, borderWidth: voted ? 2 : 1 }]}
+                onPress={() => !myVote && onVote(msg._id, opt._id)}
+                activeOpacity={0.85}
+              >
+                <Image source={{ uri: opt.imageUrl }} style={dcStyles.optImage} resizeMode="cover" />
+                {myVote && (
+                  <View style={dcStyles.imageOverlay}>
+                    <Text style={dcStyles.imagePct}>{pct}%</Text>
+                  </View>
+                )}
+                {opt.text ? <Text style={[dcStyles.imageLabel, { color: TEXT, backgroundColor: BG }]} numberOfLines={1}>{opt.text}</Text> : null}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      ) : (
+        <View style={{ gap: 8 }}>
+          {opts.map((opt) => {
+            const voted = (opt.votes || []).some((v) => (typeof v === 'string' ? v : v?.toString()) === currentUserId?.toString());
+            const pct = totalVotes > 0 ? Math.round((opt.votes?.length || 0) / totalVotes * 100) : 0;
+            return (
+              <TouchableOpacity
+                key={String(opt._id)}
+                style={[dcStyles.textOpt, { borderColor: voted ? ACCENT : SEPARATOR, backgroundColor: FILL }]}
+                onPress={() => !myVote && onVote(msg._id, opt._id)}
+                activeOpacity={0.85}
+              >
+                {myVote && (
+                  <View style={[dcStyles.pctBar, { width: `${pct}%`, backgroundColor: ACCENT + '22' }]} />
+                )}
+                <Text style={[dcStyles.optText, { color: voted ? ACCENT : TEXT, fontWeight: voted ? '700' : '500' }]}>{opt.text}</Text>
+                {myVote && <Text style={[dcStyles.pctText, { color: MUTED }]}>{pct}%</Text>}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
+
+      <Text style={[dcStyles.totalVotes, { color: MUTED }]}>
+        {totalVotes} {ar ? 'صوت' : totalVotes === 1 ? 'vote' : 'votes'}
+        {!myVote && <Text> · {ar ? 'اضغط للتصويت' : 'tap to vote'}</Text>}
+      </Text>
+    </View>
+  );
+}
+
+const dcStyles = StyleSheet.create({
+  card: { marginHorizontal: 14, marginVertical: 6, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 14 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+  avatar: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  avatarImg: { width: 32, height: 32, borderRadius: 16 },
+  name: { fontSize: 13, fontWeight: '600' },
+  time: { fontSize: 11 },
+  tag: { fontSize: 11, fontWeight: '700', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+  question: { fontSize: 16, fontWeight: '700', marginBottom: 14, lineHeight: 22 },
+  imageGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
+  imageOpt: { borderRadius: 12, overflow: 'hidden', width: (SW - 28 - 28 - 8) / 2, position: 'relative' },
+  optImage: { width: '100%', height: (SW - 28 - 28 - 8) / 2 * 0.75 },
+  imageOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.35)', alignItems: 'center', justifyContent: 'center' },
+  imagePct: { color: '#fff', fontSize: 22, fontWeight: '800' },
+  imageLabel: { fontSize: 12, fontWeight: '600', padding: 6, textAlign: 'center' },
+  textOpt: { borderRadius: 12, borderWidth: 1.5, paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', overflow: 'hidden', position: 'relative' },
+  pctBar: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 12 },
+  optText: { flex: 1, fontSize: 15 },
+  pctText: { fontSize: 13, fontWeight: '600', marginLeft: 8 },
+  totalVotes: { fontSize: 12, marginTop: 10 },
+});
+
+// ── Decide composer modal ─────────────────────────────────────────────────────
+function DecideComposer({ visible, onClose, onSubmit, ar }) {
+  const { TEXT, MUTED, ACCENT, BG, FILL, SEPARATOR } = useBrutColors();
+  const [question, setQuestion] = useState('');
+  const [opts, setOpts] = useState([{ text: '', imageUrl: '' }, { text: '', imageUrl: '' }]);
+
+  const reset = () => { setQuestion(''); setOpts([{ text: '', imageUrl: '' }, { text: '', imageUrl: '' }]); };
+
+  const addOpt = () => { if (opts.length < 4) setOpts([...opts, { text: '', imageUrl: '' }]); };
+  const removeOpt = (i) => { if (opts.length > 2) setOpts(opts.filter((_, idx) => idx !== i)); };
+  const updateOpt = (i, field, val) => setOpts(opts.map((o, idx) => idx === i ? { ...o, [field]: val } : o));
+
+  const canSubmit = question.trim() && opts.every((o) => o.text.trim() || o.imageUrl.trim());
+
+  const handleSubmit = () => {
+    if (!canSubmit) return;
+    const cleanOpts = opts.map((o) => ({ text: o.text.trim(), imageUrl: o.imageUrl.trim() }));
+    onSubmit(question.trim(), cleanOpts);
+    reset();
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={() => { reset(); onClose(); }}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => { reset(); onClose(); }} />
+        <View style={[dcmpStyles.sheet, { backgroundColor: BG, borderTopColor: SEPARATOR }]}>
+          <Text style={[dcmpStyles.title, { color: TEXT }]}>{ar ? '🤔 قرر عني' : '🤔 Decide for me'}</Text>
+          <Text style={[dcmpStyles.sub, { color: MUTED }]}>
+            {ar ? 'أضف سؤالاً وخيارات — حتى 4' : 'Add a question and options — up to 4'}
+          </Text>
+
+          <View style={[dcmpStyles.inputWrap, { backgroundColor: FILL }]}>
+            <TextInput
+              style={[dcmpStyles.questionInput, { color: TEXT, textAlign: ar ? 'right' : 'left' }]}
+              value={question}
+              onChangeText={setQuestion}
+              placeholder={ar ? 'ماذا تريد أن تقرر؟' : 'What do you need help deciding?'}
+              placeholderTextColor={MUTED}
+              maxLength={200}
+              autoFocus
+            />
+          </View>
+
+          {opts.map((opt, idx) => (
+            <View key={idx} style={[dcmpStyles.optRow, { borderColor: SEPARATOR }]}>
+              <View style={[dcmpStyles.optNum, { backgroundColor: ACCENT }]}>
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>{i + 1}</Text>
+              </View>
+              <View style={{ flex: 1, gap: 6 }}>
+                <View style={[dcmpStyles.optInput, { backgroundColor: FILL }]}>
+                  <TextInput
+                    style={[{ flex: 1, fontSize: 14, color: TEXT, textAlign: ar ? 'right' : 'left' }]}
+                    value={opt.text}
+                    onChangeText={(v) => updateOpt(i, 'text', v)}
+                    placeholder={ar ? `خيار ${i + 1}` : `Option ${i + 1}`}
+                    placeholderTextColor={MUTED}
+                    maxLength={100}
+                  />
+                </View>
+                <View style={[dcmpStyles.optInput, { backgroundColor: FILL }]}>
+                  <TextInput
+                    style={[{ flex: 1, fontSize: 13, color: TEXT, textAlign: ar ? 'right' : 'left' }]}
+                    value={opt.imageUrl}
+                    onChangeText={(v) => updateOpt(i, 'imageUrl', v)}
+                    placeholder={ar ? 'رابط صورة (اختياري)' : 'Image URL (optional)'}
+                    placeholderTextColor={MUTED}
+                    autoCapitalize="none"
+                    keyboardType="url"
+                  />
+                </View>
+              </View>
+              {opts.length > 2 && (
+                <TouchableOpacity onPress={() => removeOpt(i)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                  <Ionicons name="close-circle" size={20} color={MUTED} />
+                </TouchableOpacity>
+              )}
+            </View>
+          ))}
+
+          {opts.length < 4 && (
+            <TouchableOpacity style={[dcmpStyles.addBtn, { borderColor: SEPARATOR }]} onPress={addOpt}>
+              <Ionicons name="add" size={16} color={MUTED} />
+              <Text style={[{ fontSize: 14, color: MUTED }]}>{ar ? 'أضف خياراً' : 'Add option'}</Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={[dcmpStyles.submitBtn, { backgroundColor: canSubmit ? ACCENT : FILL }]}
+            onPress={handleSubmit}
+            disabled={!canSubmit}
+            activeOpacity={0.8}
+          >
+            <Text style={[dcmpStyles.submitText, { color: canSubmit ? '#fff' : MUTED }]}>
+              {ar ? 'أرسل' : 'Post'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
+const dcmpStyles = StyleSheet.create({
+  sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, borderTopWidth: StyleSheet.hairlineWidth, maxHeight: '90%' },
+  title: { fontSize: 18, fontWeight: '700', marginBottom: 4 },
+  sub: { fontSize: 13, marginBottom: 14 },
+  inputWrap: { borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 14 },
+  questionInput: { fontSize: 16, lineHeight: 22 },
+  optRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 10, paddingBottom: 10, borderBottomWidth: StyleSheet.hairlineWidth },
+  optNum: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', marginTop: 10 },
+  optInput: { borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, flexDirection: 'row' },
+  addBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', padding: 12, justifyContent: 'center', marginBottom: 14 },
+  submitBtn: { borderRadius: 22, paddingVertical: 14, alignItems: 'center', marginTop: 4 },
+  submitText: { fontSize: 16, fontWeight: '700' },
+});
+
 // ── Question composer modal ───────────────────────────────────────────────────
 function QuestionComposer({ visible, onClose, onSubmit, ar }) {
   const { TEXT, MUTED, ACCENT, BG, FILL, SEPARATOR } = useBrutColors();
@@ -451,6 +672,7 @@ export default function CircleScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [showCreatePoll, setShowCreatePoll] = useState(false);
   const [showQuestionComposer, setShowQuestionComposer] = useState(false);
+  const [showDecideComposer, setShowDecideComposer] = useState(false);
   const [userLoc, setUserLoc] = useState(null);
   const [isAnon, setIsAnon] = useState(false);
   const [replyTo, setReplyTo] = useState(null);
@@ -587,17 +809,32 @@ export default function CircleScreen({ route, navigation }) {
       if (roomId !== circleId) return;
       setMessages((prev) => prev.filter((m) => String(m._id) !== String(messageId)));
     };
+    const onDecideVoted = ({ roomId, messageId, voteCounts }) => {
+      if (roomId !== circleId) return;
+      setMessages((prev) => prev.map((m) => {
+        if (String(m._id) !== String(messageId) || m.type !== 'decide') return m;
+        const updatedOpts = (m.decideOptions || []).map((o) => {
+          const vc = voteCounts.find((v) => String(v.optionId) === String(o._id));
+          if (!vc) return o;
+          const base = (o.votes || []).filter((v) => (typeof v === 'string' ? v : v.toString()) !== currentUser?._id?.toString());
+          return { ...o, votes: vc.voted ? [...base, currentUser._id] : base };
+        });
+        return { ...m, decideOptions: updatedOpts };
+      }));
+    };
     socket.on('hachiMessage', onMsg);
     socket.on('flashPollCreated', onPollCreated);
     socket.on('flashPollUpdate', onPollUpdate);
     socket.on('flashPollRemoved', onPollRemoved);
     socket.on('hachiMessageDeleted', onMsgDeleted);
+    socket.on('hachiDecideVoted', onDecideVoted);
     return () => {
       socket.off('hachiMessage', onMsg);
       socket.off('flashPollCreated', onPollCreated);
       socket.off('flashPollUpdate', onPollUpdate);
       socket.off('flashPollRemoved', onPollRemoved);
       socket.off('hachiMessageDeleted', onMsgDeleted);
+      socket.off('hachiDecideVoted', onDecideVoted);
       leaveHachiRoom(circleId);
     };
   }, [circleId]);
@@ -670,6 +907,15 @@ export default function CircleScreen({ route, navigation }) {
     sendHachiQuestion(circleId, questionText, true);
     setShowQuestionComposer(false);
   };
+
+  const handleDecideSubmit = (question, options) => {
+    sendHachiDecide(circleId, question, options, isAnon);
+    setShowDecideComposer(false);
+  };
+
+  const handleDecideVote = useCallback((messageId, optionId) => {
+    sendHachiDecideVote(circleId, messageId, optionId);
+  }, [circleId]);
 
   const handleVote = (pollId, optionId) => {
     expectedVoteRef.current[pollId] = optionId;
@@ -776,6 +1022,16 @@ export default function CircleScreen({ route, navigation }) {
                     ar={ar}
                     onLikeToggle={handleLikeToggle}
                     onAnswer={handleAnswer}
+                  />
+                );
+              }
+              if (item.type === 'decide') {
+                return (
+                  <DecideCard
+                    msg={item}
+                    currentUserId={currentUser?._id}
+                    ar={ar}
+                    onVote={handleDecideVote}
                   />
                 );
               }
@@ -896,6 +1152,15 @@ export default function CircleScreen({ route, navigation }) {
                 <Text style={[styles.actionChipText, { color: TEXT }]}>{ar ? 'سؤال' : 'Ask'}</Text>
               </TouchableOpacity>
 
+              <TouchableOpacity
+                style={[styles.actionChip, { backgroundColor: FILL, borderColor: SEPARATOR }]}
+                onPress={() => setShowDecideComposer(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={{ fontSize: 16, lineHeight: 20 }}>🤔</Text>
+                <Text style={[styles.actionChipText, { color: TEXT }]}>{ar ? 'قرر' : 'Decide'}</Text>
+              </TouchableOpacity>
+
               <View style={[styles.anonToggle, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
                 <Ionicons name="glasses-outline" size={16} color={isAnon ? ACCENT : MUTED} />
                 <Text style={[styles.actionChipText, { color: isAnon ? ACCENT : MUTED }]}>{ar ? 'مجهول' : 'Anon'}</Text>
@@ -914,6 +1179,12 @@ export default function CircleScreen({ route, navigation }) {
       )}
 
       <PollComposer visible={showCreatePoll} onClose={() => setShowCreatePoll(false)} onSubmit={handleCreatePoll} />
+      <DecideComposer
+        visible={showDecideComposer}
+        onClose={() => setShowDecideComposer(false)}
+        onSubmit={handleDecideSubmit}
+        ar={ar}
+      />
 
       <QuestionComposer
         visible={showQuestionComposer}

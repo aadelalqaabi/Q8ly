@@ -132,4 +132,12 @@ export const sendHachiQuestion = (roomId, text, anonymous = false) => {
   if (socket) socket.emit('hachiSendQuestion', { roomId, text, anonymous });
 };
 
+export const sendHachiDecide = (roomId, question, options, anonymous = false) => {
+  if (socket) socket.emit('hachiSendDecide', { roomId, question, options, anonymous });
+};
+
+export const sendHachiDecideVote = (roomId, messageId, optionId) => {
+  if (socket) socket.emit('hachiDecideVote', { roomId, messageId, optionId });
+};
+
 export default { initSocket, getSocket, disconnectSocket, joinSpaceRoom, leaveSpaceRoom, joinPostRoom, leavePostRoom, sendTyping, joinHachiRoom, leaveHachiRoom, sendHachiMessage, sendHachiVoice, sendHachiReaction, sendHachiMessageReaction, sendHachiKick, approveHachiJoin, rejectHachiJoin, sendHachiImage, sendHachiVideo, sendHachiQuestion };

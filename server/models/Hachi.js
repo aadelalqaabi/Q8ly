@@ -7,7 +7,7 @@ const reactionSchema = new mongoose.Schema({
 
 const messageSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  type: { type: String, enum: ['text', 'image', 'video', 'voice', 'question'], default: 'text' },
+  type: { type: String, enum: ['text', 'image', 'video', 'voice', 'question', 'decide'], default: 'text' },
   text: { type: String, maxlength: 500, trim: true },
   image: { type: String },
   video: { type: String },
@@ -24,6 +24,12 @@ const messageSchema = new mongoose.Schema({
     text: { type: String },
     userName: { type: String },
   },
+  decideQuestion: { type: String, maxlength: 200, trim: true },
+  decideOptions: [{
+    text: { type: String, maxlength: 100, trim: true },
+    imageUrl: { type: String },
+    votes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  }],
   createdAt: { type: Date, default: Date.now },
 }, { _id: true });
 
