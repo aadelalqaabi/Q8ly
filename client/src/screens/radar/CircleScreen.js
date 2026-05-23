@@ -438,40 +438,44 @@ function DecideCard({ msg, currentUserId, ar, onVote, onDelete, navigation }) {
 
       <Text style={[dcStyles.question, { color: TEXT }]}>{msg.decideQuestion}</Text>
 
-      <View style={dcStyles.grid}>
-        {opts.map((opt) => {
-          const voted = (opt.votes || []).some((v) => (typeof v === 'string' ? v : v?.toString()) === currentUserId?.toString());
-          const pct = totalVotes > 0 ? Math.round((opt.votes?.length || 0) / totalVotes * 100) : 0;
-          const dimmed = myVoteOpt && !voted;
-          return (
-            <TouchableOpacity
-              key={String(opt._id)}
-              style={[dcStyles.tile, { opacity: dimmed ? 0.45 : 1, borderColor: voted ? ACCENT : SEPARATOR, borderWidth: voted ? 2 : StyleSheet.hairlineWidth, backgroundColor: FILL }]}
-              onPress={() => handleTilePress(opt)}
-              activeOpacity={0.85}
-            >
-              {!!opt.imageUrl && <Image source={{ uri: opt.imageUrl }} style={dcStyles.tileImage} resizeMode="cover" />}
-
-              {/* vote result overlay */}
-              {myVoteOpt && (
-                <View style={[dcStyles.tileOverlay, { backgroundColor: voted ? ACCENT + 'BB' : 'rgba(0,0,0,0.32)' }]}>
-                  <Text style={dcStyles.tilePct}>{pct}%</Text>
-                  {voted && <Ionicons name="checkmark-circle" size={16} color="#fff" />}
-                </View>
-              )}
-
-              {/* View pill — inner Touchable naturally wins the gesture in RN */}
-              <TouchableOpacity
-                style={[dcStyles.viewBtn, { backgroundColor: 'rgba(0,0,0,0.5)' }]}
-                onPress={() => navigation.navigate('MediaViewer', { media: [{ uri: opt.imageUrl, type: 'image' }], initialIndex: 0 })}
-                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-              >
-                <Text style={dcStyles.viewBtnText}>{ar ? 'عرض' : 'View'}</Text>
-              </TouchableOpacity>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+      {[0, 1].map((row) => {
+        const rowOpts = opts.filter((_, i) => i % 2 === row);
+        if (!rowOpts.length) return null;
+        return (
+          <View key={row} style={[dcStyles.row, row === 0 ? { marginBottom: 8 } : {}]}>
+            {rowOpts.map((opt) => {
+              const voted = (opt.votes || []).some((v) => (typeof v === 'string' ? v : v?.toString()) === currentUserId?.toString());
+              const pct = totalVotes > 0 ? Math.round((opt.votes?.length || 0) / totalVotes * 100) : 0;
+              const dimmed = myVoteOpt && !voted;
+              return (
+                <TouchableOpacity
+                  key={String(opt._id)}
+                  style={[dcStyles.tile, { opacity: dimmed ? 0.45 : 1, borderColor: voted ? ACCENT : SEPARATOR, borderWidth: voted ? 2 : StyleSheet.hairlineWidth, backgroundColor: FILL }]}
+                  onPress={() => handleTilePress(opt)}
+                  activeOpacity={0.85}
+                >
+                  {!!opt.imageUrl && <Image source={{ uri: opt.imageUrl }} style={dcStyles.tileImage} resizeMode="cover" />}
+                  {myVoteOpt && (
+                    <View style={[dcStyles.tileOverlay, { backgroundColor: voted ? ACCENT + 'BB' : 'rgba(0,0,0,0.32)' }]}>
+                      <Text style={dcStyles.tilePct}>{pct}%</Text>
+                      {voted && <Ionicons name="checkmark-circle" size={16} color="#fff" />}
+                    </View>
+                  )}
+                  {!!opt.imageUrl && (
+                    <TouchableOpacity
+                      style={[dcStyles.viewBtn, { backgroundColor: 'rgba(0,0,0,0.5)' }]}
+                      onPress={() => navigation.navigate('MediaViewer', { media: [{ uri: opt.imageUrl, type: 'image' }], initialIndex: 0 })}
+                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    >
+                      <Text style={dcStyles.viewBtnText}>{ar ? 'عرض' : 'View'}</Text>
+                    </TouchableOpacity>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        );
+      })}
 
       <Text style={[dcStyles.totalVotes, { color: MUTED }]}>
         {totalVotes} {ar ? 'صوت' : totalVotes === 1 ? 'vote' : 'votes'}
@@ -492,8 +496,8 @@ const dcStyles = StyleSheet.create({
   time: { fontSize: 11 },
   tag: { fontSize: 11, fontWeight: '700', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
   question: { fontSize: 16, fontWeight: '700', marginBottom: 14, lineHeight: 22 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  tile: { width: TILE_SIZE, height: TILE_SIZE * 0.85, borderRadius: 12, overflow: 'hidden', position: 'relative' },
+  row: { flexDirection: 'row', gap: 8 },
+  tile: { flex: 1, height: TILE_SIZE * 0.85, borderRadius: 12, overflow: 'hidden', position: 'relative' },
   tileImage: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   tileOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', gap: 4 },
   tilePct: { fontSize: 22, fontWeight: '900', color: '#fff' },
@@ -539,7 +543,7 @@ function DecideComposer({ visible, onClose, onSubmit, ar }) {
         const formData = new FormData();
         formData.append('images', { uri: img.uri, type: 'image/jpeg', name: 'decide.jpg' });
         const res = await uploadAPI.images(formData);
-        return Array.isArray(res.data) ? res.data[0] : res.data;
+        return res.data?.urls?.[0] ?? res.data?.url;
       }));
       const opts = urls.map((imageUrl) => ({ text: '', imageUrl }));
       onSubmit(question.trim(), opts);
@@ -559,35 +563,40 @@ function DecideComposer({ visible, onClose, onSubmit, ar }) {
             {ar ? 'اختر صورتين أو أكثر وأضف سؤالك' : 'Pick 2–4 images and add your question'}
           </Text>
 
-          <View style={dcmpStyles.tileGrid}>
-            {images.map((img, idx) => {
-              const shape = DECIDE_SHAPES[idx];
-              return (
-                <TouchableOpacity
-                  key={idx}
-                  style={[dcmpStyles.tile, { backgroundColor: FILL, borderColor: img ? ACCENT : SEPARATOR }]}
-                  onPress={() => pickImage(idx)}
-                  activeOpacity={0.8}
-                >
-                  {img
-                    ? <Image source={{ uri: img?.uri }} style={dcmpStyles.tileImg} resizeMode="cover" />
-                    : <View style={dcmpStyles.tilePlaceholder}>
-                        <Text style={[dcmpStyles.tileShapeIcon, { color: MUTED }]}>{shape}</Text>
-                        <Ionicons name="add-circle-outline" size={24} color={MUTED} />
-                      </View>
-                  }
-                  {img && (
-                    <TouchableOpacity
-                      style={dcmpStyles.tileRemove}
-                      onPress={() => setImages((prev) => prev.map((v, i) => i === idx ? null : v))}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Ionicons name="close-circle" size={22} color="#fff" />
-                    </TouchableOpacity>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
+          <View style={{ marginBottom: 16 }}>
+          {[[0, 1], [2, 3]].map((pair, ri) => (
+            <View key={ri} style={[dcmpStyles.tileRow, ri === 0 ? { marginBottom: 8 } : {}]}>
+              {pair.map((idx) => {
+                const img = images[idx];
+                const shape = DECIDE_SHAPES[idx];
+                return (
+                  <TouchableOpacity
+                    key={idx}
+                    style={[dcmpStyles.tile, { backgroundColor: FILL, borderColor: img ? ACCENT : SEPARATOR }]}
+                    onPress={() => pickImage(idx)}
+                    activeOpacity={0.8}
+                  >
+                    {img
+                      ? <Image source={{ uri: img.uri }} style={dcmpStyles.tileImg} resizeMode="cover" />
+                      : <View style={dcmpStyles.tilePlaceholder}>
+                          <Text style={[dcmpStyles.tileShapeIcon, { color: MUTED }]}>{shape}</Text>
+                          <Ionicons name="add-circle-outline" size={24} color={MUTED} />
+                        </View>
+                    }
+                    {img && (
+                      <TouchableOpacity
+                        style={dcmpStyles.tileRemove}
+                        onPress={() => setImages((prev) => prev.map((v, i) => i === idx ? null : v))}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons name="close-circle" size={22} color="#fff" />
+                      </TouchableOpacity>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          ))}
           </View>
 
           <View style={[dcmpStyles.inputWrap, { backgroundColor: FILL }]}>
@@ -622,8 +631,8 @@ const dcmpStyles = StyleSheet.create({
   sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, borderTopWidth: StyleSheet.hairlineWidth },
   title: { fontSize: 18, fontWeight: '700', marginBottom: 4 },
   sub: { fontSize: 13, marginBottom: 16 },
-  tileGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-  tile: { width: DCMP_TILE_SIZE, height: DCMP_TILE_SIZE, borderRadius: 12, overflow: 'hidden', borderWidth: 1.5 },
+  tileRow: { flexDirection: 'row', gap: 8, marginBottom: 0 },
+  tile: { flex: 1, height: DCMP_TILE_SIZE, borderRadius: 12, overflow: 'hidden', borderWidth: 1.5 },
   tileImg: { width: '100%', height: '100%' },
   tilePlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 6 },
   tileShapeIcon: { fontSize: 20 },
