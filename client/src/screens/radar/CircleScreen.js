@@ -385,7 +385,7 @@ const DECIDE_SHAPES = ['▲', '◆', '●', '■'];
 
 const TILE_SIZE = (SW - 28 - 8) / 2;
 
-function DecideCard({ msg, currentUserId, ar, onVote, onDelete }) {
+function DecideCard({ msg, currentUserId, ar, onVote, onDelete, navigation }) {
   const { TEXT, MUTED, ACCENT, BG, FILL, SEPARATOR } = useBrutColors();
   const opts = msg.decideOptions || [];
   const totalVotes = opts.reduce((s, o) => s + (o.votes?.length || 0), 0);
@@ -438,28 +438,35 @@ function DecideCard({ msg, currentUserId, ar, onVote, onDelete }) {
       <Text style={[dcStyles.question, { color: TEXT }]}>{msg.decideQuestion}</Text>
 
       <View style={dcStyles.grid}>
-        {opts.map((opt, i) => {
-          const shape = DECIDE_SHAPES[i % DECIDE_SHAPES.length];
+        {opts.map((opt) => {
           const voted = (opt.votes || []).some((v) => (typeof v === 'string' ? v : v?.toString()) === currentUserId?.toString());
           const pct = totalVotes > 0 ? Math.round((opt.votes?.length || 0) / totalVotes * 100) : 0;
           const dimmed = myVoteOpt && !voted;
           return (
             <TouchableOpacity
               key={String(opt._id)}
-              style={[dcStyles.tile, { opacity: dimmed ? 0.4 : 1, borderColor: voted ? ACCENT : SEPARATOR, borderWidth: voted ? 2 : StyleSheet.hairlineWidth }]}
+              style={[dcStyles.tile, { opacity: dimmed ? 0.45 : 1, borderColor: voted ? ACCENT : SEPARATOR, borderWidth: voted ? 2 : StyleSheet.hairlineWidth, backgroundColor: FILL }]}
               onPress={() => handleTilePress(opt)}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
             >
               <Image source={{ uri: opt.imageUrl }} style={dcStyles.tileImage} resizeMode="cover" />
-              {(myVoteOpt || voted) && (
-                <View style={[dcStyles.tileOverlay, { backgroundColor: voted ? ACCENT + 'CC' : 'rgba(0,0,0,0.45)' }]}>
+
+              {/* vote result overlay */}
+              {myVoteOpt && (
+                <View style={[dcStyles.tileOverlay, { backgroundColor: voted ? ACCENT + 'BB' : 'rgba(0,0,0,0.32)' }]}>
                   <Text style={dcStyles.tilePct}>{pct}%</Text>
-                  {voted && <Ionicons name="checkmark-circle" size={18} color="#fff" />}
+                  {voted && <Ionicons name="checkmark-circle" size={16} color="#fff" />}
                 </View>
               )}
-              <View style={[dcStyles.tileShapeBadge, { backgroundColor: voted ? ACCENT : FILL }]}>
-                <Text style={[dcStyles.tileShape, { color: voted ? '#fff' : MUTED }]}>{shape}</Text>
-              </View>
+
+              {/* View pill — stops propagation so it doesn't vote */}
+              <TouchableOpacity
+                style={[dcStyles.viewBtn, { backgroundColor: 'rgba(0,0,0,0.45)' }]}
+                onPress={(e) => { e.stopPropagation(); navigation.navigate('MediaViewer', { media: [{ uri: opt.imageUrl, type: 'image' }], initialIndex: 0 }); }}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              >
+                <Text style={dcStyles.viewBtnText}>{ar ? 'عرض' : 'View'}</Text>
+              </TouchableOpacity>
             </TouchableOpacity>
           );
         })}
@@ -485,12 +492,12 @@ const dcStyles = StyleSheet.create({
   tag: { fontSize: 11, fontWeight: '700', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
   question: { fontSize: 16, fontWeight: '700', marginBottom: 14, lineHeight: 22 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  tile: { width: TILE_SIZE, height: TILE_SIZE * 0.72, borderRadius: 12, overflow: 'hidden', position: 'relative', backgroundColor: '#000' },
+  tile: { width: TILE_SIZE, height: TILE_SIZE * 0.85, borderRadius: 12, overflow: 'hidden', position: 'relative' },
   tileImage: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   tileOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', gap: 4 },
   tilePct: { fontSize: 22, fontWeight: '900', color: '#fff' },
-  tileShapeBadge: { position: 'absolute', bottom: 7, left: 8, width: 22, height: 22, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
-  tileShape: { fontSize: 10 },
+  viewBtn: { position: 'absolute', bottom: 8, right: 8, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
+  viewBtnText: { fontSize: 11, fontWeight: '600', color: '#fff' },
   totalVotes: { fontSize: 12, marginTop: 10 },
 });
 
@@ -1060,6 +1067,7 @@ export default function CircleScreen({ route, navigation }) {
                     ar={ar}
                     onVote={handleDecideVote}
                     onDelete={handleDelete}
+                    navigation={navigation}
                   />
                 );
               }
