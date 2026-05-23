@@ -63,9 +63,14 @@ function haversineMeters(lat1, lng1, lat2, lng2) {
 }
 
 // Returns 0–1. ≥0.6 = here, 0.3–0.6 = nearby, <0.3 = locked
+// GPS_BUFFER: flat tolerance added to every venue radius to absorb indoor
+// GPS drift (phones can report 50-200m off inside large buildings).
+const GPS_BUFFER_METERS = 120;
+
 function computeConfidence(userLat, userLng, userSpeedKmh = 0, venueCoords, venueRadius) {
   const dist = haversineMeters(userLat, userLng, venueCoords.lat, venueCoords.lng);
-  const normalized = dist / venueRadius;
+  const effectiveRadius = (venueRadius || 250) + GPS_BUFFER_METERS;
+  const normalized = dist / effectiveRadius;
   const distScore = Math.max(0, 1 - normalized);
   const speedPenalty = Math.min((userSpeedKmh || 0) / 20, 1);
   return distScore * (1 - speedPenalty);
