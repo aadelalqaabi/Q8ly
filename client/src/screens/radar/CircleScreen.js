@@ -410,7 +410,7 @@ function DecideCard({ msg, currentUserId, ar, onVote }) {
 
       {hasImages ? (
         <View style={dcStyles.imageGrid}>
-          {opts.map((opt, i) => {
+          {opts.map((opt) => {
             const voted = (opt.votes || []).some((v) => (typeof v === 'string' ? v : v?.toString()) === currentUserId?.toString());
             const pct = totalVotes > 0 ? Math.round((opt.votes?.length || 0) / totalVotes * 100) : 0;
             return (
@@ -774,7 +774,7 @@ export default function CircleScreen({ route, navigation }) {
             setUserLoc(next);
             try {
               const result = await hachiAPI.checkLocation(circleId, next.lat, next.lng, next.speed || 0);
-              if (result.status !== 'here' && !exitedRef.current) { exitedRef.current = true; navigation.replace('Main'); }
+              if (result.status === 'locked' && !exitedRef.current) { exitedRef.current = true; navigation.replace('Main'); }
             } catch {}
           }
         );

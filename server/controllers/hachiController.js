@@ -318,7 +318,7 @@ exports.getRoom = async (req, res) => {
       const speed = parseFloat(req.query.speed) || 0;
       if (!isNaN(lat) && !isNaN(lng)) {
         confidence = computeConfidence(lat, lng, speed, room.venueCoords, room.venueRadius || 250);
-        inside = confidence >= 0.3;
+        inside = confidence > 0;
       } else {
         // No coordinates sent — radar already gated entry, trust the client
         inside = true;
