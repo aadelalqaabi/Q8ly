@@ -512,45 +512,55 @@ const DCMP_TILE_SIZE = (SW - 40 - 8) / 2;
 function DecideComposer({ visible, onClose, onSubmit, ar }) {
   const { TEXT, MUTED, ACCENT, BG, FILL, SEPARATOR } = useBrutColors();
   const [question, setQuestion] = useState('');
-  const [images, setImages] = useState([null, null, null, null]);
-  const [uploading, setUploading] = useState(false);
+  // each slot: null | { uri: string, cloudUrl: string | null }
+  const [slots, setSlots] = useState([null, null, null, null]);
 
-  const reset = () => { setQuestion(''); setImages([null, null, null, null]); };
+  const reset = () => { setQuestion(''); setSlots([null, null, null, null]); };
 
   const pickImage = async (idx) => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') return;
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    if (result.canceled) return;
-    const uri = result.assets[0].uri;
-    setImages((prev) => prev.map((img, i) => i === idx ? { uri, uploaded: null } : img));
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (perm.status !== 'granted') {
+        Alert.alert(ar ? 'لا يوجد إذن' : 'Permission denied', ar ? 'يرجى السماح بالوصول إلى الصور' : 'Allow photo library access in Settings.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85,
+      });
+      if (result.canceled || !result.assets?.[0]?.uri) return;
+      const { uri, mimeType } = result.assets[0];
+
+      // Show local preview immediately
+      setSlots((prev) => prev.map((s, i) => i === idx ? { uri, cloudUrl: null, uploading: true } : s));
+
+      // Upload in background
+      const formData = new FormData();
+      formData.append('images', { uri, type: mimeType || 'image/jpeg', name: `decide_${idx}.jpg` });
+      const res = await uploadAPI.images(formData);
+      const cloudUrl = res.urls?.[0] || res.url || null;
+
+      setSlots((prev) => prev.map((s, i) => i === idx ? { uri, cloudUrl, uploading: false } : s));
+    } catch (err) {
+      Alert.alert(ar ? 'خطأ' : 'Upload failed', err.message || '');
+      setSlots((prev) => prev.map((s, i) => i === idx ? null : s));
+    }
   };
 
-  const canSubmit = question.trim() && images.slice(0, 2).every(Boolean) && !uploading;
+  const removeSlot = (idx) => setSlots((prev) => prev.map((s, i) => i === idx ? null : s));
 
-  const handleSubmit = async () => {
+  const filledSlots = slots.filter(Boolean);
+  const allUploaded = filledSlots.every((s) => s.cloudUrl);
+  const anyUploading = filledSlots.some((s) => s.uploading);
+  const canSubmit = question.trim().length > 0 && filledSlots.length >= 2 && allUploaded && !anyUploading;
+
+  const handleSubmit = () => {
     if (!canSubmit) return;
-    setUploading(true);
-    try {
-      const filled = images.filter(Boolean);
-      const urls = await Promise.all(filled.map(async (img) => {
-        if (img.uploaded) return img.uploaded;
-        const formData = new FormData();
-        formData.append('images', { uri: img.uri, type: 'image/jpeg', name: 'decide.jpg' });
-        const res = await uploadAPI.images(formData);
-        return res.data?.urls?.[0] ?? res.data?.url;
-      }));
-      const opts = urls.map((imageUrl) => ({ text: '', imageUrl }));
-      onSubmit(question.trim(), opts);
-      reset();
-    } finally {
-      setUploading(false);
-    }
+    const opts = filledSlots.map((s) => ({ text: '', imageUrl: s.cloudUrl }));
+    onSubmit(question.trim(), opts);
+    reset();
   };
 
   return (
@@ -567,31 +577,38 @@ function DecideComposer({ visible, onClose, onSubmit, ar }) {
           {[[0, 1], [2, 3]].map((pair, ri) => (
             <View key={ri} style={[dcmpStyles.tileRow, ri === 0 ? { marginBottom: 8 } : {}]}>
               {pair.map((idx) => {
-                const img = images[idx];
+                const slot = slots[idx];
                 const shape = DECIDE_SHAPES[idx];
                 return (
                   <TouchableOpacity
                     key={idx}
-                    style={[dcmpStyles.tile, { backgroundColor: FILL, borderColor: img ? ACCENT : SEPARATOR }]}
-                    onPress={() => pickImage(idx)}
+                    style={[dcmpStyles.tile, { backgroundColor: FILL, borderColor: slot ? ACCENT : SEPARATOR }]}
+                    onPress={() => !slot?.uploading && pickImage(idx)}
                     activeOpacity={0.8}
                   >
-                    {img
-                      ? <Image source={{ uri: img.uri }} style={dcmpStyles.tileImg} resizeMode="cover" />
+                    {slot
+                      ? <>
+                          <Image source={{ uri: slot.uri }} style={dcmpStyles.tileImg} resizeMode="cover" />
+                          {slot.uploading && (
+                            <View style={[dcmpStyles.tileImg, { position: 'absolute', backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' }]}>
+                              <ActivityIndicator color="#fff" />
+                            </View>
+                          )}
+                          {!slot.uploading && (
+                            <TouchableOpacity
+                              style={dcmpStyles.tileRemove}
+                              onPress={() => removeSlot(idx)}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                              <Ionicons name="close-circle" size={22} color="#fff" />
+                            </TouchableOpacity>
+                          )}
+                        </>
                       : <View style={dcmpStyles.tilePlaceholder}>
                           <Text style={[dcmpStyles.tileShapeIcon, { color: MUTED }]}>{shape}</Text>
                           <Ionicons name="add-circle-outline" size={24} color={MUTED} />
                         </View>
                     }
-                    {img && (
-                      <TouchableOpacity
-                        style={dcmpStyles.tileRemove}
-                        onPress={() => setImages((prev) => prev.map((v, i) => i === idx ? null : v))}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Ionicons name="close-circle" size={22} color="#fff" />
-                      </TouchableOpacity>
-                    )}
                   </TouchableOpacity>
                 );
               })}
@@ -616,7 +633,7 @@ function DecideComposer({ visible, onClose, onSubmit, ar }) {
             disabled={!canSubmit}
             activeOpacity={0.8}
           >
-            {uploading
+            {anyUploading
               ? <ActivityIndicator color="#fff" />
               : <Text style={[dcmpStyles.submitText, { color: canSubmit ? '#fff' : MUTED }]}>{ar ? 'أرسل' : 'Post'}</Text>
             }
