@@ -381,17 +381,12 @@ const reelStyles = StyleSheet.create({
 });
 
 // ── Decide card ───────────────────────────────────────────────────────────────
-const KAHOOT_TILES = [
-  { color: '#E21B3C', shape: '▲' },
-  { color: '#1368CE', shape: '◆' },
-  { color: '#D89E00', shape: '●' },
-  { color: '#26890C', shape: '■' },
-];
+const DECIDE_SHAPES = ['▲', '◆', '●', '■'];
 
 const TILE_SIZE = (SW - 28 - 8) / 2;
 
 function DecideCard({ msg, currentUserId, ar, onVote, onDelete }) {
-  const { TEXT, MUTED, BG, FILL, SEPARATOR } = useBrutColors();
+  const { TEXT, MUTED, ACCENT, BG, FILL, SEPARATOR } = useBrutColors();
   const opts = msg.decideOptions || [];
   const totalVotes = opts.reduce((s, o) => s + (o.votes?.length || 0), 0);
   const myVoteOpt = opts.find((o) => (o.votes || []).some(
@@ -442,33 +437,29 @@ function DecideCard({ msg, currentUserId, ar, onVote, onDelete }) {
 
       <Text style={[dcStyles.question, { color: TEXT }]}>{msg.decideQuestion}</Text>
 
-      <View style={dcStyles.kahootGrid}>
+      <View style={dcStyles.grid}>
         {opts.map((opt, i) => {
-          const tile = KAHOOT_TILES[i % KAHOOT_TILES.length];
+          const shape = DECIDE_SHAPES[i % DECIDE_SHAPES.length];
           const voted = (opt.votes || []).some((v) => (typeof v === 'string' ? v : v?.toString()) === currentUserId?.toString());
           const pct = totalVotes > 0 ? Math.round((opt.votes?.length || 0) / totalVotes * 100) : 0;
           const dimmed = myVoteOpt && !voted;
           return (
             <TouchableOpacity
               key={String(opt._id)}
-              style={[dcStyles.kahootTile, { backgroundColor: tile.color, opacity: dimmed ? 0.45 : 1 }]}
+              style={[dcStyles.tile, { opacity: dimmed ? 0.4 : 1, borderColor: voted ? ACCENT : SEPARATOR, borderWidth: voted ? 2 : StyleSheet.hairlineWidth }]}
               onPress={() => handleTilePress(opt)}
               activeOpacity={0.8}
             >
-              {opt.imageUrl
-                ? <Image source={{ uri: opt.imageUrl }} style={dcStyles.tileImage} resizeMode="cover" />
-                : null}
-              <View style={dcStyles.tileOverlay}>
-                <Text style={dcStyles.tileShape}>{tile.shape}</Text>
-                {myVoteOpt && (
+              <Image source={{ uri: opt.imageUrl }} style={dcStyles.tileImage} resizeMode="cover" />
+              {(myVoteOpt || voted) && (
+                <View style={[dcStyles.tileOverlay, { backgroundColor: voted ? ACCENT + 'CC' : 'rgba(0,0,0,0.45)' }]}>
                   <Text style={dcStyles.tilePct}>{pct}%</Text>
-                )}
-              </View>
-              {voted && (
-                <View style={dcStyles.tileCheck}>
-                  <Ionicons name="checkmark" size={13} color="#fff" />
+                  {voted && <Ionicons name="checkmark-circle" size={18} color="#fff" />}
                 </View>
               )}
+              <View style={[dcStyles.tileShapeBadge, { backgroundColor: voted ? ACCENT : FILL }]}>
+                <Text style={[dcStyles.tileShape, { color: voted ? '#fff' : MUTED }]}>{shape}</Text>
+              </View>
             </TouchableOpacity>
           );
         })}
@@ -493,15 +484,13 @@ const dcStyles = StyleSheet.create({
   time: { fontSize: 11 },
   tag: { fontSize: 11, fontWeight: '700', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
   question: { fontSize: 16, fontWeight: '700', marginBottom: 14, lineHeight: 22 },
-  kahootGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  kahootTile: { width: TILE_SIZE, height: TILE_SIZE * 0.72, borderRadius: 10, overflow: 'hidden', position: 'relative' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tile: { width: TILE_SIZE, height: TILE_SIZE * 0.72, borderRadius: 12, overflow: 'hidden', position: 'relative', backgroundColor: '#000' },
   tileImage: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
-  tileOverlay: { flex: 1, padding: 10, justifyContent: 'space-between' },
-  tileShape: { fontSize: 18, color: 'rgba(255,255,255,0.7)' },
-  tileText: { fontSize: 14, fontWeight: '700', color: '#fff', lineHeight: 18 },
-  tilePctWrap: { position: 'absolute', top: 6, right: 8 },
-  tilePct: { fontSize: 18, fontWeight: '900', color: '#fff' },
-  tileCheck: { position: 'absolute', top: 6, right: 8, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2 },
+  tileOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  tilePct: { fontSize: 22, fontWeight: '900', color: '#fff' },
+  tileShapeBadge: { position: 'absolute', bottom: 7, left: 8, width: 22, height: 22, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
+  tileShape: { fontSize: 10 },
   totalVotes: { fontSize: 12, marginTop: 10 },
 });
 
@@ -565,19 +554,19 @@ function DecideComposer({ visible, onClose, onSubmit, ar }) {
 
           <View style={dcmpStyles.tileGrid}>
             {images.map((img, idx) => {
-              const tile = KAHOOT_TILES[idx];
+              const shape = DECIDE_SHAPES[idx];
               return (
                 <TouchableOpacity
                   key={idx}
-                  style={[dcmpStyles.tile, { backgroundColor: tile.color }]}
+                  style={[dcmpStyles.tile, { backgroundColor: FILL, borderColor: img ? ACCENT : SEPARATOR }]}
                   onPress={() => pickImage(idx)}
                   activeOpacity={0.8}
                 >
                   {img
                     ? <Image source={{ uri: img.uri }} style={dcmpStyles.tileImg} resizeMode="cover" />
                     : <View style={dcmpStyles.tilePlaceholder}>
-                        <Text style={dcmpStyles.tileShapeIcon}>{tile.shape}</Text>
-                        <Ionicons name="add" size={22} color="rgba(255,255,255,0.8)" />
+                        <Text style={[dcmpStyles.tileShapeIcon, { color: MUTED }]}>{shape}</Text>
+                        <Ionicons name="add-circle-outline" size={24} color={MUTED} />
                       </View>
                   }
                   {img && (
@@ -586,7 +575,7 @@ function DecideComposer({ visible, onClose, onSubmit, ar }) {
                       onPress={() => setImages((prev) => prev.map((v, i) => i === idx ? null : v))}
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     >
-                      <Ionicons name="close-circle" size={20} color="#fff" />
+                      <Ionicons name="close-circle" size={22} color="#fff" />
                     </TouchableOpacity>
                   )}
                 </TouchableOpacity>
@@ -627,10 +616,10 @@ const dcmpStyles = StyleSheet.create({
   title: { fontSize: 18, fontWeight: '700', marginBottom: 4 },
   sub: { fontSize: 13, marginBottom: 16 },
   tileGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-  tile: { width: DCMP_TILE_SIZE, height: DCMP_TILE_SIZE, borderRadius: 12, overflow: 'hidden' },
+  tile: { width: DCMP_TILE_SIZE, height: DCMP_TILE_SIZE, borderRadius: 12, overflow: 'hidden', borderWidth: 1.5 },
   tileImg: { width: '100%', height: '100%' },
-  tilePlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4 },
-  tileShapeIcon: { fontSize: 22, color: 'rgba(255,255,255,0.5)' },
+  tilePlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 6 },
+  tileShapeIcon: { fontSize: 20 },
   tileRemove: { position: 'absolute', top: 6, right: 6 },
   inputWrap: { borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 16 },
   questionInput: { fontSize: 16, lineHeight: 22 },
@@ -1206,17 +1195,11 @@ export default function CircleScreen({ route, navigation }) {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.decideChip}
+                style={[styles.actionChip, { backgroundColor: FILL, borderColor: SEPARATOR }]}
                 onPress={() => setShowDecideComposer(true)}
-                activeOpacity={0.8}
+                activeOpacity={0.7}
               >
-                <View style={styles.decideChipGrid}>
-                  {KAHOOT_TILES.map((t, i) => (
-                    <View key={i} style={[styles.decideChipTile, { backgroundColor: t.color }]}>
-                      <Text style={styles.decideChipShape}>{t.shape}</Text>
-                    </View>
-                  ))}
-                </View>
+                <Ionicons name="git-compare-outline" size={18} color={TEXT} />
                 <Text style={[styles.actionChipText, { color: TEXT }]}>{ar ? 'قرر' : 'Decide'}</Text>
               </TouchableOpacity>
 
@@ -1277,8 +1260,4 @@ const styles = StyleSheet.create({
   anonToggle: { alignItems: 'center', gap: 4, flexDirection: 'row' },
   actionChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
   actionChipText: { fontSize: 13, fontWeight: '500' },
-  decideChip: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  decideChipGrid: { flexDirection: 'row', flexWrap: 'wrap', width: 30, height: 30, gap: 2, borderRadius: 6, overflow: 'hidden' },
-  decideChipTile: { width: 13, height: 13, alignItems: 'center', justifyContent: 'center' },
-  decideChipShape: { fontSize: 7, color: 'rgba(255,255,255,0.85)' },
 });
