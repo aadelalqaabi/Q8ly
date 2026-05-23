@@ -1475,7 +1475,7 @@ async function saveGeofence() {
   btn.disabled = true; btn.textContent = 'Saving…';
   try {
     await apiFetch('/admin/circles/' + gfSelected._id + '/geofence', {
-      method: 'PATCH', body: JSON.stringify({ lat, lng, radius }),
+      method: 'PATCH', body: { lat, lng, radius },
     });
     // Update local state
     gfSelected.venueCoords = { lat, lng };
