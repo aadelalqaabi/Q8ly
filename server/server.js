@@ -45,7 +45,7 @@ app.set('io', io);
 app.use('/admin', (req, res, next) => {
   res.setHeader(
     'Content-Security-Policy',
-    "default-src 'self' https:; script-src 'self' https://cdn.tailwindcss.com https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' https: 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https:;"
+    "default-src 'self' https:; script-src 'self' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://unpkg.com 'unsafe-inline'; style-src 'self' https: 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https:;"
   );
   next();
 }, express.static(path.join(__dirname, 'public/admin')));
