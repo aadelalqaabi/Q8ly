@@ -7,7 +7,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useSelector } from 'react-redux';
-import { hachiAPI } from '../../services/api';
+import { hachiAPI, uploadAPI } from '../../services/api';
 import { getSocket, joinHachiRoom, leaveHachiRoom, sendHachiMessage, sendHachiQuestion, sendHachiDecide, sendHachiDecideVote, deleteHachiMessage, sendHachiReport } from '../../services/socket';
 import { Ionicons } from '@expo/vector-icons';
 import { useBrutColors, isAr } from '../../components/Brut';
@@ -383,7 +383,8 @@ const reelStyles = StyleSheet.create({
 // ── Decide card ───────────────────────────────────────────────────────────────
 const DECIDE_SHAPES = ['▲', '◆', '●', '■'];
 
-const TILE_SIZE = (SW - 28 - 8) / 2;
+// Card: marginHorizontal 14 (×2=28) + padding 14 (×2=28) + gap 8 → 2 tiles per row
+const TILE_SIZE = (SW - 28 - 28 - 8) / 2;
 
 function DecideCard({ msg, currentUserId, ar, onVote, onDelete, navigation }) {
   const { TEXT, MUTED, ACCENT, BG, FILL, SEPARATOR } = useBrutColors();
@@ -459,10 +460,10 @@ function DecideCard({ msg, currentUserId, ar, onVote, onDelete, navigation }) {
                 </View>
               )}
 
-              {/* View pill — stops propagation so it doesn't vote */}
+              {/* View pill — inner Touchable naturally wins the gesture in RN */}
               <TouchableOpacity
-                style={[dcStyles.viewBtn, { backgroundColor: 'rgba(0,0,0,0.45)' }]}
-                onPress={(e) => { e.stopPropagation(); navigation.navigate('MediaViewer', { media: [{ uri: opt.imageUrl, type: 'image' }], initialIndex: 0 }); }}
+                style={[dcStyles.viewBtn, { backgroundColor: 'rgba(0,0,0,0.5)' }]}
+                onPress={() => navigation.navigate('MediaViewer', { media: [{ uri: opt.imageUrl, type: 'image' }], initialIndex: 0 })}
                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
               >
                 <Text style={dcStyles.viewBtnText}>{ar ? 'عرض' : 'View'}</Text>
@@ -537,7 +538,6 @@ function DecideComposer({ visible, onClose, onSubmit, ar }) {
         if (img.uploaded) return img.uploaded;
         const formData = new FormData();
         formData.append('images', { uri: img.uri, type: 'image/jpeg', name: 'decide.jpg' });
-        const { uploadAPI } = require('../../services/api');
         const res = await uploadAPI.images(formData);
         return Array.isArray(res.data) ? res.data[0] : res.data;
       }));
