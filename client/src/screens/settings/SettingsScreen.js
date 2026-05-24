@@ -164,7 +164,7 @@ export default function SettingsScreen({ navigation }) {
         />
 
         <View style={{ height: 40 }} />
-        <Text style={[styles.version, { color: MUTED, textAlign: ar ? 'right' : 'left' }]}>KUWAI · v1.1.3</Text>
+        <Text style={[styles.version, { color: MUTED, textAlign: ar ? 'right' : 'left' }]}>KUWAI · v2.0.1</Text>
       </ScrollView>
 
       {/* Suggest modal */}

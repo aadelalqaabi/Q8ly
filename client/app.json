@@ -3,7 +3,7 @@
     "name": "KUWAI",
     "slug": "kuwait-now",
     "scheme": "kuwai",
-    "version": "2.0.0",
+    "version": "2.0.1",
     "orientation": "portrait",
     "icon": "./src/assets/Logo.png",
     "userInterfaceStyle": "automatic",
@@ -55,7 +55,7 @@
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 0
     },
-    "runtimeVersion": "2.0.0",
+    "runtimeVersion": "2.0.1",
     "plugins": [
       "expo-updates",
       "expo-splash-screen",
