@@ -722,7 +722,9 @@ exports.checkLocation = async (req, res) => {
       return res.json({ success: true, confidence: 1, status: 'open' });
     }
     const confidence = computeConfidence(userLat, userLng, parseFloat(speed) || 0, room.venueCoords, room.venueRadius || 250);
-    const status = confidence >= 0.6 ? 'here' : confidence >= 0.3 ? 'nearby' : 'locked';
+    // Must match getRoom's entry threshold (confidence > 0) so the watcher
+    // doesn't boot users that getRoom already admitted.
+    const status = confidence >= 0.6 ? 'here' : confidence > 0 ? 'nearby' : 'locked';
     res.json({ success: true, confidence, status });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
