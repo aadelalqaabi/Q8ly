@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Image,
   KeyboardAvoidingView, Platform, ActivityIndicator, Dimensions, Animated,
-  Modal, PixelRatio, Switch, Alert,
+  Modal, PixelRatio, Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -151,7 +151,7 @@ function QuestionCard({ msg, answers, currentUserId, ar, onLikeToggle, onAnswer 
               style={[qStyles.answerField, { color: TEXT, textAlign: ar ? 'right' : 'left' }]}
               value={answerText}
               onChangeText={setAnswerText}
-              placeholder={ar ? 'أجب بشكل مجهول…' : 'Answer anonymously…'}
+              placeholder={ar ? 'أجب…' : 'Answer…'}
               placeholderTextColor={MUTED}
               maxLength={300}
               returnKeyType="send"
@@ -677,7 +677,6 @@ function QuestionComposer({ visible, onClose, onSubmit, ar }) {
         <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={onClose} />
         <View style={[qcStyles.sheet, { backgroundColor: BG, borderTopColor: SEPARATOR }]}>
           <Text style={[qcStyles.title, { color: TEXT }]}>{ar ? 'اطرح سؤالاً' : 'Ask the circle'}</Text>
-          <Text style={[qcStyles.sub, { color: MUTED }]}>{ar ? 'سيُرسل بشكل مجهول' : 'Posted anonymously'}</Text>
           <View style={[qcStyles.inputWrap, { backgroundColor: FILL }]}>
             <TextInput
               style={[qcStyles.input, { color: TEXT, textAlign: ar ? 'right' : 'left' }]}
@@ -734,7 +733,6 @@ export default function CircleScreen({ route, navigation }) {
   const [showQuestionComposer, setShowQuestionComposer] = useState(false);
   const [showDecideComposer, setShowDecideComposer] = useState(false);
   const [userLoc, setUserLoc] = useState(null);
-  const [isAnon, setIsAnon] = useState(false);
   const [replyTo, setReplyTo] = useState(null);
   const [stampToast, setStampToast] = useState(null);
   const [activeTab, setActiveTab] = useState('feed');
@@ -958,7 +956,7 @@ export default function CircleScreen({ route, navigation }) {
     const sock = getSocket();
     if (!sock?.connected) { sock?.connect?.(); return; }
     const locParam = userLoc ? { lat: userLoc.lat, lng: userLoc.lng, speed: userLoc.speed } : null;
-    sendHachiMessage(circleId, text.trim(), replyTo || null, locParam, isAnon);
+    sendHachiMessage(circleId, text.trim(), replyTo || null, locParam, false);
     setText('');
     setReplyTo(null);
   };
@@ -969,7 +967,7 @@ export default function CircleScreen({ route, navigation }) {
   };
 
   const handleDecideSubmit = (question, options) => {
-    sendHachiDecide(circleId, question, options, isAnon);
+    sendHachiDecide(circleId, question, options, false);
     setShowDecideComposer(false);
   };
 
@@ -1164,20 +1162,6 @@ export default function CircleScreen({ route, navigation }) {
             </View>
           )}
           <View style={[styles.composerWrap, { backgroundColor: BG, borderTopColor: SEPARATOR, paddingBottom: insets.bottom + 10 }]}>
-            <View style={{ flexDirection: ar ? 'row' : 'row-reverse', justifyContent: 'flex-start', alignItems: 'center', marginBottom: 6 }}>
-              <View style={[styles.anonToggle]}>
-                <Ionicons name="glasses-outline" size={15} color={isAnon ? ACCENT : MUTED} />
-                <Text style={[styles.actionChipText, { color: isAnon ? ACCENT : MUTED, fontSize: 12 }]}>{ar ? 'مجهول' : 'Anon'}</Text>
-                <Switch
-                  value={isAnon}
-                  onValueChange={setIsAnon}
-                  trackColor={{ false: SEPARATOR, true: ACCENT + '55' }}
-                  thumbColor={isAnon ? ACCENT : '#fff'}
-                  ios_backgroundColor={SEPARATOR}
-                  style={{ transform: [{ scaleX: 0.75 }, { scaleY: 0.75 }] }}
-                />
-              </View>
-            </View>
             <View style={[styles.inputRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
               <View style={[styles.inputCard, { backgroundColor: FILL, borderColor: replyTo ? ACCENT : 'transparent' }]}>
                 <TextInput
@@ -1291,7 +1275,6 @@ const styles = StyleSheet.create({
   input: { fontSize: 15, fontWeight: '400', paddingVertical: 10 },
   sendBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
   actionsRow: { gap: 8, marginBottom: 4, alignItems: 'center', flexWrap: 'nowrap' },
-  anonToggle: { alignItems: 'center', gap: 4, flexDirection: 'row' },
   actionChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
   actionChipText: { fontSize: 13, fontWeight: '500' },
 });
