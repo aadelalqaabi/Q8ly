@@ -619,7 +619,7 @@ exports.recordVisit = async (req, res) => {
       return res.status(400).json({ success: false, message: 'lat/lng required' });
     }
     const confidence = computeConfidence(parseFloat(lat), parseFloat(lng), parseFloat(speed) || 0, room.venueCoords, room.venueRadius || 250);
-    if (confidence < 0.6) {
+    if (confidence <= 0) {
       return res.status(403).json({ success: false, message: 'Not inside the venue' });
     }
     const user = await User.findById(req.user._id).select('visitedCircles').lean();
