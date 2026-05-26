@@ -3,6 +3,7 @@ import {
   View, StyleSheet, FlatList,
   TouchableOpacity, Text, Dimensions, StatusBar,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { VideoView, useVideoPlayer } from 'expo-video';
@@ -216,6 +217,11 @@ export default function MediaViewerScreen({ navigation, route }) {
           dismissGestureRef={dismissGestureRef}
           flatListRef={flatListGestureRef}
         />
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.72)']}
+          style={styles.bottomFade}
+          pointerEvents="none"
+        />
       </View>
     );
   };
@@ -291,6 +297,10 @@ const styles = StyleSheet.create({
     width: SW, height: SH,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+
+  bottomFade: {
+    position: 'absolute', bottom: 0, left: 0, right: 0, height: 160,
   },
 
   topBar: {
