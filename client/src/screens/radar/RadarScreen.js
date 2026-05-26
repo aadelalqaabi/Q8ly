@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, Animated, Easing,
   Dimensions, Image, ActivityIndicator, TouchableOpacity, ScrollView, AppState,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
@@ -83,25 +84,41 @@ export default function RadarScreen() {
   const prevInsideId = useRef(null);
 
   // ── load venues ──────────────────────────────────────────────────────────────
+  const applyVenues = useCallback((v) => {
+    v.forEach(venue => {
+      if (!pingAnims.current[venue._id]) {
+        pingAnims.current[venue._id]     = new Animated.Value(0);
+        activeAnims.current[venue._id]   = new Animated.Value(0);
+        lastTriggered.current[venue._id] = -999;
+      }
+    });
+    setVenues(v);
+  }, []);
+
   const fetchVenues = useCallback(() => {
     hachiAPI.getVault()
       .then(data => {
         const v = (Array.isArray(data) ? data : data?.items || []).filter(x => x.lat && x.lng);
-        v.forEach(venue => {
-          if (!pingAnims.current[venue._id]) {
-            pingAnims.current[venue._id]     = new Animated.Value(0);
-            activeAnims.current[venue._id]   = new Animated.Value(0);
-            lastTriggered.current[venue._id] = -999;
-          }
-        });
-        setVenues(v);
+        applyVenues(v);
+        AsyncStorage.setItem('radar_venues_cache', JSON.stringify(v)).catch(() => {});
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [applyVenues]);
 
-  // Initial load
-  useEffect(() => { fetchVenues(); }, [fetchVenues]);
+  // Load cached venues instantly, then fetch fresh in background
+  useEffect(() => {
+    AsyncStorage.getItem('radar_venues_cache')
+      .then(raw => {
+        if (raw) {
+          const cached = JSON.parse(raw);
+          applyVenues(cached);
+          setLoading(false);
+        }
+      })
+      .catch(() => {})
+      .finally(() => fetchVenues());
+  }, []);
 
   // Poll every 15s to pick up new circles
   useEffect(() => {
@@ -124,7 +141,7 @@ export default function RadarScreen() {
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') return;
-      const cur = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      const cur = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       setLocation(cur.coords);
       locationRef.current = cur.coords;
       sub = await Location.watchPositionAsync(
@@ -141,7 +158,7 @@ export default function RadarScreen() {
     setSearching(true);
     try {
       if (Location) {
-        const cur = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+        const cur = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
         setLocation(cur.coords);
         locationRef.current = cur.coords;
       }

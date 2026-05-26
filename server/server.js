@@ -130,11 +130,14 @@ app.use(cors({
   credentials: true,
 }));
 
+// Trust Railway/reverse-proxy so rate limiting uses real client IPs, not proxy IP
+app.set('trust proxy', 1);
+
 // Rate limiting
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
   max: parseInt(process.env.RATE_LIMIT_MAX) || 500,
-  message: 'Too many requests from this IP, please try again later.',
+  message: { message: 'Too many requests, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -143,7 +146,7 @@ app.use('/api/', limiter);
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: parseInt(process.env.AUTH_RATE_LIMIT_MAX) || 300,
-  message: 'Too many auth attempts, please try again later.',
+  message: { message: 'Too many auth attempts, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => req.path === '/dummy-auth',
@@ -154,7 +157,7 @@ app.use('/api/auth', authLimiter);
 const adminLoginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
-  message: 'Too many admin login attempts, please try again later.',
+  message: { message: 'Too many admin login attempts, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
 });

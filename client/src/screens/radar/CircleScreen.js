@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Image,
   KeyboardAvoidingView, Platform, ActivityIndicator, Dimensions, Animated,
-  Modal, PixelRatio, Alert,
+  Modal, PixelRatio, Alert, RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -13,6 +13,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useBrutColors, isAr } from '../../components/Brut';
 import { PollCard, PollComposer } from '../../components/Poll';
 import * as ImagePicker from 'expo-image-picker';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 
 let Location = null;
 try { Location = require('expo-location'); } catch {}
@@ -349,12 +351,44 @@ function ReelItem({ msg, currentUserId, ar, onLikeToggle, height }) {
   );
   const likeCount = (msg.likes || []).length;
   const isAnonPost = msg.anonymous !== false || !msg.user?.name;
-  const displayName = isAnonPost ? (ar ? 'شخص هنا' : 'Someone here') : msg.user.name;
+  const displayName = isAnonPost ? (ar ? 'شخص هنا' : 'Someone here') : (msg.user?.name || msg.user?.username || '?');
+
+  const lastTap = useRef(null);
+  const heartAnim = useRef(new Animated.Value(0)).current;
+
+  const handleTap = () => {
+    const now = Date.now();
+    if (lastTap.current && now - lastTap.current < 300) {
+      lastTap.current = null;
+      if (!liked) onLikeToggle(msg._id);
+      // burst animation
+      heartAnim.setValue(0);
+      Animated.sequence([
+        Animated.spring(heartAnim, { toValue: 1, useNativeDriver: true, damping: 10, stiffness: 180 }),
+        Animated.delay(400),
+        Animated.timing(heartAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+      ]).start();
+    } else {
+      lastTap.current = now;
+    }
+  };
 
   return (
-    <View style={{ width: SW, height, backgroundColor: '#000' }}>
+    <TouchableOpacity activeOpacity={1} onPress={handleTap} style={{ width: SW, height, backgroundColor: '#000' }}>
       <Image source={{ uri: cdnUrl(msg.image, SW) }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-      <View style={reelStyles.bottomGradient} />
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.85)']}
+        style={reelStyles.bottomGradient}
+        pointerEvents="none"
+      />
+      {/* Double-tap heart burst */}
+      <Animated.View style={[reelStyles.heartBurst, {
+        opacity: heartAnim,
+        transform: [{ scale: heartAnim.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1.3] }) }],
+      }]} pointerEvents="none">
+        <Ionicons name="heart" size={90} color="#FF3B30" />
+      </Animated.View>
+
       <View style={[reelStyles.info, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
         <View style={{ flex: 1 }}>
           <Text style={reelStyles.name}>{displayName}</Text>
@@ -366,17 +400,18 @@ function ReelItem({ msg, currentUserId, ar, onLikeToggle, height }) {
           {likeCount > 0 && <Text style={reelStyles.likeCount}>{likeCount}</Text>}
         </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
 const reelStyles = StyleSheet.create({
-  bottomGradient: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 200, backgroundColor: 'rgba(0,0,0,0.35)' },
+  bottomGradient: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 180 },
+  heartBurst: { position: 'absolute', top: '40%', left: '50%', marginLeft: -45, marginTop: -45 },
   info: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20, paddingBottom: 32, alignItems: 'flex-end', gap: 16 },
   name: { color: '#fff', fontSize: 14, fontWeight: '700', marginBottom: 4 },
   caption: { color: 'rgba(255,255,255,0.9)', fontSize: 13, lineHeight: 18 },
   ts: { color: 'rgba(255,255,255,0.6)', fontSize: 11, marginTop: 4 },
-  likeBtn: { alignItems: 'center', gap: 4 },
+  likeBtn: { alignItems: 'center', gap: 4, marginBottom: 40 },
   likeCount: { color: '#fff', fontSize: 13, fontWeight: '600' },
 });
 
@@ -736,6 +771,9 @@ export default function CircleScreen({ route, navigation }) {
   const [replyTo, setReplyTo] = useState(null);
   const [stampToast, setStampToast] = useState(null);
   const [activeTab, setActiveTab] = useState('feed');
+  const [refreshing, setRefreshing] = useState(false);
+  const [scrolledDown, setScrolledDown] = useState(false);
+  const [reelScrolledDown, setReelScrolledDown] = useState(false);
 
   const watchRef = useRef(null);
   const flatRef = useRef(null);
@@ -938,6 +976,16 @@ export default function CircleScreen({ route, navigation }) {
     );
   }, [circleId, ar]);
 
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const res = await hachiAPI.getRoom(circleId, userLoc);
+      if (res.room) setMessages(res.room.messages || []);
+      const pollRes = await hachiAPI.listPolls(circleId, userLoc?.lat, userLoc?.lng);
+      setPolls(pollRes.polls || []);
+    } catch {} finally { setRefreshing(false); }
+  }, [circleId, userLoc]);
+
   const handleAnswer = useCallback((questionId, answerText) => {
     const sock = getSocket();
     if (!sock?.connected) return;
@@ -1070,6 +1118,11 @@ export default function CircleScreen({ route, navigation }) {
             data={topLevel}
             keyExtractor={(m) => String(m._id)}
             ListHeaderComponent={listHeader}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={ACCENT} />
+            }
+            onScroll={(e) => setScrolledDown(e.nativeEvent.contentOffset.y > 200)}
+            scrollEventThrottle={16}
             renderItem={({ item }) => {
               if (item.type === 'question') {
                 return (
@@ -1135,6 +1188,11 @@ export default function CircleScreen({ route, navigation }) {
               snapToInterval={reelHeight}
               decelerationRate="fast"
               getItemLayout={(_, index) => ({ length: reelHeight, offset: reelHeight * index, index })}
+              onScroll={(e) => setReelScrolledDown(e.nativeEvent.contentOffset.y > reelHeight * 0.5)}
+              scrollEventThrottle={16}
+              refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#fff" />
+              }
               renderItem={({ item }) => (
                 <ReelItem
                   msg={item}
@@ -1248,6 +1306,26 @@ export default function CircleScreen({ route, navigation }) {
         onClose={() => setStampToast(null)}
         ar={ar}
       />
+
+      {/* Scroll-to-top — rendered last so it sits above everything */}
+      {activeTab === 'feed' && scrolledDown && (
+        <TouchableOpacity
+          style={[styles.scrollTopBtn, { backgroundColor: ACCENT, bottom: insets.bottom + 80, zIndex: 99 }]}
+          onPress={() => flatRef.current?.scrollToOffset({ offset: 0, animated: true })}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="chevron-up" size={20} color="#fff" />
+        </TouchableOpacity>
+      )}
+      {activeTab === 'photos' && reelScrolledDown && (
+        <TouchableOpacity
+          style={[styles.scrollTopBtn, { backgroundColor: 'rgba(255,255,255,0.2)', bottom: insets.bottom + 24, zIndex: 99 }]}
+          onPress={() => reelRef.current?.scrollToIndex({ index: 0, animated: true })}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="chevron-up" size={20} color="#fff" />
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -1264,6 +1342,7 @@ const styles = StyleSheet.create({
   tabRow: { flexDirection: 'row', width: '100%', marginTop: 8, borderTopWidth: StyleSheet.hairlineWidth },
   tab: { flex: 1, alignItems: 'center', paddingVertical: 8 },
   tabText: { fontSize: 13, fontWeight: '600' },
+  scrollTopBtn: { position: 'absolute', right: 16, width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } },
   emptyReel: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
   emptyReelIcon: { fontSize: 48 },
   emptyReelText: { fontSize: 15, fontWeight: '500' },
