@@ -3,7 +3,7 @@ import {
   View, StyleSheet, FlatList,
   TouchableOpacity, Text, Dimensions, StatusBar,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { VideoView, useVideoPlayer } from 'expo-video';
@@ -217,8 +217,9 @@ export default function MediaViewerScreen({ navigation, route }) {
           dismissGestureRef={dismissGestureRef}
           flatListRef={flatListGestureRef}
         />
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.72)']}
+        <BlurView
+          intensity={40}
+          tint="dark"
           style={styles.bottomFade}
           pointerEvents="none"
         />
