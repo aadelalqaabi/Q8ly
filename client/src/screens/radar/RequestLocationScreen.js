@@ -49,7 +49,7 @@ export default function RequestLocationScreen({ route, navigation }) {
   };
 
   return (
-    <KeyboardAvoidingView style={[styles.root, { backgroundColor: BG }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={[styles.root, { backgroundColor: BG }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <BrutNav
         onBack={() => navigation.goBack()}
         leftLabel={t('common.cancel')}

@@ -13,7 +13,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useBrutColors, isAr } from '../../components/Brut';
 import { PollCard, PollComposer } from '../../components/Poll';
 import * as ImagePicker from 'expo-image-picker';
-import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 
 let Location = null;
@@ -708,7 +707,7 @@ function QuestionComposer({ visible, onClose, onSubmit, ar }) {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={onClose} />
         <View style={[qcStyles.sheet, { backgroundColor: BG, borderTopColor: SEPARATOR }]}>
           <Text style={[qcStyles.title, { color: TEXT }]}>{ar ? 'اطرح سؤالاً' : 'Ask the circle'}</Text>
@@ -1209,7 +1208,7 @@ export default function CircleScreen({ route, navigation }) {
 
       {/* Composer — feed tab only */}
       {activeTab === 'feed' && (
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={0}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={0}>
           {replyTo && (
             <View style={[styles.replyBanner, { backgroundColor: FILL, borderTopColor: SEPARATOR }]}>
               <Ionicons name="chatbubble-outline" size={13} color={ACCENT} />

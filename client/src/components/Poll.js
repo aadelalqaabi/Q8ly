@@ -154,7 +154,7 @@ export function PollComposer({ visible, onClose, onSubmit }) {
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <KeyboardAvoidingView style={[comp.root, { backgroundColor: BG }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={[comp.root, { backgroundColor: BG }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <BrutNav
           onBack={onClose}
           leftLabel={t('common.cancel')}

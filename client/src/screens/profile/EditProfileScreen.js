@@ -79,7 +79,7 @@ export default function EditProfileScreen({ navigation }) {
   const busy = saving || uploadingAvatar;
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: BG }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: BG }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <BrutNav
         onBack={() => navigation.goBack()}
         leftLabel={t('common.cancel')}

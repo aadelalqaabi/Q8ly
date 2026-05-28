@@ -169,7 +169,7 @@ export default function SettingsScreen({ navigation }) {
 
       {/* Suggest modal */}
       <Modal visible={suggestVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setSuggestVisible(false)}>
-        <KeyboardAvoidingView style={{ flex: 1, backgroundColor: BG }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView style={{ flex: 1, backgroundColor: BG }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
 
           <BrutNav
             onBack={() => setSuggestVisible(false)}
