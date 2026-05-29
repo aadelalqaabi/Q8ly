@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { uploadAPI } from '../../services/api';
 import { sendHachiMessage } from '../../services/socket';
 let Location = null;
@@ -41,7 +42,13 @@ export default function LiveCameraScreen({ route, navigation }) {
     setBusy(true);
     try {
       const photo = await camRef.current.takePictureAsync({ quality: 0.85 });
-      setCaptured(photo.uri);
+      // Re-encode to bake EXIF rotation into pixels — fixes landscape display on iOS
+      const fixed = await ImageManipulator.manipulateAsync(
+        photo.uri,
+        [],
+        { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG }
+      );
+      setCaptured(fixed.uri);
     } catch (e) {
       Alert.alert('Error', e.message);
     } finally { setBusy(false); }
