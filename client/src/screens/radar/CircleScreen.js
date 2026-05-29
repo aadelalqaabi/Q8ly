@@ -43,7 +43,7 @@ function CommentRow({ msg, currentUserId, ar, onLikeToggle }) {
     (l) => (typeof l === 'string' ? l : l?.toString()) === currentUserId?.toString()
   );
   const likeCount = (msg.likes || []).length;
-  const isAnonPost = msg.anonymous !== false || !msg.user?.name;
+  const isAnonPost = !msg.user?.name && !msg.user?.username;
   const displayName = isAnonPost ? (ar ? 'شخص هنا' : 'Someone here') : msg.user.name;
   const displayPic = !isAnonPost && msg.user?.profilePic;
 
@@ -117,7 +117,7 @@ function QuestionCard({ msg, answers, currentUserId, ar, onLikeToggle, onAnswer 
       </View>
 
       <Text style={[qStyles.meta, { color: MUTED, textAlign: ar ? 'right' : 'left' }]}>
-        {timeAgo(msg.createdAt, ar)} · {ar ? 'شخص هنا' : 'Someone here'}
+        {timeAgo(msg.createdAt, ar)} · {msg.user?.name || msg.user?.username || (ar ? 'شخص هنا' : 'Someone here')}
       </Text>
 
       <TouchableOpacity
@@ -198,7 +198,7 @@ function PostCard({ msg, comments, currentUserId, ar, onImagePress, onLikeToggle
   const hasImage = !!msg.image;
   const hasText = !!msg.text;
   const ts = timeAgo(msg.createdAt, ar);
-  const isAnonPost = msg.anonymous !== false || !msg.user?.name;
+  const isAnonPost = !msg.user?.name && !msg.user?.username;
   const displayName = isAnonPost ? (ar ? 'شخص هنا' : 'Someone here') : msg.user.name;
   const displayPic = !isAnonPost && msg.user?.profilePic;
   const isOwn = msg.user?._id?.toString() === currentUserId?.toString();
@@ -349,7 +349,7 @@ function ReelItem({ msg, currentUserId, ar, onLikeToggle, height }) {
     (l) => (typeof l === 'string' ? l : l?.toString()) === currentUserId?.toString()
   );
   const likeCount = (msg.likes || []).length;
-  const isAnonPost = msg.anonymous !== false || !msg.user?.name;
+  const isAnonPost = !msg.user?.name && !msg.user?.username;
   const displayName = isAnonPost ? (ar ? 'شخص هنا' : 'Someone here') : (msg.user?.name || msg.user?.username || '?');
 
   const lastTap = useRef(null);
@@ -427,8 +427,8 @@ function DecideCard({ msg, currentUserId, ar, onVote, onDelete, navigation }) {
   const myVoteOpt = opts.find((o) => (o.votes || []).some(
     (v) => (typeof v === 'string' ? v : v?.toString()) === currentUserId?.toString()
   ));
-  const isAnon = msg.anonymous;
-  const name = isAnon ? (ar ? 'شخص هنا' : 'Someone here') : (msg.user?.name || msg.user?.username || '?');
+  const isAnon = !msg.user?.name && !msg.user?.username;
+  const name = isAnon ? (ar ? 'شخص هنا' : 'Someone here') : (msg.user?.name || msg.user?.username);
   const isOwn = msg.user?._id?.toString() === currentUserId?.toString() || msg.user?.toString() === currentUserId?.toString();
 
   const handleTilePress = (opt) => {
