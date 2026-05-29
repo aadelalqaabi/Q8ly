@@ -347,9 +347,6 @@ function ReelItem({ msg, currentUserId, ar, onLikeToggle, height }) {
   const liked = (msg.likes || []).some(
     (l) => (typeof l === 'string' ? l : l?.toString()) === currentUserId?.toString()
   );
-  const likeCount = (msg.likes || []).length;
-  const isAnonPost = !msg.user?.name && !msg.user?.username;
-  const displayName = isAnonPost ? (ar ? 'شخص هنا' : 'Someone here') : (msg.user?.name || msg.user?.username || '?');
 
   const lastTap = useRef(null);
   const heartAnim = useRef(new Animated.Value(0)).current;
@@ -374,45 +371,18 @@ function ReelItem({ msg, currentUserId, ar, onLikeToggle, height }) {
   return (
     <TouchableOpacity activeOpacity={1} onPress={handleTap} style={{ width: SW, height, backgroundColor: '#000' }}>
       <Image source={{ uri: cdnUrl(msg.image, SW) }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-      <View style={reelStyles.bottomGradient} pointerEvents="none">
-        <View style={{ flex: 1, backgroundColor: 'transparent' }} />
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.12)' }} />
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.28)' }} />
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.50)' }} />
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)' }} />
-      </View>
-      {/* Double-tap heart burst */}
       <Animated.View style={[reelStyles.heartBurst, {
         opacity: heartAnim,
         transform: [{ scale: heartAnim.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1.3] }) }],
       }]} pointerEvents="none">
         <Ionicons name="heart" size={90} color="#FF3B30" />
       </Animated.View>
-
-      <View style={[reelStyles.info, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
-        <View style={{ flex: 1 }}>
-          <Text style={reelStyles.name}>{displayName}</Text>
-          {!!msg.text && <Text style={reelStyles.caption} numberOfLines={2}>{msg.text}</Text>}
-          <Text style={reelStyles.ts}>{timeAgo(msg.createdAt, ar)}</Text>
-        </View>
-        <TouchableOpacity style={reelStyles.likeBtn} onPress={() => onLikeToggle(msg._id)} activeOpacity={0.7}>
-          <Ionicons name={liked ? 'heart' : 'heart-outline'} size={28} color={liked ? '#FF3B30' : '#fff'} />
-          {likeCount > 0 && <Text style={reelStyles.likeCount}>{likeCount}</Text>}
-        </TouchableOpacity>
-      </View>
     </TouchableOpacity>
   );
 }
 
 const reelStyles = StyleSheet.create({
-  bottomGradient: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 180, flexDirection: 'column' },
   heartBurst: { position: 'absolute', top: '40%', left: '50%', marginLeft: -45, marginTop: -45 },
-  info: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20, paddingBottom: 32, alignItems: 'flex-end', gap: 16 },
-  name: { color: '#fff', fontSize: 14, fontWeight: '700', marginBottom: 4 },
-  caption: { color: 'rgba(255,255,255,0.9)', fontSize: 13, lineHeight: 18 },
-  ts: { color: 'rgba(255,255,255,0.6)', fontSize: 11, marginTop: 4 },
-  likeBtn: { alignItems: 'center', gap: 4, marginBottom: 40 },
-  likeCount: { color: '#fff', fontSize: 13, fontWeight: '600' },
 });
 
 // ── Decide card ───────────────────────────────────────────────────────────────
