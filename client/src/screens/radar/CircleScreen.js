@@ -13,7 +13,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useBrutColors, isAr } from '../../components/Brut';
 import { PollCard, PollComposer } from '../../components/Poll';
 import * as ImagePicker from 'expo-image-picker';
-import { LinearGradient } from 'expo-linear-gradient';
 
 let Location = null;
 try { Location = require('expo-location'); } catch {}
@@ -375,11 +374,13 @@ function ReelItem({ msg, currentUserId, ar, onLikeToggle, height }) {
   return (
     <TouchableOpacity activeOpacity={1} onPress={handleTap} style={{ width: SW, height, backgroundColor: '#000' }}>
       <Image source={{ uri: cdnUrl(msg.image, SW) }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-      <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.85)']}
-        style={reelStyles.bottomGradient}
-        pointerEvents="none"
-      />
+      <View style={reelStyles.bottomGradient} pointerEvents="none">
+        <View style={{ flex: 1, backgroundColor: 'transparent' }} />
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.12)' }} />
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.28)' }} />
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.50)' }} />
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)' }} />
+      </View>
       {/* Double-tap heart burst */}
       <Animated.View style={[reelStyles.heartBurst, {
         opacity: heartAnim,
@@ -404,7 +405,7 @@ function ReelItem({ msg, currentUserId, ar, onLikeToggle, height }) {
 }
 
 const reelStyles = StyleSheet.create({
-  bottomGradient: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 180 },
+  bottomGradient: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 180, flexDirection: 'column' },
   heartBurst: { position: 'absolute', top: '40%', left: '50%', marginLeft: -45, marginTop: -45 },
   info: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20, paddingBottom: 32, alignItems: 'flex-end', gap: 16 },
   name: { color: '#fff', fontSize: 14, fontWeight: '700', marginBottom: 4 },
