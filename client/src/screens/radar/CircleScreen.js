@@ -206,8 +206,8 @@ function PostCard({ msg, comments, currentUserId, ar, onImagePress, onLikeToggle
   const handleMore = () => {
     if (isOwn) {
       Alert.alert(
-        ar ? 'خيارات' : 'Options',
-        '',
+        ar ? 'حذف المنشور؟' : 'Delete post?',
+        ar ? 'سيُحذف هذا المنشور نهائياً' : 'This will be permanently removed.',
         [
           { text: ar ? 'حذف' : 'Delete', style: 'destructive', onPress: () => onDelete(msg._id) },
           { text: ar ? 'إلغاء' : 'Cancel', style: 'cancel' },
